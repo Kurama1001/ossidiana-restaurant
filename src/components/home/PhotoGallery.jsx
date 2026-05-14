@@ -10,6 +10,7 @@ const PHOTOS = [
   { url: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800&q=80', alt: 'Dolci' },
   { url: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80', alt: 'Vini' },
   { url: 'https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=800&q=80', alt: 'Tavoli' },
+  { url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80', alt: 'Piatto gourmet' },
 ];
 
 export default function PhotoGallery() {
