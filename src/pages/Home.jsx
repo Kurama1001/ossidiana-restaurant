@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Star, ChevronRight } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
+import PhotoGallery from '@/components/home/PhotoGallery';
 
 export default function Home() {
   const [menuHighlights, setMenuHighlights] = useState([]);
@@ -85,6 +86,9 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* Gallery */}
+      <PhotoGallery />
 
       {/* Reviews */}
       {reviews.length > 0 && (
