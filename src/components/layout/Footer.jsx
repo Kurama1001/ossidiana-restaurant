@@ -30,7 +30,7 @@ export default function Footer() {
         <div>
           <h3 className="font-display text-lg text-[#C69C6D] tracking-widest mb-5">Contatti</h3>
           <div className="space-y-3 text-sm font-body text-[#E5E5E5]/70">
-            <div className="flex items-start gap-2"><MapPin size={14} className="text-[#C69C6D] mt-1 shrink-0" /><span>Via dell'Ossidiana 12, 00100 Roma RM</span></div>
+            <div className="flex items-start gap-2"><MapPin size={14} className="text-[#C69C6D] mt-1 shrink-0" /><span>Viale Aldo Moro 132, 00100 Roma RM</span></div>
             <div className="flex items-center gap-2"><Phone size={14} className="text-[#C69C6D]" /><span>+39 06 1234 5678</span></div>
           </div>
           <div className="flex flex-col gap-2 mt-5">
@@ -44,6 +44,6 @@ export default function Footer() {
         <p className="text-[#E5E5E5]/40 text-xs font-body">© 2026 Ossidiana Restaurant. Tutti i diritti riservati.</p>
         <Link to="/login" className="text-[#E5E5E5]/30 text-xs font-body hover:text-[#C69C6D] transition-colors">Area Admin</Link>
       </div>
-    </footer>
-  );
+    </footer>);
+
 }
