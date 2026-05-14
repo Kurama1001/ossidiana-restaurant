@@ -50,9 +50,7 @@
     "guests"
   ],
   "rls": {
-    "create": {
-      "created_by": "{{user.email}}"
-    },
+    "create": {},
     "read": {
       "$or": [
         {
