@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Mail, Lock, Loader2 } from "lucide-react";
+import GoogleIcon from "@/components/GoogleIcon";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -36,6 +37,20 @@ export default function Login() {
         </div>
 
         <div className="bg-[#161618] border border-[#C69C6D]/15 rounded-sm p-8">
+          {/* Google login */}
+          <button
+            onClick={() => base44.auth.loginWithProvider("google", "/admin")}
+            className="w-full flex items-center justify-center gap-3 py-3 border border-[#E5E5E5]/15 text-[#E5E5E5] font-body text-sm rounded-sm hover:border-[#C69C6D]/40 transition-all mb-5 min-h-[48px]"
+          >
+            <GoogleIcon className="w-5 h-5" />
+            Continua con Google
+          </button>
+
+          <div className="relative mb-5">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[#E5E5E5]/10" /></div>
+            <div className="relative flex justify-center"><span className="bg-[#161618] px-3 text-xs text-[#E5E5E5]/30 font-body uppercase tracking-widest">oppure</span></div>
+          </div>
+
           {error && (
             <div className="mb-5 p-3 border border-red-400/20 bg-red-400/5 text-red-400 text-sm font-body rounded-sm">
               {error}
