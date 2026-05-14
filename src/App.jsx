@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Layout from '@/components/layout/Layout';
+import Login from '@/pages/Login';
 import Home from '@/pages/Home';
 import Menu from '@/pages/Menu';
 import Prenotazioni from '@/pages/Prenotazioni';
@@ -48,6 +49,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin" element={<Admin />} />
         </Route>
       </Route>
+      <Route path="/login" element={<Login />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
