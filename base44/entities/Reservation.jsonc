@@ -1,0 +1,79 @@
+{
+  "name": "Reservation",
+  "type": "object",
+  "properties": {
+    "customer_name": {
+      "type": "string",
+      "description": "Nome del cliente"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Telefono"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email"
+    },
+    "res_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Data prenotazione"
+    },
+    "res_time": {
+      "type": "string",
+      "description": "Orario prenotazione"
+    },
+    "guests": {
+      "type": "number",
+      "description": "Numero di persone"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Note aggiuntive"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "confirmed",
+        "cancelled"
+      ],
+      "default": "pending",
+      "description": "Stato prenotazione"
+    }
+  },
+  "required": [
+    "customer_name",
+    "phone",
+    "res_date",
+    "res_time",
+    "guests"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
