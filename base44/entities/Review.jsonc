@@ -27,14 +27,13 @@
   ],
   "rls": {
     "create": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "created_by": "{{user.email}}"
     },
-    "read": {
+    "read": {},
+    "update": {
       "$or": [
         {
-          "data.is_visible": true
+          "created_by": "{{user.email}}"
         },
         {
           "user_condition": {
@@ -43,15 +42,17 @@
         }
       ]
     },
-    "update": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
     "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     }
   }
 }
