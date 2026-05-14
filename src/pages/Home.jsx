@@ -24,9 +24,9 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0B]/70 via-[#0A0A0B]/50 to-[#0A0A0B]" />
         <div className="relative z-10 text-center px-5 max-w-3xl mx-auto">
           <p className="font-body text-[#C69C6D] tracking-[0.4em] uppercase text-sm mb-6">Benvenuti da</p>
-          <h1 className="font-display text-7xl md:text-9xl text-white tracking-widest mb-4" style={{ fontFamily: 'serif' }}>OSSIDIANA</h1>
+          <h1 className="font-display text-5xl sm:text-7xl md:text-9xl text-white tracking-widest mb-4" style={{ fontFamily: 'serif' }}>OSSIDIANA</h1>
           <div className="w-24 h-px bg-[#C69C6D] mx-auto mb-8" />
-          <p className="font-body text-[#E5E5E5]/70 text-lg leading-relaxed mb-10">
+          <p className="font-body text-[#E5E5E5]/70 text-base md:text-lg leading-relaxed mb-10 px-2">
             Un'esperienza gastronomica autentica nel cuore di Roma.<br />
             Dove la tradizione incontra l'innovazione in un'atmosfera raffinata.
           </p>
