@@ -7,8 +7,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-5 grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
         <div>
           <div className="mb-4">
-            <div className="font-display text-2xl text-white tracking-widest">OSSIDIANA</div>
-            <div className="text-[#C69C6D] text-xs tracking-[0.3em] uppercase font-body font-light">Restaurant</div>
+            <img src="https://media.base44.com/images/public/6a047f37242becec83398e6f/cfc846ccb_Ossidiana_02_Negativo1.svg" alt="Ossidiana Restaurant" className="h-10 w-auto" />
           </div>
           <p className="text-[#E5E5E5]/60 text-sm font-body leading-relaxed">
             Un'esperienza gastronomica autentica, dove la tradizione incontra l'innovazione in un'atmosfera intima e raffinata.
