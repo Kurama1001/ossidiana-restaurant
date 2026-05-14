@@ -1,0 +1,91 @@
+{
+  "name": "Order",
+  "type": "object",
+  "properties": {
+    "customer_name": {
+      "type": "string",
+      "description": "Nome del cliente"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Telefono"
+    },
+    "pickup_time": {
+      "type": "string",
+      "description": "Orario di ritiro"
+    },
+    "total_amount": {
+      "type": "number",
+      "description": "Totale ordine in euro"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ricevuto",
+        "in_preparazione",
+        "pronto",
+        "completato"
+      ],
+      "default": "ricevuto",
+      "description": "Stato ordine"
+    },
+    "items": {
+      "type": "array",
+      "description": "Piatti ordinati",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "qty": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Note aggiuntive"
+    }
+  },
+  "required": [
+    "customer_name",
+    "phone",
+    "pickup_time",
+    "items"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
