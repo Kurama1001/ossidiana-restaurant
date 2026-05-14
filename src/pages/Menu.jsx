@@ -43,39 +43,41 @@ export default function Menu() {
         <div className="w-16 h-px bg-[#C69C6D] mx-auto mt-5" />
       </div>
 
-      <div className="max-w-5xl mx-auto px-5">
-        {/* Category filter */}
-        <div className="flex flex-wrap gap-2 justify-center mb-6">
-          <button
-            onClick={() => setActiveCategory('all')}
-            className={`px-5 py-2 text-xs font-body tracking-widest uppercase rounded-sm border transition-all min-h-[40px] ${
-              activeCategory === 'all' ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'
-            }`}
-          >Tutti</button>
-          {CATEGORIES.map(cat => (
+      {/* Sticky filters */}
+      <div className="sticky top-[64px] z-40 bg-[#0A0A0B] py-4">
+        <div className="max-w-5xl mx-auto px-5">
+          <div className="flex flex-wrap gap-2 justify-center mb-3">
             <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
+              onClick={() => setActiveCategory('all')}
               className={`px-5 py-2 text-xs font-body tracking-widest uppercase rounded-sm border transition-all min-h-[40px] ${
-                activeCategory === cat ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'
+                activeCategory === 'all' ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'
               }`}
-            >{cat}</button>
-          ))}
+            >Tutti</button>
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-5 py-2 text-xs font-body tracking-widest uppercase rounded-sm border transition-all min-h-[40px] ${
+                  activeCategory === cat ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'
+                }`}
+              >{cat}</button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {ALL_TAGS.map(tag => (
+              <button
+                key={tag}
+                onClick={() => toggleTag(tag)}
+                className={`px-4 py-1.5 text-xs border rounded-full font-body transition-all min-h-[36px] ${
+                  activeTags.includes(tag) ? 'bg-[#C69C6D]/20 border-[#C69C6D] text-[#C69C6D]' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/40 hover:border-[#C69C6D]/30'
+                }`}
+              >{TAG_LABELS[tag]}</button>
+            ))}
+          </div>
         </div>
+      </div>
 
-        {/* Tag filter */}
-        <div className="flex flex-wrap gap-2 justify-center mb-12">
-          {ALL_TAGS.map(tag => (
-            <button
-              key={tag}
-              onClick={() => toggleTag(tag)}
-              className={`px-4 py-1.5 text-xs border rounded-full font-body transition-all min-h-[36px] ${
-                activeTags.includes(tag) ? 'bg-[#C69C6D]/20 border-[#C69C6D] text-[#C69C6D]' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/40 hover:border-[#C69C6D]/30'
-              }`}
-            >{TAG_LABELS[tag]}</button>
-          ))}
-        </div>
-
+      <div className="max-w-5xl mx-auto px-5 mt-8">
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3, 4, 5].map(i => (
