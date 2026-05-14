@@ -1,0 +1,57 @@
+{
+  "name": "Review",
+  "type": "object",
+  "properties": {
+    "customer_name": {
+      "type": "string",
+      "description": "Nome del cliente"
+    },
+    "rating": {
+      "type": "number",
+      "description": "Voto da 1 a 5"
+    },
+    "text": {
+      "type": "string",
+      "description": "Testo della recensione"
+    },
+    "is_visible": {
+      "type": "boolean",
+      "default": true,
+      "description": "Visibile in home"
+    }
+  },
+  "required": [
+    "customer_name",
+    "rating",
+    "text"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.is_visible": true
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
