@@ -30,9 +30,9 @@ export default function Home() {
             Un'esperienza gastronomica autentica nel cuore di Roma.<br />
             Dove la tradizione incontra l'innovazione in un'atmosfera raffinata.
           </p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <BronzeButton to="/prenotazioni" variant="solid">Prenota un Tavolo</BronzeButton>
-            <BronzeButton to="/menu" variant="outline">Scopri il Menu</BronzeButton>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <BronzeButton to="/prenotazioni" variant="solid" className="w-64 justify-center">Prenota un Tavolo</BronzeButton>
+            <BronzeButton to="/menu" variant="outline" className="w-64 justify-center">Scopri il Menu</BronzeButton>
           </div>
         </div>
       </section>
