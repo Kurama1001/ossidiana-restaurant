@@ -30,7 +30,7 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-5 flex items-center justify-between">
         <Link to="/" className="flex items-center">
-          <img src="https://media.base44.com/images/public/6a047f37242becec83398e6f/cfc846ccb_Ossidiana_02_Negativo1.svg" alt="Ossidiana Restaurant" className="h-10 md:h-[70px] w-auto" />
+          <img src="https://media.base44.com/images/public/6a047f37242becec83398e6f/cfc846ccb_Ossidiana_02_Negativo1.svg" alt="Ossidiana Restaurant" className="h-10 md:h-[50px] w-auto" />
         </Link>
 
         {/* Desktop */}
