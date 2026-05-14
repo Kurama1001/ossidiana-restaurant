@@ -8,6 +8,8 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Layout from '@/components/layout/Layout';
 import Login from '@/pages/Login';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 import Home from '@/pages/Home';
 import Menu from '@/pages/Menu';
 import Prenotazioni from '@/pages/Prenotazioni';
@@ -50,6 +52,8 @@ const AuthenticatedApp = () => {
         </Route>
       </Route>
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

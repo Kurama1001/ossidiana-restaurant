@@ -72,6 +72,9 @@ export default function Login() {
                   className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-10 pr-4 py-3 rounded-sm focus:border-[#C69C6D] outline-none transition font-body text-sm placeholder:text-[#E5E5E5]/25"
                 />
               </div>
+              <div className="text-right mt-1">
+                <a href="/forgot-password" className="text-xs text-[#C69C6D]/70 hover:text-[#C69C6D] font-body transition-colors">Password dimenticata?</a>
+              </div>
             </div>
 
             <button
