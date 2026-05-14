@@ -42,7 +42,7 @@ export default function Footer() {
 
       <div className="max-w-7xl mx-auto px-5 pt-6 border-t border-[#C69C6D]/10 flex flex-col md:flex-row justify-between items-center gap-3">
         <p className="text-[#E5E5E5]/40 text-xs font-body">© 2026 Ossidiana Restaurant. Tutti i diritti riservati.</p>
-        <Link to="/admin" className="text-[#E5E5E5]/30 text-xs font-body hover:text-[#C69C6D] transition-colors">Area Admin</Link>
+        <Link to="/login" className="text-[#E5E5E5]/30 text-xs font-body hover:text-[#C69C6D] transition-colors">Area Admin</Link>
       </div>
     </footer>
   );
