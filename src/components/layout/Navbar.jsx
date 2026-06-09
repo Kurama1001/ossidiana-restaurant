@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, User } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -12,6 +13,7 @@ const navLinks = [
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [authed, setAuthed] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -19,6 +21,10 @@ export default function Navbar() {
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  useEffect(() => {
+    base44.auth.isAuthenticated().then(setAuthed);
+  }, [location]);
 
   useEffect(() => setOpen(false), [location]);
 
@@ -52,6 +58,21 @@ export default function Navbar() {
           >
             Prenota
           </Link>
+          {authed ? (
+            <Link
+              to="/profilo"
+              className={`transition-colors hover:text-[#C69C6D] ${location.pathname === '/profilo' ? 'text-[#C69C6D]' : 'text-[#E5E5E5]'}`}
+            >
+              <User size={20} />
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="font-body text-sm tracking-widest uppercase text-[#E5E5E5]/60 hover:text-[#C69C6D] transition-colors"
+            >
+              Accedi
+            </Link>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -84,6 +105,21 @@ export default function Navbar() {
           >
             Prenota un Tavolo
           </Link>
+          {authed ? (
+            <Link
+              to="/profilo"
+              className={`font-body text-base tracking-widest uppercase transition-colors flex items-center gap-2 ${location.pathname === '/profilo' ? 'text-[#C69C6D]' : 'text-[#E5E5E5]'}`}
+            >
+              <User size={16} /> Profilo
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="font-body text-base tracking-widest uppercase text-[#E5E5E5]/60 hover:text-[#C69C6D] transition-colors"
+            >
+              Accedi
+            </Link>
+          )}
         </div>
       )}
     </nav>
