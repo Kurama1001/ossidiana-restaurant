@@ -61,9 +61,9 @@ export default function Home() {
                 </div>
               )}
               <div className="p-6">
-                <div className="flex justify-between items-start mb-2">
+                <div className="flex justify-between items-center mb-2">
                   <h3 className="font-display text-xl text-white">{item.name}</h3>
-                  <span className="font-body text-[#C69C6D] font-semibold">€{Number(item.price).toFixed(2)}</span>
+                  <span className="font-body text-[#C69C6D] font-semibold ml-3 shrink-0">€{Number(item.price).toFixed(2)}</span>
                 </div>
                 {item.description && <p className="font-body text-[#E5E5E5]/50 text-sm leading-relaxed">{item.description}</p>}
               </div>
