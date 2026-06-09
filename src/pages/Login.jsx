@@ -15,7 +15,8 @@ export default function Login() {
     setLoading(true);
     try {
       await base44.auth.loginViaEmailPassword(email, password);
-      window.location.href = "/admin";
+      const user = await base44.auth.me();
+      window.location.href = user?.role === "admin" ? "/admin" : "/";
     } catch (err) {
       setError("Email o password non corretti.");
     } finally {
