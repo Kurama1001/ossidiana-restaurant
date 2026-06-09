@@ -27,20 +27,18 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center px-5">
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="text-center mb-10">
           <img
             src="https://media.base44.com/images/public/6a047f37242becec83398e6f/cfc846ccb_Ossidiana_02_Negativo1.svg"
             alt="Ossidiana Restaurant"
             className="h-12 w-auto mx-auto mb-6"
           />
-          <p className="font-body text-[#C69C6D] tracking-[0.4em] uppercase text-xs">Area Amministrativa</p>
+          <p className="font-body text-[#C69C6D] tracking-[0.4em] uppercase text-xs">Accedi al tuo account</p>
         </div>
 
         <div className="bg-[#161618] border border-[#C69C6D]/15 rounded-sm p-8">
-          {/* Google login */}
           <button
-            onClick={() => base44.auth.loginWithProvider("google", "/admin")}
+            onClick={() => base44.auth.loginWithProvider("google", "/")}
             className="w-full flex items-center justify-center gap-3 py-3 border border-[#E5E5E5]/15 text-[#E5E5E5] font-body text-sm rounded-sm hover:border-[#C69C6D]/40 transition-all mb-5 min-h-[48px]"
           >
             <GoogleIcon className="w-5 h-5" />
@@ -67,7 +65,7 @@ export default function Login() {
                   type="email"
                   required
                   autoFocus
-                  placeholder="admin@ossidiana.it"
+                  placeholder="tu@esempio.it"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-10 pr-4 py-3 rounded-sm focus:border-[#C69C6D] outline-none transition font-body text-sm placeholder:text-[#E5E5E5]/25"
@@ -101,6 +99,11 @@ export default function Login() {
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Accesso...</> : 'Accedi'}
             </button>
           </form>
+
+          <p className="text-center text-xs text-[#E5E5E5]/30 font-body mt-6">
+            Non hai un account?{" "}
+            <a href="/register" className="text-[#C69C6D]/70 hover:text-[#C69C6D] transition-colors">Registrati</a>
+          </p>
         </div>
       </div>
     </div>
