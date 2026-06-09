@@ -17,8 +17,10 @@ export default function Ordini() {
   const [checkoutForm, setCheckoutForm] = useState({ customer_name: '', phone: '', pickup_time: '', notes: '' });
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
 
   useEffect(() => {
+    base44.auth.isAuthenticated().then(setIsAuthenticated);
     base44.entities.MenuItem.filter({ is_available: true }, 'sort_order', 200)
       .then(setItems)
       .finally(() => setLoading(false));
@@ -54,6 +56,25 @@ export default function Ordini() {
   };
 
   const filtered = items.filter(i => activeCategory === 'all' || i.category === activeCategory);
+
+  if (isAuthenticated === false) {
+    return (
+      <div className="bg-[#0A0A0B] min-h-screen flex items-center justify-center px-5">
+        <div className="text-center max-w-sm">
+          <p className="font-body text-[#C69C6D] tracking-[0.4em] uppercase text-xs mb-6">Accesso richiesto</p>
+          <h2 className="font-display text-4xl text-white tracking-widest mb-4">Ordina in Asporto</h2>
+          <div className="w-16 h-px bg-[#C69C6D] mx-auto mb-6" />
+          <p className="font-body text-[#E5E5E5]/50 text-sm mb-8">
+            Per ordinare è necessario essere registrati.<br />Accedi o crea un account gratuito.
+          </p>
+          <div className="flex flex-col gap-3">
+            <BronzeButton to="/login" variant="solid" className="justify-center">Accedi</BronzeButton>
+            <BronzeButton to="/register" variant="outline" className="justify-center">Registrati Gratis</BronzeButton>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
