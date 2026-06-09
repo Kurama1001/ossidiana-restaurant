@@ -10,6 +10,13 @@ export default function Home() {
   const [reviews, setReviews] = useState([]);
 
   useEffect(() => {
+    // Redirect invited users who land on homepage with a reset token
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      window.location.href = `/reset-password?token=${token}`;
+      return;
+    }
     base44.entities.MenuItem.filter({ is_available: true }, 'sort_order', 6).then(setMenuHighlights).catch(() => {});
     base44.entities.Review.filter({ is_visible: true }, '-created_date', 3).then(setReviews).catch(() => {});
   }, []);
