@@ -16,6 +16,7 @@ import Menu from '@/pages/Menu';
 import Prenotazioni from '@/pages/Prenotazioni';
 import Ordini from '@/pages/Ordini';
 import Admin from '@/pages/Admin';
+import Profilo from '@/pages/Profilo';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -48,6 +49,7 @@ const AuthenticatedApp = () => {
         <Route path="/menu" element={<Menu />} />
         <Route path="/prenotazioni" element={<Prenotazioni />} />
         <Route path="/ordini" element={<Ordini />} />
+        <Route path="/profilo" element={<Profilo />} />
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} requiredRole="admin" />}>
           <Route path="/admin" element={<Admin />} />
         </Route>
