@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 const DIETARY_CONFIG = {
   vegetariano: { label: '🌿 Vegetariano', color: 'text-green-400 border-green-400/30 bg-green-400/5' },
   pesce: { label: '🐟 Pesce', color: 'text-blue-400 border-blue-400/30 bg-blue-400/5' },
@@ -12,20 +14,24 @@ const DIETARY_CONFIG = {
 };
 
 export default function MenuItemCard({ item, onAddToCart }) {
+  const [lightbox, setLightbox] = useState(false);
   const tags = item.dietaryTags || item.tags || [];
   const imageUrl = item.imageUrl || item.image_url;
 
   return (
+    <>
     <div className="flex gap-4 py-5 border-b border-[#E5E5E5]/5 last:border-0 group">
       {/* Image */}
       <div className="shrink-0 w-24 h-24 md:w-28 md:h-28 rounded-sm overflow-hidden bg-[#161618] border border-[#C69C6D]/10">
         {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={item.name}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
+          <button onClick={() => setLightbox(true)} className="w-full h-full block cursor-zoom-in">
+            <img
+              src={imageUrl}
+              alt={item.name}
+              loading="lazy"
+              className="w-full h-full object-cover"
+            />
+          </button>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span className="text-3xl opacity-30">🍽</span>
@@ -73,5 +79,13 @@ export default function MenuItemCard({ item, onAddToCart }) {
         </button>
       )}
     </div>
+
+    {/* Lightbox */}
+    {lightbox && (
+      <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4" onClick={() => setLightbox(false)}>
+        <img src={imageUrl} alt={item.name} className="max-w-full max-h-[90vh] object-contain rounded-sm shadow-2xl" />
+      </div>
+    )}
+    </>
   );
 }

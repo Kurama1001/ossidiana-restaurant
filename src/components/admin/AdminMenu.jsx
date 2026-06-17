@@ -27,6 +27,7 @@ export default function AdminMenu() {
   const [generatingImage, setGeneratingImage] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState(null);
 
   const load = () => {
     base44.entities.MenuItem.list('sortOrder', 500).then((menuItems) => {
@@ -226,6 +227,16 @@ export default function AdminMenu() {
         </div>
       )}
 
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4" onClick={() => setLightboxUrl(null)}>
+          <img src={lightboxUrl} alt="" className="max-w-full max-h-[90vh] object-contain rounded-sm shadow-2xl" />
+          <button onClick={() => setLightboxUrl(null)} className="absolute top-4 right-4 text-white/60 hover:text-white">
+            <X size={28} />
+          </button>
+        </div>
+      )}
+
       {/* Modal form */}
       {showForm && (
         <div className="fixed inset-0 bg-[#0A0A0B]/95 z-50 flex items-center justify-center p-4">
@@ -317,7 +328,9 @@ export default function AdminMenu() {
                   </label>
                   {form.imageUrl && (
                     <>
-                      <img src={form.imageUrl} alt="" className="w-12 h-12 object-cover rounded-sm border border-[#C69C6D]/20 shrink-0" />
+                      <button type="button" onClick={() => setLightboxUrl(form.imageUrl)} className="shrink-0">
+                        <img src={form.imageUrl} alt="" className="w-12 h-12 object-cover rounded-sm border border-[#C69C6D]/20 hover:border-[#C69C6D] cursor-zoom-in transition-all" />
+                      </button>
                       <button type="button" onClick={() => set('imageUrl', '')} className="text-[#E5E5E5]/30 hover:text-red-400 transition-colors"><X size={14} /></button>
                     </>
                   )}
