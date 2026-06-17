@@ -17,7 +17,15 @@ export default function Home() {
       window.location.href = `/reset-password?token=${token}`;
       return;
     }
-    base44.entities.MenuItem.filter({ is_available: true }, 'sort_order', 6).then(setMenuHighlights).catch(() => {});
+    base44.entities.MenuItem.filter({ active: true, featured: true }, 'sortOrder', 6)
+      .then(items => {
+        if (items.length === 0) {
+          // fallback: mostra i primi 6 attivi se nessuno è featured
+          base44.entities.MenuItem.filter({ active: true }, 'sortOrder', 6).then(setMenuHighlights).catch(() => {});
+        } else {
+          setMenuHighlights(items);
+        }
+      }).catch(() => {});
     base44.entities.Review.filter({ is_visible: true }, '-created_date', 3).then(setReviews).catch(() => {});
   }, []);
 
@@ -55,9 +63,9 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {menuHighlights.map(item => (
             <div key={item.id} className="group relative overflow-hidden rounded-sm bg-[#161618] border border-[#C69C6D]/10 hover:border-[#C69C6D]/30 transition-all duration-500">
-              {item.image_url && (
+              {(item.imageUrl || item.image_url) && (
                 <div className="h-52 overflow-hidden">
-                  <img src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <img src={item.imageUrl || item.image_url} alt={item.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 </div>
               )}
               <div className="p-6">

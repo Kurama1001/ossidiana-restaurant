@@ -1,41 +1,93 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Copy, Wand2, Loader2, Settings, Search } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 
-const CATEGORIES = ['Antipasti', 'Primi', 'Secondi', 'Pizze', 'Dolci', 'Bevande'];
-const ALL_TAGS = ['vegetariano', 'senza_glutine', 'piccante', 'chef_choice'];
-const TAG_LABELS = { vegetariano: 'Vegetariano', senza_glutine: 'Senza Glutine', piccante: 'Piccante', chef_choice: '★ Chef' };
+const MENU_TYPES = [
+  { id: 'all', label: 'Tutti' },
+  { id: 'cena_estivo', label: 'Cena Estiva' },
+  { id: 'cena_autunno_inverno', label: 'Cena Aut/Inv' },
+  { id: 'pranzo_ufficio', label: 'Pranzi Ufficio' },
+];
 
-const emptyForm = { name: '', description: '', category: 'Antipasti', price: '', allergens: '', image_url: '', is_available: true, tags: [] };
+const MENU_TYPE_OPTIONS = [
+  { id: 'cena_estivo', label: 'Cena Estiva' },
+  { id: 'cena_autunno_inverno', label: 'Cena Autunno/Inverno' },
+  { id: 'pranzo_ufficio', label: 'Pranzi Ufficio' },
+];
+
+const CATEGORIES = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci'];
+const CATEGORY_LABELS = { antipasti: 'Antipasti', primi: 'Primi', romanissimi: 'Romanissimi', secondi: 'Secondi', contorni: 'Contorni', dolci: 'Dolci' };
+const DIETARY_TAGS = ['vegetariano', 'pesce', 'carne', 'senza_lattosio', 'senza_glutine_su_richiesta', 'piccante'];
+const DIETARY_LABELS = { vegetariano: 'Vegetariano', pesce: 'Pesce', carne: 'Carne', senza_lattosio: 'Senza Lattosio', senza_glutine_su_richiesta: 'Senza Glutine (richiesta)', piccante: 'Piccante' };
+
+const emptyForm = {
+  name: '', description: '', menuType: 'cena_estivo', category: 'antipasti',
+  price: '', imageUrl: '', imagePrompt: '', allergens: '',
+  dietaryTags: [], active: true, featured: false, sortOrder: '', seasonalFrom: '', seasonalTo: '',
+};
 
 export default function AdminMenu() {
   const [items, setItems] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [filterType, setFilterType] = useState('all');
   const [filterCat, setFilterCat] = useState('all');
+  const [filterActive, setFilterActive] = useState('all');
+  const [search, setSearch] = useState('');
+  const [generatingImage, setGeneratingImage] = useState(false);
 
   const load = () => {
-    base44.entities.MenuItem.list('category', 200).then(setItems).finally(() => setLoading(false));
+    Promise.all([
+      base44.entities.MenuItem.list('sortOrder', 500),
+      base44.entities.MenuSettings.list('-updated_date', 1),
+    ]).then(([menuItems, settingsList]) => {
+      setItems(menuItems);
+      setSettings(settingsList?.[0] || null);
+    }).finally(() => setLoading(false));
   };
+
   useEffect(load, []);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const toggleTag = (tag) => setForm(f => ({
-    ...f, tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag]
+
+  const toggleDietaryTag = (tag) => setForm(f => ({
+    ...f, dietaryTags: (f.dietaryTags || []).includes(tag)
+      ? f.dietaryTags.filter(t => t !== tag)
+      : [...(f.dietaryTags || []), tag]
   }));
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setShowForm(true); };
-  const openEdit = (item) => { setEditing(item); setForm({ ...item, price: item.price?.toString(), tags: item.tags || [] }); setShowForm(true); };
+  const openEdit = (item) => {
+    setEditing(item);
+    setForm({
+      ...emptyForm, ...item,
+      price: item.price?.toString() || '',
+      sortOrder: item.sortOrder?.toString() || '',
+      dietaryTags: item.dietaryTags || [],
+      seasonalFrom: item.seasonalFrom || '',
+      seasonalTo: item.seasonalTo || '',
+    });
+    setShowForm(true);
+  };
   const closeForm = () => { setShowForm(false); setEditing(null); };
 
   const saveItem = async () => {
     if (!form.name || !form.price) return;
+    if (parseFloat(form.price) < 0) { alert('Prezzo non valido'); return; }
     setSaving(true);
-    const data = { ...form, price: parseFloat(form.price) };
+    const data = {
+      ...form,
+      price: parseFloat(form.price),
+      sortOrder: form.sortOrder ? parseInt(form.sortOrder) : undefined,
+      seasonalFrom: form.seasonalFrom || null,
+      seasonalTo: form.seasonalTo || null,
+    };
     if (editing) {
       await base44.entities.MenuItem.update(editing.id, data);
     } else {
@@ -46,153 +98,344 @@ export default function AdminMenu() {
     load();
   };
 
-  const toggleAvailability = async (item) => {
-    await base44.entities.MenuItem.update(item.id, { is_available: !item.is_available });
-    setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_available: !i.is_available } : i));
+  const toggleActive = async (item) => {
+    await base44.entities.MenuItem.update(item.id, { active: !item.active });
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, active: !i.active } : i));
   };
 
   const deleteItem = async (id) => {
-    if (!confirm('Eliminare questo piatto?')) return;
+    if (!confirm('Eliminare questo piatto definitivamente?')) return;
     await base44.entities.MenuItem.delete(id);
     setItems(prev => prev.filter(i => i.id !== id));
   };
 
-  const filtered = filterCat === 'all' ? items : items.filter(i => i.category === filterCat);
+  const duplicateItem = (item) => {
+    const target = prompt('Duplica su quale menu? (cena_estivo / cena_autunno_inverno / pranzo_ufficio)', item.menuType);
+    if (!target || !MENU_TYPE_OPTIONS.find(t => t.id === target)) { alert('Menu non valido'); return; }
+    const { id, created_date, updated_date, ...rest } = item;
+    base44.entities.MenuItem.create({ ...rest, menuType: target, name: rest.name + ' (copia)' }).then(load);
+  };
+
+  const generateImage = async () => {
+    if (!form.imagePrompt) { alert('Inserisci un imagePrompt prima di generare'); return; }
+    setGeneratingImage(true);
+    try {
+      const { url } = await base44.integrations.Core.GenerateImage({ prompt: form.imagePrompt });
+      set('imageUrl', url);
+    } catch (e) {
+      alert('Errore generazione immagine: ' + e.message);
+    }
+    setGeneratingImage(false);
+  };
+
+  const saveSettings = async (newSettings) => {
+    if (settings?.id) {
+      await base44.entities.MenuSettings.update(settings.id, newSettings);
+      setSettings({ ...settings, ...newSettings });
+    } else {
+      const created = await base44.entities.MenuSettings.create(newSettings);
+      setSettings(created);
+    }
+  };
+
+  const filtered = items.filter(item => {
+    if (filterType !== 'all' && item.menuType !== filterType) return false;
+    if (filterCat !== 'all' && item.category !== filterCat) return false;
+    if (filterActive === 'active' && !item.active) return false;
+    if (filterActive === 'inactive' && item.active) return false;
+    if (search && !item.name.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
   return (
     <div>
-      <div className="flex flex-wrap gap-3 items-center justify-between mb-6">
-        <div className="flex flex-wrap gap-2">
-          {['all', ...CATEGORIES].map(c => (
-            <button
-              key={c}
-              onClick={() => setFilterCat(c)}
-              className={`px-3 py-1.5 text-xs font-body tracking-widest uppercase rounded-sm border transition-all min-h-[40px] ${
-                filterCat === c ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'
-              }`}
-            >{c === 'all' ? 'Tutti' : c}</button>
-          ))}
+      {/* Settings panel */}
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-5">
+        <h2 className="font-display text-2xl text-white tracking-widest">Gestione Menu</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowSettings(s => !s)}
+            className="flex items-center gap-2 px-4 py-2 border border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40 hover:text-[#C69C6D] rounded-sm text-sm font-body transition-all"
+          >
+            <Settings size={14} /> Impostazioni stagione
+          </button>
+          <BronzeButton onClick={openCreate} variant="solid">
+            <Plus size={14} /> Nuovo Piatto
+          </BronzeButton>
         </div>
-        <BronzeButton onClick={openCreate} variant="solid">
-          <Plus size={14} /> Aggiungi Piatto
-        </BronzeButton>
       </div>
 
-      {showForm && (
-        <div className="fixed inset-0 bg-[#0A0A0B]/95 z-50 flex items-center justify-center p-4">
-          <div className="bg-[#161618] border border-[#C69C6D]/20 rounded-sm w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-display text-2xl text-white">{editing ? 'Modifica Piatto' : 'Nuovo Piatto'}</h3>
-              <button onClick={closeForm} className="text-[#E5E5E5]/40 hover:text-white transition-colors"><X size={20} /></button>
+      {showSettings && settings !== undefined && (
+        <div className="bg-[#161618] border border-[#C69C6D]/20 rounded-sm p-5 mb-6">
+          <h3 className="font-body text-sm text-[#C69C6D] tracking-widest uppercase mb-4">Impostazioni Stagione</h3>
+          <div className="flex flex-wrap gap-6 items-end">
+            <div>
+              <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Stagione cena attiva</label>
+              <select
+                value={settings?.currentDinnerSeason || 'cena_estivo'}
+                onChange={e => saveSettings({ ...settings, currentDinnerSeason: e.target.value })}
+                className="bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none"
+              >
+                <option value="cena_estivo">Cena Estiva</option>
+                <option value="cena_autunno_inverno">Cena Autunno/Inverno</option>
+              </select>
             </div>
-
-            <div className="space-y-4">
-              {[
-                { key: 'name', label: 'Nome *', type: 'text', placeholder: 'Es. Risotto al Tartufo' },
-                { key: 'price', label: 'Prezzo (€) *', type: 'number', placeholder: '0.00' },
-                { key: 'allergens', label: 'Allergeni', type: 'text', placeholder: 'Glutine, Lattosio...' },
-                { key: 'image_url', label: 'URL Immagine', type: 'text', placeholder: 'https://...' },
-              ].map(f => (
-                <div key={f.key}>
-                  <label className="block text-xs text-[#E5E5E5]/50 font-body tracking-widest uppercase mb-1">{f.label}</label>
-                  <input
-                    type={f.type}
-                    placeholder={f.placeholder}
-                    value={form[f.key]}
-                    onChange={e => set(f.key, e.target.value)}
-                    className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none transition font-body text-sm placeholder:text-[#E5E5E5]/20"
-                  />
-                </div>
-              ))}
-
-              <div>
-                <label className="block text-xs text-[#E5E5E5]/50 font-body tracking-widest uppercase mb-1">Descrizione</label>
-                <textarea
-                  placeholder="Descrizione del piatto..."
-                  value={form.description}
-                  onChange={e => set('description', e.target.value)}
-                  rows={2}
-                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none transition font-body text-sm placeholder:text-[#E5E5E5]/20 resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-[#E5E5E5]/50 font-body tracking-widest uppercase mb-2">Categoria</label>
-                <select
-                  value={form.category}
-                  onChange={e => set('category', e.target.value)}
-                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none transition font-body text-sm"
-                >
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs text-[#E5E5E5]/50 font-body tracking-widest uppercase mb-2">Tag</label>
-                <div className="flex flex-wrap gap-2">
-                  {ALL_TAGS.map(tag => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => toggleTag(tag)}
-                      className={`px-3 py-1.5 text-xs border rounded-full font-body transition-all ${
-                        form.tags.includes(tag) ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B]' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50'
-                      }`}
-                    >{TAG_LABELS[tag]}</button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => set('is_available', !form.is_available)}
-                  className={`w-10 h-5 rounded-full transition-colors relative ${form.is_available ? 'bg-[#C69C6D]' : 'bg-[#E5E5E5]/20'}`}
-                >
-                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${form.is_available ? 'left-5' : 'left-0.5'}`} />
-                </button>
-                <span className="text-sm font-body text-[#E5E5E5]/60">Disponibile</span>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <BronzeButton onClick={closeForm} variant="outline" className="flex-1 justify-center">Annulla</BronzeButton>
-              <BronzeButton onClick={saveItem} variant="solid" className="flex-1 justify-center" disabled={saving || !form.name || !form.price}>
-                {saving ? 'Salvataggio...' : <><Check size={14} /> Salva</>}
-              </BronzeButton>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => saveSettings({ ...settings, showOfficeLunch: !(settings?.showOfficeLunch ?? true) })}
+                className={`w-10 h-5 rounded-full transition-colors relative ${(settings?.showOfficeLunch ?? true) ? 'bg-[#C69C6D]' : 'bg-[#E5E5E5]/20'}`}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${(settings?.showOfficeLunch ?? true) ? 'left-5' : 'left-0.5'}`} />
+              </button>
+              <span className="text-sm font-body text-[#E5E5E5]/60">Mostra Pranzi Ufficio nel menu pubblico</span>
             </div>
           </div>
         </div>
       )}
 
+      {/* Filters */}
+      <div className="bg-[#161618] border border-[#C69C6D]/10 rounded-sm p-4 mb-5 space-y-3">
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E5E5E5]/30" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Cerca piatto..."
+              className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-8 pr-4 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none w-48"
+            />
+          </div>
+          <select
+            value={filterActive}
+            onChange={e => setFilterActive(e.target.value)}
+            className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm text-xs font-body focus:border-[#C69C6D] outline-none"
+          >
+            <option value="all">Tutti gli stati</option>
+            <option value="active">Solo attivi</option>
+            <option value="inactive">Solo inattivi</option>
+          </select>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {MENU_TYPES.map(t => (
+            <button key={t.id} onClick={() => setFilterType(t.id)}
+              className={`px-3 py-1.5 text-xs font-body tracking-widest uppercase rounded-sm border transition-all ${filterType === t.id ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setFilterCat('all')}
+            className={`px-3 py-1.5 text-xs font-body tracking-widest uppercase rounded-sm border transition-all ${filterCat === 'all' ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+            Tutte categorie
+          </button>
+          {CATEGORIES.map(c => (
+            <button key={c} onClick={() => setFilterCat(c)}
+              className={`px-3 py-1.5 text-xs font-body tracking-widest uppercase rounded-sm border transition-all ${filterCat === c ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+              {CATEGORY_LABELS[c]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-xs font-body text-[#E5E5E5]/30 mb-3">{filtered.length} piatti</p>
+
+      {/* List */}
       {loading ? (
         <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-16 bg-[#161618] animate-pulse rounded-sm" />)}</div>
       ) : filtered.length === 0 ? (
-        <p className="text-[#E5E5E5]/30 font-body text-sm">Nessun piatto trovato.</p>
+        <p className="text-[#E5E5E5]/30 font-body text-sm py-8 text-center">Nessun piatto trovato.</p>
       ) : (
         <div className="space-y-2">
           {filtered.map(item => (
-            <div key={item.id} className={`bg-[#161618] border rounded-sm px-5 py-4 flex flex-wrap gap-4 items-center justify-between transition-all ${item.is_available ? 'border-[#C69C6D]/10' : 'border-[#E5E5E5]/5 opacity-50'}`}>
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                {item.image_url && <img src={item.image_url} alt="" className="w-12 h-12 object-cover rounded-sm shrink-0" />}
+            <div key={item.id} className={`bg-[#161618] border rounded-sm px-4 py-3 flex flex-wrap gap-3 items-center justify-between transition-all ${item.active ? 'border-[#C69C6D]/10' : 'border-[#E5E5E5]/5 opacity-50'}`}>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {(item.imageUrl || item.image_url) ? (
+                  <img src={item.imageUrl || item.image_url} alt="" className="w-12 h-12 object-cover rounded-sm shrink-0 border border-[#C69C6D]/10" />
+                ) : (
+                  <div className="w-12 h-12 bg-[#0A0A0B] rounded-sm shrink-0 flex items-center justify-center text-xl border border-[#E5E5E5]/5">🍽</div>
+                )}
                 <div className="min-w-0">
                   <p className="font-body text-sm text-white truncate">{item.name}</p>
-                  <p className="font-body text-xs text-[#E5E5E5]/40">{item.category} · <span className="text-[#C69C6D]">€{Number(item.price).toFixed(2)}</span></p>
+                  <p className="font-body text-xs text-[#E5E5E5]/40">
+                    <span className="text-[#C69C6D]/60">{MENU_TYPE_OPTIONS.find(t=>t.id===item.menuType)?.label}</span>
+                    {' · '}{CATEGORY_LABELS[item.category] || item.category}
+                    {' · '}<span className="text-[#C69C6D]">€{Number(item.price).toFixed(2)}</span>
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => toggleAvailability(item)} className={`p-2 border rounded-sm min-w-[40px] min-h-[40px] flex items-center justify-center transition-all ${item.is_available ? 'border-green-400/30 text-green-400' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/40'}`}>
-                  {item.is_available ? <Eye size={14} /> : <EyeOff size={14} />}
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => toggleActive(item)} title={item.active ? 'Disattiva' : 'Attiva'}
+                  className={`p-2 border rounded-sm min-w-[36px] min-h-[36px] flex items-center justify-center transition-all ${item.active ? 'border-green-400/30 text-green-400 hover:bg-green-400/10' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/40 hover:border-green-400/30 hover:text-green-400'}`}>
+                  {item.active ? <Eye size={13} /> : <EyeOff size={13} />}
                 </button>
-                <button onClick={() => openEdit(item)} className="p-2 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 transition-all rounded-sm min-w-[40px] min-h-[40px] flex items-center justify-center">
-                  <Pencil size={14} />
+                <button onClick={() => openEdit(item)} title="Modifica"
+                  className="p-2 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 transition-all rounded-sm min-w-[36px] min-h-[36px] flex items-center justify-center">
+                  <Pencil size={13} />
                 </button>
-                <button onClick={() => deleteItem(item.id)} className="p-2 border border-red-400/20 text-red-400/60 hover:text-red-400 hover:border-red-400/50 transition-all rounded-sm min-w-[40px] min-h-[40px] flex items-center justify-center">
-                  <Trash2 size={14} />
+                <button onClick={() => duplicateItem(item)} title="Duplica su altro menu"
+                  className="p-2 border border-[#E5E5E5]/15 text-[#E5E5E5]/40 hover:text-[#C69C6D] hover:border-[#C69C6D]/30 transition-all rounded-sm min-w-[36px] min-h-[36px] flex items-center justify-center">
+                  <Copy size={13} />
+                </button>
+                <button onClick={() => deleteItem(item.id)} title="Elimina"
+                  className="p-2 border border-red-400/20 text-red-400/50 hover:text-red-400 hover:border-red-400/50 transition-all rounded-sm min-w-[36px] min-h-[36px] flex items-center justify-center">
+                  <Trash2 size={13} />
                 </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modal form */}
+      {showForm && (
+        <div className="fixed inset-0 bg-[#0A0A0B]/95 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#161618] border border-[#C69C6D]/20 rounded-sm w-full max-w-2xl max-h-[92vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-display text-2xl text-white">{editing ? 'Modifica Piatto' : 'Nuovo Piatto'}</h3>
+              <button onClick={closeForm} className="text-[#E5E5E5]/40 hover:text-white transition-colors"><X size={20} /></button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Name */}
+              <div className="md:col-span-2">
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Nome *</label>
+                <input type="text" placeholder="Es. Risotto al Tartufo" value={form.name}
+                  onChange={e => set('name', e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20" />
+              </div>
+
+              {/* Menu type */}
+              <div>
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Tipo Menu *</label>
+                <select value={form.menuType} onChange={e => set('menuType', e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm">
+                  {MENU_TYPE_OPTIONS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                </select>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Categoria *</label>
+                <select value={form.category} onChange={e => set('category', e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm">
+                  {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
+                </select>
+              </div>
+
+              {/* Price */}
+              <div>
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Prezzo (€) *</label>
+                <input type="number" min="0" step="0.50" placeholder="0.00" value={form.price}
+                  onChange={e => set('price', e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm" />
+              </div>
+
+              {/* Sort order */}
+              <div>
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Ordine</label>
+                <input type="number" placeholder="10" value={form.sortOrder}
+                  onChange={e => set('sortOrder', e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm" />
+              </div>
+
+              {/* Description */}
+              <div className="md:col-span-2">
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Descrizione</label>
+                <textarea placeholder="Descrizione breve del piatto..." value={form.description}
+                  onChange={e => set('description', e.target.value)} rows={2}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20 resize-none" />
+              </div>
+
+              {/* Allergens */}
+              <div className="md:col-span-2">
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Allergeni</label>
+                <input type="text" placeholder="Glutine, Lattosio, Uova..." value={form.allergens}
+                  onChange={e => set('allergens', e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20" />
+              </div>
+
+              {/* Dietary tags */}
+              <div className="md:col-span-2">
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-2">Tag Dietetici</label>
+                <div className="flex flex-wrap gap-2">
+                  {DIETARY_TAGS.map(tag => (
+                    <button key={tag} type="button" onClick={() => toggleDietaryTag(tag)}
+                      className={`px-3 py-1.5 text-xs border rounded-full font-body transition-all ${(form.dietaryTags || []).includes(tag) ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B]' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+                      {DIETARY_LABELS[tag]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Seasonal dates */}
+              <div>
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Disponibile dal</label>
+                <input type="date" value={form.seasonalFrom}
+                  onChange={e => set('seasonalFrom', e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Disponibile fino al</label>
+                <input type="date" value={form.seasonalTo}
+                  onChange={e => set('seasonalTo', e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm" />
+              </div>
+
+              {/* Image URL */}
+              <div className="md:col-span-2">
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">URL Immagine</label>
+                <div className="flex gap-2">
+                  <input type="text" placeholder="https://..." value={form.imageUrl}
+                    onChange={e => set('imageUrl', e.target.value)}
+                    className="flex-1 bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20" />
+                  {form.imageUrl && (
+                    <img src={form.imageUrl} alt="" className="w-10 h-10 object-cover rounded-sm border border-[#C69C6D]/20 shrink-0" />
+                  )}
+                </div>
+              </div>
+
+              {/* Image prompt */}
+              <div className="md:col-span-2">
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Prompt immagine AI</label>
+                <div className="flex gap-2">
+                  <textarea placeholder="Descrivi l'immagine per la generazione AI..." value={form.imagePrompt}
+                    onChange={e => set('imagePrompt', e.target.value)} rows={2}
+                    className="flex-1 bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20 resize-none" />
+                  <button type="button" onClick={generateImage} disabled={generatingImage || !form.imagePrompt}
+                    title="Genera immagine AI"
+                    className="shrink-0 self-start px-3 py-2.5 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all disabled:opacity-40 flex items-center gap-1.5 text-xs font-body">
+                    {generatingImage ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+                    {generatingImage ? 'Generazione...' : 'Genera'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => set('active', !form.active)}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${form.active ? 'bg-[#C69C6D]' : 'bg-[#E5E5E5]/20'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${form.active ? 'left-5' : 'left-0.5'}`} />
+                </button>
+                <span className="text-sm font-body text-[#E5E5E5]/60">Attivo</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => set('featured', !form.featured)}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${form.featured ? 'bg-[#C69C6D]' : 'bg-[#E5E5E5]/20'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${form.featured ? 'left-5' : 'left-0.5'}`} />
+                </button>
+                <span className="text-sm font-body text-[#E5E5E5]/60">In evidenza (home)</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <BronzeButton onClick={closeForm} variant="outline" className="flex-1 justify-center">Annulla</BronzeButton>
+              <BronzeButton onClick={saveItem} variant="solid" className="flex-1 justify-center"
+                disabled={saving || !form.name || !form.price}>
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Salvataggio...</> : <><Check size={14} /> Salva Piatto</>}
+              </BronzeButton>
+            </div>
+          </div>
         </div>
       )}
     </div>

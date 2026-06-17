@@ -10,15 +10,24 @@
       "type": "string",
       "description": "Descrizione del piatto"
     },
+    "menuType": {
+      "type": "string",
+      "enum": [
+        "cena_estivo",
+        "cena_autunno_inverno",
+        "pranzo_ufficio"
+      ],
+      "description": "Tipo di menu"
+    },
     "category": {
       "type": "string",
       "enum": [
-        "Antipasti",
-        "Primi",
-        "Secondi",
-        "Pizze",
-        "Dolci",
-        "Bevande"
+        "antipasti",
+        "primi",
+        "romanissimi",
+        "secondi",
+        "contorni",
+        "dolci"
       ],
       "description": "Categoria del piatto"
     },
@@ -26,39 +35,65 @@
       "type": "number",
       "description": "Prezzo in euro"
     },
+    "imageUrl": {
+      "type": "string",
+      "description": "URL immagine del piatto"
+    },
+    "imagePrompt": {
+      "type": "string",
+      "description": "Prompt per generazione immagine AI"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Piatto attivo/visibile"
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false,
+      "description": "In evidenza in home"
+    },
+    "seasonalFrom": {
+      "type": "string",
+      "format": "date",
+      "description": "Disponibile da (data)"
+    },
+    "seasonalTo": {
+      "type": "string",
+      "format": "date",
+      "description": "Disponibile fino a (data)"
+    },
     "allergens": {
       "type": "string",
       "description": "Allergeni (separati da virgola)"
     },
-    "image_url": {
-      "type": "string",
-      "description": "URL immagine del piatto"
-    },
-    "is_available": {
-      "type": "boolean",
-      "default": true,
-      "description": "Disponibile"
-    },
-    "tags": {
+    "dietaryTags": {
       "type": "array",
       "items": {
         "type": "string",
         "enum": [
           "vegetariano",
-          "senza_glutine",
-          "piccante",
-          "chef_choice"
+          "pesce",
+          "carne",
+          "senza_lattosio",
+          "senza_glutine_su_richiesta",
+          "piccante"
         ]
       },
-      "description": "Tag del piatto"
+      "description": "Tag dietetici"
     },
-    "sort_order": {
+    "sortOrder": {
       "type": "number",
       "description": "Ordine di visualizzazione"
+    },
+    "sourceSheet": {
+      "type": "string",
+      "description": "Foglio Excel di provenienza"
     }
   },
   "required": [
     "name",
+    "menuType",
     "category",
     "price"
   ],

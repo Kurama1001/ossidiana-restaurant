@@ -1,0 +1,38 @@
+{
+  "name": "MenuSettings",
+  "type": "object",
+  "properties": {
+    "currentDinnerSeason": {
+      "type": "string",
+      "enum": [
+        "cena_estivo",
+        "cena_autunno_inverno"
+      ],
+      "default": "cena_estivo",
+      "description": "Stagione cena attiva"
+    },
+    "showOfficeLunch": {
+      "type": "boolean",
+      "default": true,
+      "description": "Mostra menu pranzi ufficio"
+    }
+  },
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {},
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
