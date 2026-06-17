@@ -1,20 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Copy, Wand2, Loader2, Settings, Search, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Copy, Wand2, Loader2, Search, Upload } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
-
-const MENU_TYPES = [
-  { id: 'all', label: 'Tutti' },
-  { id: 'cena_estivo', label: 'Cena Estiva' },
-  { id: 'cena_autunno_inverno', label: 'Cena Aut/Inv' },
-  { id: 'pranzo_ufficio', label: 'Pranzi Ufficio' },
-];
-
-const MENU_TYPE_OPTIONS = [
-  { id: 'cena_estivo', label: 'Cena Estiva' },
-  { id: 'cena_autunno_inverno', label: 'Cena Autunno/Inverno' },
-  { id: 'pranzo_ufficio', label: 'Pranzi Ufficio' },
-];
 
 const CATEGORIES = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci'];
 const CATEGORY_LABELS = { antipasti: 'Antipasti', primi: 'Primi', romanissimi: 'Romanissimi', secondi: 'Secondi', contorni: 'Contorni', dolci: 'Dolci' };
@@ -22,34 +9,28 @@ const DIETARY_TAGS = ['vegetariano', 'pesce', 'carne', 'senza_lattosio', 'senza_
 const DIETARY_LABELS = { vegetariano: 'Vegetariano', pesce: 'Pesce', carne: 'Carne', senza_lattosio: 'Senza Lattosio', senza_glutine_su_richiesta: 'Senza Glutine (richiesta)', piccante: 'Piccante' };
 
 const emptyForm = {
-  name: '', description: '', menuType: 'cena_estivo', category: 'antipasti',
+  name: '', description: '', category: 'antipasti',
   price: '', imageUrl: '', imagePrompt: '', allergens: '',
-  dietaryTags: [], active: true, featured: false, sortOrder: '', seasonalFrom: '', seasonalTo: '',
+  dietaryTags: [], active: true, featured: false, sortOrder: '',
 };
 
 export default function AdminMenu() {
   const [items, setItems] = useState([]);
-  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [filterType, setFilterType] = useState('all');
   const [filterCat, setFilterCat] = useState('all');
   const [filterActive, setFilterActive] = useState('all');
   const [search, setSearch] = useState('');
   const [generatingImage, setGeneratingImage] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [generatingDescription, setGeneratingDescription] = useState(false);
 
   const load = () => {
-    Promise.all([
-      base44.entities.MenuItem.list('sortOrder', 500),
-      base44.entities.MenuSettings.list('-updated_date', 1),
-    ]).then(([menuItems, settingsList]) => {
+    base44.entities.MenuItem.list('sortOrder', 500).then((menuItems) => {
       setItems(menuItems);
-      setSettings(settingsList?.[0] || null);
     }).finally(() => setLoading(false));
   };
 
@@ -71,8 +52,6 @@ export default function AdminMenu() {
       price: item.price?.toString() || '',
       sortOrder: item.sortOrder?.toString() || '',
       dietaryTags: item.dietaryTags || [],
-      seasonalFrom: item.seasonalFrom || '',
-      seasonalTo: item.seasonalTo || '',
     });
     setShowForm(true);
   };
@@ -86,8 +65,6 @@ export default function AdminMenu() {
       ...form,
       price: parseFloat(form.price),
       sortOrder: form.sortOrder ? parseInt(form.sortOrder) : undefined,
-      seasonalFrom: form.seasonalFrom || null,
-      seasonalTo: form.seasonalTo || null,
     };
     if (editing) {
       await base44.entities.MenuItem.update(editing.id, data);
@@ -111,10 +88,9 @@ export default function AdminMenu() {
   };
 
   const duplicateItem = (item) => {
-    const target = prompt('Duplica su quale menu? (cena_estivo / cena_autunno_inverno / pranzo_ufficio)', item.menuType);
-    if (!target || !MENU_TYPE_OPTIONS.find(t => t.id === target)) { alert('Menu non valido'); return; }
+    if (!confirm(`Duplicare "${item.name}"?`)) return;
     const { id, created_date, updated_date, ...rest } = item;
-    base44.entities.MenuItem.create({ ...rest, menuType: target, name: rest.name + ' (copia)' }).then(load);
+    base44.entities.MenuItem.create({ ...rest, name: rest.name + ' (copia)', active: false }).then(load);
   };
 
   const handleImageUpload = async (e) => {
@@ -138,18 +114,18 @@ export default function AdminMenu() {
     setGeneratingImage(false);
   };
 
-  const saveSettings = async (newSettings) => {
-    if (settings?.id) {
-      await base44.entities.MenuSettings.update(settings.id, newSettings);
-      setSettings({ ...settings, ...newSettings });
-    } else {
-      const created = await base44.entities.MenuSettings.create(newSettings);
-      setSettings(created);
-    }
+  const generateDescription = async () => {
+    if (!form.name) { alert('Inserisci prima il nome del piatto'); return; }
+    setGeneratingDescription(true);
+    const { description } = await base44.integrations.Core.InvokeLLM({
+      prompt: `Scrivi una descrizione breve e appetitosa (max 2 righe, tono elegante, italiano) per un piatto di ristorante chiamato "${form.name}"${form.category ? ` nella categoria "${form.category}"` : ''}. Rispondi solo con la descrizione, senza virgolette.`,
+      response_json_schema: { type: 'object', properties: { description: { type: 'string' } } },
+    });
+    set('description', description);
+    setGeneratingDescription(false);
   };
 
   const filtered = items.filter(item => {
-    if (filterType !== 'all' && item.menuType !== filterType) return false;
     if (filterCat !== 'all' && item.category !== filterCat) return false;
     if (filterActive === 'active' && !item.active) return false;
     if (filterActive === 'inactive' && item.active) return false;
@@ -159,50 +135,12 @@ export default function AdminMenu() {
 
   return (
     <div>
-      {/* Settings panel */}
       <div className="flex flex-wrap gap-3 items-center justify-between mb-5">
         <h2 className="font-display text-2xl text-white tracking-widest">Gestione Menu</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowSettings(s => !s)}
-            className="flex items-center gap-2 px-4 py-2 border border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40 hover:text-[#C69C6D] rounded-sm text-sm font-body transition-all"
-          >
-            <Settings size={14} /> Impostazioni stagione
-          </button>
-          <BronzeButton onClick={openCreate} variant="solid">
-            <Plus size={14} /> Nuovo Piatto
-          </BronzeButton>
-        </div>
+        <BronzeButton onClick={openCreate} variant="solid">
+          <Plus size={14} /> Nuovo Piatto
+        </BronzeButton>
       </div>
-
-      {showSettings && settings !== undefined && (
-        <div className="bg-[#161618] border border-[#C69C6D]/20 rounded-sm p-5 mb-6">
-          <h3 className="font-body text-sm text-[#C69C6D] tracking-widest uppercase mb-4">Impostazioni Stagione</h3>
-          <div className="flex flex-wrap gap-6 items-end">
-            <div>
-              <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Stagione cena attiva</label>
-              <select
-                value={settings?.currentDinnerSeason || 'cena_estivo'}
-                onChange={e => saveSettings({ ...settings, currentDinnerSeason: e.target.value })}
-                className="bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none"
-              >
-                <option value="cena_estivo">Cena Estiva</option>
-                <option value="cena_autunno_inverno">Cena Autunno/Inverno</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => saveSettings({ ...settings, showOfficeLunch: !(settings?.showOfficeLunch ?? true) })}
-                className={`w-10 h-5 rounded-full transition-colors relative ${(settings?.showOfficeLunch ?? true) ? 'bg-[#C69C6D]' : 'bg-[#E5E5E5]/20'}`}
-              >
-                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${(settings?.showOfficeLunch ?? true) ? 'left-5' : 'left-0.5'}`} />
-              </button>
-              <span className="text-sm font-body text-[#E5E5E5]/60">Mostra Pranzi Ufficio nel menu pubblico</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Filters */}
       <div className="bg-[#161618] border border-[#C69C6D]/10 rounded-sm p-4 mb-5 space-y-3">
@@ -225,14 +163,6 @@ export default function AdminMenu() {
             <option value="active">Solo attivi</option>
             <option value="inactive">Solo inattivi</option>
           </select>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {MENU_TYPES.map(t => (
-            <button key={t.id} onClick={() => setFilterType(t.id)}
-              className={`px-3 py-1.5 text-xs font-body tracking-widest uppercase rounded-sm border transition-all ${filterType === t.id ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
-              {t.label}
-            </button>
-          ))}
         </div>
         <div className="flex flex-wrap gap-2">
           <button onClick={() => setFilterCat('all')}
@@ -268,8 +198,7 @@ export default function AdminMenu() {
                 <div className="min-w-0">
                   <p className="font-body text-sm text-white truncate">{item.name}</p>
                   <p className="font-body text-xs text-[#E5E5E5]/40">
-                    <span className="text-[#C69C6D]/60">{MENU_TYPE_OPTIONS.find(t=>t.id===item.menuType)?.label}</span>
-                    {' · '}{CATEGORY_LABELS[item.category] || item.category}
+                    <span className="text-[#C69C6D]/60">{CATEGORY_LABELS[item.category] || item.category}</span>
                     {' · '}<span className="text-[#C69C6D]">€{Number(item.price).toFixed(2)}</span>
                   </p>
                 </div>
@@ -315,15 +244,6 @@ export default function AdminMenu() {
                   className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20" />
               </div>
 
-              {/* Menu type */}
-              <div>
-                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Tipo Menu *</label>
-                <select value={form.menuType} onChange={e => set('menuType', e.target.value)}
-                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm">
-                  {MENU_TYPE_OPTIONS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                </select>
-              </div>
-
               {/* Category */}
               <div>
                 <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Categoria *</label>
@@ -352,9 +272,17 @@ export default function AdminMenu() {
               {/* Description */}
               <div className="md:col-span-2">
                 <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Descrizione</label>
-                <textarea placeholder="Descrizione breve del piatto..." value={form.description}
-                  onChange={e => set('description', e.target.value)} rows={2}
-                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20 resize-none" />
+                <div className="flex gap-2 items-start">
+                  <textarea placeholder="Descrizione breve del piatto..." value={form.description}
+                    onChange={e => set('description', e.target.value)} rows={2}
+                    className="flex-1 bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20 resize-none" />
+                  <button type="button" onClick={generateDescription} disabled={generatingDescription || !form.name}
+                    title="Genera descrizione AI"
+                    className="shrink-0 px-3 py-2.5 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all disabled:opacity-40 flex items-center gap-1.5 text-xs font-body">
+                    {generatingDescription ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+                    {generatingDescription ? 'Generazione...' : 'Genera'}
+                  </button>
+                </div>
               </div>
 
               {/* Allergens */}
@@ -376,20 +304,6 @@ export default function AdminMenu() {
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Seasonal dates */}
-              <div>
-                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Disponibile dal</label>
-                <input type="date" value={form.seasonalFrom}
-                  onChange={e => set('seasonalFrom', e.target.value)}
-                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm" />
-              </div>
-              <div>
-                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Disponibile fino al</label>
-                <input type="date" value={form.seasonalTo}
-                  onChange={e => set('seasonalTo', e.target.value)}
-                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm" />
               </div>
 
               {/* Image upload */}

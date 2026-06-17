@@ -2,12 +2,6 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import MenuItemCard from '@/components/menu/MenuItemCard';
 
-const MENU_TYPES = [
-  { id: 'cena_estivo', label: 'Cena Estiva' },
-  { id: 'cena_autunno_inverno', label: 'Cena Autunno/Inverno' },
-  { id: 'pranzo_ufficio', label: 'Pranzi Ufficio' },
-];
-
 const CATEGORY_ORDER = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci'];
 const CATEGORY_LABELS = {
   antipasti: 'Antipasti',
@@ -18,54 +12,18 @@ const CATEGORY_LABELS = {
   dolci: 'Dolci',
 };
 
-function isSeasonallyActive(item) {
-  if (!item.seasonalFrom && !item.seasonalTo) return true;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (item.seasonalFrom) {
-    const from = new Date(item.seasonalFrom);
-    if (today < from) return false;
-  }
-  if (item.seasonalTo) {
-    const to = new Date(item.seasonalTo);
-    if (today > to) return false;
-  }
-  return true;
-}
-
 export default function Menu() {
   const [allItems, setAllItems] = useState([]);
-  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeMenuType, setActiveMenuType] = useState(null);
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.MenuItem.list('sortOrder', 500),
-      base44.entities.MenuSettings.list('-updated_date', 1),
-    ]).then(([items, settingsList]) => {
-      setAllItems(items);
-      const s = settingsList?.[0] || { currentDinnerSeason: 'cena_estivo', showOfficeLunch: true };
-      setSettings(s);
-      setActiveMenuType(s.currentDinnerSeason);
-    }).finally(() => setLoading(false));
+    base44.entities.MenuItem.filter({ active: true }, 'sortOrder', 500)
+      .then(setAllItems)
+      .finally(() => setLoading(false));
   }, []);
 
-  const availableTypes = settings
-    ? MENU_TYPES.filter(t => {
-        if (t.id === 'pranzo_ufficio') return settings.showOfficeLunch !== false;
-        return true;
-      })
-    : MENU_TYPES.filter(t => t.id !== 'pranzo_ufficio');
-
-  const filteredItems = allItems.filter(item =>
-    item.active !== false &&
-    item.menuType === activeMenuType &&
-    isSeasonallyActive(item)
-  );
-
   const grouped = CATEGORY_ORDER.reduce((acc, cat) => {
-    const catItems = filteredItems
+    const catItems = allItems
       .filter(i => i.category === cat)
       .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
     if (catItems.length > 0) acc[cat] = catItems;
@@ -90,25 +48,6 @@ export default function Menu() {
           </p>
         </div>
       </section>
-
-      {/* Sticky menu type selector */}
-      <div className="sticky top-[60px] z-40 bg-[#0A0A0B]/95 backdrop-blur-md border-b border-[#C69C6D]/10 py-4">
-        <div className="max-w-5xl mx-auto px-5 flex flex-wrap gap-2 justify-center">
-          {availableTypes.map(type => (
-            <button
-              key={type.id}
-              onClick={() => setActiveMenuType(type.id)}
-              className={`px-6 py-2.5 text-xs font-body tracking-widest uppercase rounded-sm border transition-all min-h-[42px] ${
-                activeMenuType === type.id
-                  ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold'
-                  : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40 hover:text-[#C69C6D]'
-              }`}
-            >
-              {type.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Content */}
       <div className="max-w-3xl mx-auto px-5 py-12">
