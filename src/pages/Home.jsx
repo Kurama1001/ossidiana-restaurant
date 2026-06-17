@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Star, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 import PhotoGallery from '@/components/home/PhotoGallery';
 
 export default function Home() {
   const [menuHighlights, setMenuHighlights] = useState([]);
-  const [reviews, setReviews] = useState([]);
 
   useEffect(() => {
     // Redirect invited users who land on homepage with a reset token
@@ -20,13 +19,11 @@ export default function Home() {
     base44.entities.MenuItem.filter({ active: true, featured: true }, 'sortOrder', 6)
       .then(items => {
         if (items.length === 0) {
-          // fallback: mostra i primi 6 attivi se nessuno è featured
           base44.entities.MenuItem.filter({ active: true }, 'sortOrder', 6).then(setMenuHighlights).catch(() => {});
         } else {
           setMenuHighlights(items);
         }
       }).catch(() => {});
-    base44.entities.Review.filter({ is_visible: true }, '-created_date', 3).then(setReviews).catch(() => {});
   }, []);
 
   return (
@@ -105,29 +102,7 @@ export default function Home() {
       {/* Gallery */}
       <PhotoGallery />
 
-      {/* Reviews */}
-      {reviews.length > 0 && (
-        <section className="py-24 px-5 max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <p className="font-body text-[#C69C6D] tracking-[0.4em] uppercase text-xs mb-3">Cosa dicono di noi</p>
-            <h2 className="font-display text-5xl text-white tracking-widest">Recensioni</h2>
-            <div className="w-16 h-px bg-[#C69C6D] mx-auto mt-5" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {reviews.map(r => (
-              <div key={r.id} className="bg-[#161618] border border-[#C69C6D]/10 rounded-sm p-7">
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} size={14} className={i < r.rating ? 'text-[#C69C6D] fill-[#C69C6D]' : 'text-[#E5E5E5]/20'} />
-                  ))}
-                </div>
-                <p className="font-body text-[#E5E5E5]/70 text-sm leading-relaxed italic mb-4">"{r.text}"</p>
-                <p className="font-body text-[#C69C6D] text-sm font-semibold">— {r.customer_name}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+
     </div>
   );
 }

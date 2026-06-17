@@ -1,0 +1,54 @@
+{
+  "name": "GalleryItem",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "video"
+      ],
+      "default": "image",
+      "description": "Tipo di media"
+    },
+    "url": {
+      "type": "string",
+      "description": "URL del file caricato"
+    },
+    "caption": {
+      "type": "string",
+      "description": "Didascalia opzionale"
+    },
+    "sortOrder": {
+      "type": "number",
+      "description": "Ordine di visualizzazione"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Visibile in home"
+    }
+  },
+  "required": [
+    "url",
+    "type"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {},
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
