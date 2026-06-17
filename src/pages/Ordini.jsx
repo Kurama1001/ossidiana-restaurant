@@ -5,7 +5,14 @@ import Cart from '@/components/ordini/Cart';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 import { Check, X } from 'lucide-react';
 
-const CATEGORIES = ['Antipasti', 'Primi', 'Secondi', 'Pizze', 'Dolci', 'Bevande'];
+const CATEGORY_LABELS = {
+  antipasti: 'Antipasti',
+  primi: 'Primi',
+  romanissimi: 'I Romanissimi',
+  secondi: 'Secondi',
+  contorni: 'Contorni',
+  dolci: 'Dolci',
+};
 const TIMES = ['12:30','13:00','13:30','14:00','19:00','19:30','20:00','20:30','21:00','21:30'];
 
 export default function Ordini() {
@@ -21,7 +28,7 @@ export default function Ordini() {
 
   useEffect(() => {
     base44.auth.isAuthenticated().then(setIsAuthenticated);
-    base44.entities.MenuItem.filter({ is_available: true }, 'sort_order', 200)
+    base44.entities.MenuItem.filter({ active: true }, 'sortOrder', 200)
       .then(setItems)
       .finally(() => setLoading(false));
   }, []);
@@ -55,6 +62,7 @@ export default function Ordini() {
     setShowCheckout(false);
   };
 
+  const categories = [...new Set(items.map(i => i.category).filter(Boolean))];
   const filtered = items.filter(i => activeCategory === 'all' || i.category === activeCategory);
 
   if (isAuthenticated === false) {
@@ -111,12 +119,12 @@ export default function Ordini() {
             onClick={() => setActiveCategory('all')}
             className={`px-5 py-2 text-xs font-body tracking-widest uppercase rounded-sm border transition-all min-h-[40px] ${activeCategory === 'all' ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}
           >Tutti</button>
-          {CATEGORIES.map(cat => (
+          {categories.map(cat => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
               className={`px-5 py-2 text-xs font-body tracking-widest uppercase rounded-sm border transition-all min-h-[40px] ${activeCategory === cat ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}
-            >{cat}</button>
+            >{CATEGORY_LABELS[cat] || cat}</button>
           ))}
         </div>
 

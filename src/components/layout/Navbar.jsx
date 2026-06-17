@@ -6,7 +6,6 @@ import { base44 } from '@/api/base44Client';
 const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/menu', label: 'Menu' },
-  { href: '/prenotazioni', label: 'Prenota' },
   { href: '/ordini', label: 'Asporto' },
 ];
 
