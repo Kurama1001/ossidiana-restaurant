@@ -66,11 +66,21 @@ function Carousel({ items, onOpen }) {
 
 export default function PhotoGallery() {
   const [items, setItems] = useState([]);
-  const [lightbox, setLightbox] = useState(null);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   useEffect(() => {
     base44.entities.GalleryItem.filter({ active: true }, 'sortOrder', 50).then(setItems).catch(() => {});
   }, []);
+
+  const openLightbox = (item) => {
+    const idx = items.findIndex(i => i.id === item.id);
+    setLightboxIndex(idx);
+  };
+  const closeLightbox = () => setLightboxIndex(null);
+  const prevItem = () => setLightboxIndex(i => (i - 1 + items.length) % items.length);
+  const nextItem = () => setLightboxIndex(i => (i + 1) % items.length);
+
+  const lightbox = lightboxIndex !== null ? items[lightboxIndex] : null;
 
   if (!items.length) return null;
 
@@ -87,7 +97,7 @@ export default function PhotoGallery() {
 
       {/* Mobile: carosello */}
       <div className="md:hidden">
-        <Carousel items={items} onOpen={setLightbox} />
+        <Carousel items={items} onOpen={openLightbox} />
       </div>
 
       {/* Desktop */}
@@ -96,7 +106,7 @@ export default function PhotoGallery() {
         {featured && (
           <div
             className="w-full h-[480px] overflow-hidden rounded-sm cursor-pointer group"
-            onClick={() => setLightbox(featured)}
+            onClick={() => openLightbox(featured)}
           >
             <GalleryMedia item={featured} className="group-hover:scale-105 transition-transform duration-700" />
           </div>
@@ -109,7 +119,7 @@ export default function PhotoGallery() {
               <div
                 key={item.id}
                 className="h-52 overflow-hidden rounded-sm cursor-pointer group"
-                onClick={() => setLightbox(item)}
+                onClick={() => openLightbox(item)}
               >
                 <GalleryMedia item={item} className="group-hover:scale-105 transition-transform duration-700" />
               </div>
@@ -120,15 +130,29 @@ export default function PhotoGallery() {
 
       {/* Lightbox */}
       {lightbox && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
-          <button className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors" onClick={() => setLightbox(null)}>
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={closeLightbox}>
+          {/* Close */}
+          <button className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-10" onClick={closeLightbox}>
             <X size={28} />
           </button>
+          {/* Prev */}
+          <button className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white rounded-full p-3 transition-colors z-10" onClick={e => { e.stopPropagation(); prevItem(); }}>
+            <ChevronLeft size={24} />
+          </button>
+          {/* Next */}
+          <button className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white rounded-full p-3 transition-colors z-10" onClick={e => { e.stopPropagation(); nextItem(); }}>
+            <ChevronRight size={24} />
+          </button>
+          {/* Media */}
           {lightbox.type === 'video' ? (
             <video src={lightbox.url} controls autoPlay className="max-w-full max-h-[85vh]" onClick={e => e.stopPropagation()} />
           ) : (
             <img src={lightbox.url} alt={lightbox.caption || ''} className="max-w-full max-h-[85vh] object-contain" onClick={e => e.stopPropagation()} />
           )}
+          {/* Counter */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/50 text-sm font-body">
+            {lightboxIndex + 1} / {items.length}
+          </div>
         </div>
       )}
     </section>
