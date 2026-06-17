@@ -92,7 +92,7 @@ export default function Home() {
           {[
             { title: 'Prenotazioni', desc: 'Riserva il tuo tavolo online in pochi click', action: '/prenotazioni', label: 'Prenota ora' },
             { title: 'Asporto', desc: 'Ordina i tuoi piatti preferiti da portare a casa', action: '/ordini', label: 'Ordina ora' },
-            { title: 'Orari', desc: 'Mar–Dom: 12:30–15:00 / 19:00–23:00 · Lunedì chiuso', action: null, label: null },
+            { title: 'Orari', desc: 'Lun, Gio–Dom: 12:30–15:00 / 19:00–23:00 · Mar–Mer: chiuso', action: null, label: null },
           ].map(b => (
             <div key={b.title}>
               <h3 className="font-display text-2xl text-[#C69C6D] tracking-widest mb-3">{b.title}</h3>
