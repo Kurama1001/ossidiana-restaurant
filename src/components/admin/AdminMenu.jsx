@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Copy, Wand2, Loader2, Settings, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Copy, Wand2, Loader2, Settings, Search, Upload } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 
 const MENU_TYPES = [
@@ -41,6 +41,7 @@ export default function AdminMenu() {
   const [filterActive, setFilterActive] = useState('all');
   const [search, setSearch] = useState('');
   const [generatingImage, setGeneratingImage] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const load = () => {
     Promise.all([
@@ -114,6 +115,15 @@ export default function AdminMenu() {
     if (!target || !MENU_TYPE_OPTIONS.find(t => t.id === target)) { alert('Menu non valido'); return; }
     const { id, created_date, updated_date, ...rest } = item;
     base44.entities.MenuItem.create({ ...rest, menuType: target, name: rest.name + ' (copia)' }).then(load);
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    set('imageUrl', file_url);
+    setUploadingImage(false);
   };
 
   const generateImage = async () => {
@@ -382,15 +392,20 @@ export default function AdminMenu() {
                   className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm" />
               </div>
 
-              {/* Image URL */}
+              {/* Image upload */}
               <div className="md:col-span-2">
-                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">URL Immagine</label>
-                <div className="flex gap-2">
-                  <input type="text" placeholder="https://..." value={form.imageUrl}
-                    onChange={e => set('imageUrl', e.target.value)}
-                    className="flex-1 bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20" />
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Immagine</label>
+                <div className="flex gap-3 items-center">
+                  <label className={`flex items-center gap-2 px-4 py-2.5 border rounded-sm cursor-pointer font-body text-sm transition-all ${uploadingImage ? 'opacity-50 pointer-events-none' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/60 hover:border-[#C69C6D]/40 hover:text-[#C69C6D]'}`}>
+                    {uploadingImage ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                    {uploadingImage ? 'Caricamento...' : 'Carica immagine'}
+                    <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" className="hidden" onChange={handleImageUpload} />
+                  </label>
                   {form.imageUrl && (
-                    <img src={form.imageUrl} alt="" className="w-10 h-10 object-cover rounded-sm border border-[#C69C6D]/20 shrink-0" />
+                    <>
+                      <img src={form.imageUrl} alt="" className="w-12 h-12 object-cover rounded-sm border border-[#C69C6D]/20 shrink-0" />
+                      <button type="button" onClick={() => set('imageUrl', '')} className="text-[#E5E5E5]/30 hover:text-red-400 transition-colors"><X size={14} /></button>
+                    </>
                   )}
                 </div>
               </div>
