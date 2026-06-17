@@ -1,0 +1,47 @@
+{
+  "name": "RestaurantInfo",
+  "type": "object",
+  "properties": {
+    "section": {
+      "type": "string",
+      "description": "Identificatore sezione (es. 'chi_siamo')"
+    },
+    "title": {
+      "type": "string",
+      "description": "Titolo della sezione"
+    },
+    "subtitle": {
+      "type": "string",
+      "description": "Sottotitolo"
+    },
+    "body": {
+      "type": "string",
+      "description": "Testo principale (pu\u00f2 contenere a capo)"
+    },
+    "imageUrl": {
+      "type": "string",
+      "description": "URL immagine laterale"
+    }
+  },
+  "required": [
+    "section"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {},
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

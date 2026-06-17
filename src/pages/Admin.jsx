@@ -6,7 +6,8 @@ import AdminOrders from '@/components/admin/AdminOrders';
 import AdminMenu from '@/components/admin/AdminMenu';
 import AdminUsers from '@/components/admin/AdminUsers';
 import AdminGallery from '@/components/admin/AdminGallery';
-import { LayoutDashboard, CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images } from 'lucide-react';
+import AdminChiSiamo from '@/components/admin/AdminChiSiamo';
+import { LayoutDashboard, CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info } from 'lucide-react';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,6 +15,7 @@ const TABS = [
   { id: 'orders', label: 'Ordini', icon: ShoppingBag },
   { id: 'menu', label: 'Menu', icon: UtensilsCrossed },
   { id: 'gallery', label: 'Galleria', icon: Images },
+  { id: 'chi_siamo', label: 'Chi Siamo', icon: Info },
   { id: 'users', label: 'Utenti', icon: Users },
 ];
 
@@ -27,6 +29,7 @@ export default function Admin() {
     orders: AdminOrders,
     menu: AdminMenu,
     gallery: AdminGallery,
+    chi_siamo: AdminChiSiamo,
     users: AdminUsers,
   }[activeTab];
 

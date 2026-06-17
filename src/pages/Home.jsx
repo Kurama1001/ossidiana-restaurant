@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { ChevronRight } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 import PhotoGallery from '@/components/home/PhotoGallery';
+import ChiSiamo from '@/components/home/ChiSiamo';
 
 export default function Home() {
   const [menuHighlights, setMenuHighlights] = useState([]);
@@ -49,6 +50,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Chi Siamo */}
+      <ChiSiamo />
 
       {/* Menu Highlights */}
       <section className="py-24 px-5 max-w-7xl mx-auto">

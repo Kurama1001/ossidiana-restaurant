@@ -2,13 +2,34 @@ import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { X, ChevronLeft, ChevronRight, Film } from 'lucide-react';
 
+const focalClass = { top: 'object-top', center: 'object-center', bottom: 'object-bottom' };
+
+function GalleryMedia({ item, className, onClick }) {
+  const focal = focalClass[item.focalPoint || 'center'];
+  if (item.type === 'video') {
+    return (
+      <div className={`relative ${className}`} onClick={onClick}>
+        <video src={item.url} muted playsInline loop autoPlay className={`w-full h-full object-cover ${focal}`} />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Film size={28} className="text-white/60" />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <img src={item.url} alt={item.caption || ''} loading="lazy"
+      className={`w-full h-full object-cover ${focal} ${className}`}
+      onClick={onClick}
+    />
+  );
+}
+
 function Carousel({ items, onOpen }) {
   const [current, setCurrent] = useState(0);
   const touchStart = useRef(null);
 
   const prev = () => setCurrent(i => (i - 1 + items.length) % items.length);
   const next = () => setCurrent(i => (i + 1) % items.length);
-
   const onTouchStart = (e) => { touchStart.current = e.touches[0].clientX; };
   const onTouchEnd = (e) => {
     if (touchStart.current === null) return;
@@ -23,11 +44,9 @@ function Carousel({ items, onOpen }) {
     <div className="relative overflow-hidden rounded-sm" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${current * 100}%)` }}>
         {items.map((item, i) => (
-          item.type === 'video' ? (
-            <video key={i} src={item.url} muted playsInline loop autoPlay className="w-full h-72 object-cover shrink-0 cursor-pointer" onClick={() => onOpen(item)} />
-          ) : (
-            <img key={i} src={item.url} alt={item.caption || ''} className="w-full h-72 object-cover shrink-0 cursor-pointer" onClick={() => onOpen(item)} />
-          )
+          <div key={item.id} className="w-full h-72 shrink-0 cursor-pointer overflow-hidden">
+            <GalleryMedia item={item} className="cursor-pointer" onClick={() => onOpen(item)} />
+          </div>
         ))}
       </div>
       <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors">
@@ -55,6 +74,9 @@ export default function PhotoGallery() {
 
   if (!items.length) return null;
 
+  const featured = items.find(i => i.featured);
+  const rest = items.filter(i => !i.featured);
+
   return (
     <section className="py-24 px-5 max-w-7xl mx-auto">
       <div className="text-center mb-14">
@@ -68,30 +90,32 @@ export default function PhotoGallery() {
         <Carousel items={items} onOpen={setLightbox} />
       </div>
 
-      {/* Desktop: griglia */}
-      <div className="hidden md:grid grid-cols-4 gap-3">
-        {items.map((item, i) => (
+      {/* Desktop */}
+      <div className="hidden md:block space-y-3">
+        {/* Immagine featured (se presente) */}
+        {featured && (
           <div
-            key={item.id}
-            className={`overflow-hidden cursor-pointer group relative ${i === 0 ? 'col-span-2 row-span-2' : ''}`}
-            onClick={() => setLightbox(item)}
+            className="w-full h-[480px] overflow-hidden rounded-sm cursor-pointer group"
+            onClick={() => setLightbox(featured)}
           >
-            {item.type === 'video' ? (
-              <>
-                <video src={item.url} muted playsInline loop autoPlay className={`w-full object-cover ${i === 0 ? 'h-full' : 'h-48'}`} />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
-                  <Film size={28} className="text-white/60" />
-                </div>
-              </>
-            ) : (
-              <img
-                src={item.url}
-                alt={item.caption || ''}
-                className={`w-full object-cover group-hover:scale-105 transition-transform duration-700 ${i === 0 ? 'h-full' : 'h-48'}`}
-              />
-            )}
+            <GalleryMedia item={featured} className="group-hover:scale-105 transition-transform duration-700" />
           </div>
-        ))}
+        )}
+
+        {/* Griglia uniforme */}
+        {rest.length > 0 && (
+          <div className="grid grid-cols-4 gap-3">
+            {rest.map(item => (
+              <div
+                key={item.id}
+                className="h-52 overflow-hidden rounded-sm cursor-pointer group"
+                onClick={() => setLightbox(item)}
+              >
+                <GalleryMedia item={item} className="group-hover:scale-105 transition-transform duration-700" />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Lightbox */}

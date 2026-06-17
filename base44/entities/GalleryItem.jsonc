@@ -27,6 +27,21 @@
       "type": "boolean",
       "default": true,
       "description": "Visibile in home"
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false,
+      "description": "Immagine di rilievo (appare grande in cima alla galleria)"
+    },
+    "focalPoint": {
+      "type": "string",
+      "enum": [
+        "top",
+        "center",
+        "bottom"
+      ],
+      "default": "center",
+      "description": "Punto focale per il ritaglio"
     }
   },
   "required": [

@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Trash2, Upload, Loader2, Eye, EyeOff, Image, Film } from 'lucide-react';
-import { BronzeButton } from '@/components/ui/BronzeButton';
+import { Trash2, Upload, Loader2, Eye, EyeOff, Image, Film, Star } from 'lucide-react';
+
+const FOCAL_OPTIONS = [
+  { value: 'top', label: 'Alto' },
+  { value: 'center', label: 'Centro' },
+  { value: 'bottom', label: 'Basso' },
+];
 
 export default function AdminGallery() {
   const [items, setItems] = useState([]);
@@ -28,6 +33,8 @@ export default function AdminGallery() {
         url: file_url,
         type: isVideo ? 'video' : 'image',
         active: true,
+        featured: false,
+        focalPoint: 'center',
         sortOrder: 0,
       });
     }
@@ -41,6 +48,24 @@ export default function AdminGallery() {
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, active: !i.active } : i));
   };
 
+  const toggleFeatured = async (item) => {
+    // Solo una può essere featured: rimuovi dalle altre se si imposta a true
+    if (!item.featured) {
+      const current = items.find(i => i.featured);
+      if (current) await base44.entities.GalleryItem.update(current.id, { featured: false });
+      await base44.entities.GalleryItem.update(item.id, { featured: true });
+      setItems(prev => prev.map(i => ({ ...i, featured: i.id === item.id })));
+    } else {
+      await base44.entities.GalleryItem.update(item.id, { featured: false });
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, featured: false } : i));
+    }
+  };
+
+  const updateFocalPoint = async (item, focalPoint) => {
+    await base44.entities.GalleryItem.update(item.id, { focalPoint });
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, focalPoint } : i));
+  };
+
   const deleteItem = async (id) => {
     if (!confirm('Eliminare questo elemento dalla galleria?')) return;
     await base44.entities.GalleryItem.delete(id);
@@ -52,25 +77,24 @@ export default function AdminGallery() {
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, caption } : i));
   };
 
+  const focalClass = { top: 'object-top', center: 'object-center', bottom: 'object-bottom' };
+
   return (
     <div>
-      <div className="flex flex-wrap gap-3 items-center justify-between mb-5">
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-2">
         <h2 className="font-display text-2xl text-white tracking-widest">Galleria Home</h2>
         <label className={`flex items-center gap-2 px-5 py-2.5 text-sm font-body border rounded-sm cursor-pointer transition-all ${uploading ? 'opacity-50 pointer-events-none border-[#E5E5E5]/15 text-[#E5E5E5]/40' : 'border-[#C69C6D] text-[#C69C6D] hover:bg-[#C69C6D] hover:text-[#0A0A0B]'}`}>
           {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
           {uploading ? 'Caricamento...' : 'Carica foto/video'}
-          <input
-            type="file"
-            multiple
-            accept="image/png,image/jpeg,image/jpg,image/webp,video/mp4,video/mov,video/webm"
-            className="hidden"
-            onChange={handleUpload}
-          />
+          <input type="file" multiple accept="image/png,image/jpeg,image/jpg,image/webp,video/mp4,video/mov,video/webm" className="hidden" onChange={handleUpload} />
         </label>
       </div>
 
+      <p className="text-xs font-body text-[#E5E5E5]/30 mb-1">
+        Imposta il <strong className="text-[#C69C6D]">punto focale</strong> per evitare tagli indesiderati. Scegli <strong className="text-[#C69C6D]">⭐ In evidenza</strong> per l'immagine grande in cima.
+      </p>
       <p className="text-xs font-body text-[#E5E5E5]/30 mb-4">
-        {items.filter(i => i.active).length} elementi visibili · {items.length} totali
+        {items.filter(i => i.active).length} visibili · {items.length} totali
       </p>
 
       {loading ? (
@@ -85,27 +109,35 @@ export default function AdminGallery() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {items.map(item => (
-            <div key={item.id} className={`relative group rounded-sm overflow-hidden border transition-all ${item.active ? 'border-[#C69C6D]/20' : 'border-[#E5E5E5]/5 opacity-50'}`}>
+            <div key={item.id} className={`relative group rounded-sm overflow-hidden border transition-all ${item.featured ? 'border-[#C69C6D]/60' : item.active ? 'border-[#C69C6D]/20' : 'border-[#E5E5E5]/5 opacity-50'}`}>
+              {/* Featured badge */}
+              {item.featured && (
+                <div className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-[#C69C6D] text-[#0A0A0B] text-xs font-body font-bold rounded-sm">
+                  <Star size={9} fill="currentColor" /> Evidenza
+                </div>
+              )}
+
               {/* Preview */}
               {item.type === 'video' ? (
-                <div
-                  className="h-36 bg-[#0A0A0B] flex items-center justify-center cursor-pointer"
-                  onClick={() => setLightbox(item)}
-                >
-                  <Film size={28} className="text-[#C69C6D]/60" />
+                <div className="h-36 bg-[#0A0A0B] flex items-center justify-center cursor-pointer relative" onClick={() => setLightbox(item)}>
+                  <Film size={28} className="text-[#C69C6D]/60 relative z-10" />
                   <video src={item.url} className="absolute inset-0 w-full h-full object-cover opacity-40" muted />
                 </div>
               ) : (
                 <img
                   src={item.url}
                   alt={item.caption || ''}
-                  className="w-full h-36 object-cover cursor-zoom-in"
+                  className={`w-full h-36 object-cover cursor-zoom-in ${focalClass[item.focalPoint || 'center']}`}
                   onClick={() => setLightbox(item)}
                 />
               )}
 
               {/* Actions overlay */}
-              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <button onClick={() => toggleFeatured(item)} title={item.featured ? 'Rimuovi evidenza' : 'Imposta in evidenza'}
+                  className={`p-1.5 rounded-sm border backdrop-blur-sm transition-all ${item.featured ? 'border-[#C69C6D] bg-[#C69C6D] text-[#0A0A0B]' : 'border-[#C69C6D]/40 bg-black/60 text-[#C69C6D]'}`}>
+                  <Star size={11} fill={item.featured ? 'currentColor' : 'none'} />
+                </button>
                 <button onClick={() => toggleActive(item)} title={item.active ? 'Nascondi' : 'Mostra'}
                   className={`p-1.5 rounded-sm border backdrop-blur-sm transition-all ${item.active ? 'border-green-400/50 bg-black/60 text-green-400' : 'border-[#E5E5E5]/30 bg-black/60 text-[#E5E5E5]/50'}`}>
                   {item.active ? <Eye size={11} /> : <EyeOff size={11} />}
@@ -116,7 +148,19 @@ export default function AdminGallery() {
                 </button>
               </div>
 
-              {/* Caption input */}
+              {/* Focal point selector */}
+              {item.type === 'image' && (
+                <div className="bg-[#0A0A0B] border-t border-[#E5E5E5]/10 px-2 py-1.5 flex gap-1">
+                  {FOCAL_OPTIONS.map(opt => (
+                    <button key={opt.value} onClick={() => updateFocalPoint(item, opt.value)}
+                      className={`flex-1 py-1 text-[10px] font-body rounded-sm transition-all ${(item.focalPoint || 'center') === opt.value ? 'bg-[#C69C6D]/20 text-[#C69C6D] font-semibold' : 'text-[#E5E5E5]/30 hover:text-[#E5E5E5]/60'}`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Caption */}
               <input
                 type="text"
                 placeholder="Didascalia..."
