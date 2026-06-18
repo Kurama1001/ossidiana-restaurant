@@ -1,0 +1,349 @@
+import { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { Plus, Minus, Trash2, Send, Search, AlertCircle, Users, Receipt, StickyNote, CheckCircle2 } from 'lucide-react';
+
+const CAT_LABELS = {
+  antipasti:'Antipasti', primi:'Primi', romanissimi:'Romanissimi', secondi:'Secondi',
+  contorni:'Contorni', dolci:'Dolci', acqua:'Acqua', vino:'Vino',
+  birra:'Birra', cocktail:'Cocktail', caffe_amari:'Caffè & Amari', bevande:'Bevande',
+};
+const CAT_CUCINA = ['antipasti','primi','romanissimi','secondi','contorni','dolci'];
+
+/**
+ * ComandaEditor
+ * Props:
+ *   onSuccess: () => void  — chiamato dopo invio riuscito
+ *   ordineEsistente: Ordine | null  — se presente, aggiunge righe a quell'ordine
+ */
+export default function ComandaEditor({ onSuccess, ordineEsistente }) {
+  const [tavoli, setTavoli] = useState([]);
+  const [tavoloSelezionato, setTavoloSelezionato] = useState(null);
+  const [menuItems, setMenuItems] = useState([]);
+  const [righe, setRighe] = useState([]);
+  const [noteRiga, setNoteRiga] = useState({});
+  const [noteGenerali, setNoteGenerali] = useState(ordineEsistente?.note_generali || '');
+  const [coperti, setCoperti] = useState(ordineEsistente?.coperti || 2);
+  const [search, setSearch] = useState('');
+  const [catFilter, setCatFilter] = useState('tutti');
+  const [tab, setTab] = useState('menu');
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [success, setSuccess] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const init = async () => {
+      const [menu, tv, me] = await Promise.all([
+        base44.entities.MenuItem.filter({ active: true }, 'sortOrder', 200),
+        ordineEsistente ? Promise.resolve([]) : base44.entities.Tavolo.list('numero', 50),
+        base44.auth.me().catch(() => null),
+      ]);
+      setMenuItems(menu);
+      setTavoli(tv);
+      setUser(me);
+      if (ordineEsistente) setTavoloSelezionato({ id: ordineEsistente.tavolo_id, numero: ordineEsistente.numero_tavolo });
+      setLoading(false);
+    };
+    init();
+  }, []);
+
+  const aggiungiItem = (item) => {
+    setRighe(prev => {
+      const existing = prev.find(r => r.menu_item_id === item.id && !noteRiga[r._tmp]);
+      if (existing) return prev.map(r =>
+        r.menu_item_id === item.id && !noteRiga[r._tmp]
+          ? { ...r, quantita: r.quantita + 1, prezzo_totale: (r.quantita + 1) * r.prezzo_unitario }
+          : r
+      );
+      return [...prev, {
+        _tmp: Date.now() + Math.random(),
+        menu_item_id: item.id,
+        nome_item: item.name,
+        categoria: item.category,
+        reparto: item.reparto || (CAT_CUCINA.includes(item.category) ? 'cucina' : 'bar'),
+        quantita: 1,
+        prezzo_unitario: item.price,
+        prezzo_totale: item.price,
+        priorita: 'normale',
+      }];
+    });
+  };
+
+  const cambiaQty = (key, delta) => setRighe(prev => prev.map(r => r._tmp === key
+    ? { ...r, quantita: Math.max(1, r.quantita + delta), prezzo_totale: Math.max(1, r.quantita + delta) * r.prezzo_unitario }
+    : r
+  ));
+
+  const rimuoviRiga = (key) => setRighe(prev => prev.filter(r => r._tmp !== key));
+
+  const togglePriorita = (key) => setRighe(prev => prev.map(r => r._tmp === key
+    ? { ...r, priorita: r.priorita === 'urgente' ? 'normale' : 'urgente' }
+    : r
+  ));
+
+  const totale = righe.reduce((s, r) => s + r.prezzo_totale, 0);
+
+  const inviaComanda = async () => {
+    if (righe.length === 0) return;
+    const tavolo = tavoloSelezionato;
+    if (!tavolo) return;
+    setSending(true);
+
+    const now = new Date().toISOString();
+    let ordineId, tavoloId, numeroTavolo;
+
+    if (ordineEsistente) {
+      ordineId = ordineEsistente.id;
+      tavoloId = ordineEsistente.tavolo_id;
+      numeroTavolo = ordineEsistente.numero_tavolo;
+    } else {
+      // Crea nuovo ordine
+      const nuovoOrdine = await base44.entities.Ordine.create({
+        tavolo_id: tavolo.id,
+        numero_tavolo: tavolo.numero,
+        cameriere_id: user?.id || '',
+        cameriere_nome: user?.full_name || '',
+        stato: 'inviato',
+        coperti,
+        note_generali: noteGenerali,
+        totale,
+      });
+      ordineId = nuovoOrdine.id;
+      tavoloId = tavolo.id;
+      numeroTavolo = tavolo.numero;
+      // Aggiorna stato tavolo
+      await base44.entities.Tavolo.update(tavolo.id, { stato: 'occupato', ordine_attivo_id: ordineId }).catch(() => {});
+    }
+
+    // Crea le righe
+    await Promise.all(righe.map(r => base44.entities.RigaOrdine.create({
+      ordine_id: ordineId,
+      tavolo_id: tavoloId,
+      numero_tavolo: numeroTavolo,
+      menu_item_id: r.menu_item_id,
+      nome_item: r.nome_item,
+      categoria: r.categoria,
+      reparto: r.reparto,
+      quantita: r.quantita,
+      prezzo_unitario: r.prezzo_unitario,
+      prezzo_totale: r.prezzo_totale,
+      note: noteRiga[r._tmp] || '',
+      stato: 'inviato',
+      priorita: r.priorita,
+      sent_at: now,
+    })));
+
+    if (ordineEsistente) {
+      // Aggiorna totale ordine
+      const prevTotale = ordineEsistente.totale || 0;
+      await base44.entities.Ordine.update(ordineId, {
+        stato: 'inviato',
+        note_generali: noteGenerali,
+        coperti,
+        totale: prevTotale + totale,
+      });
+    }
+
+    setSending(false);
+    setSuccess(true);
+    setTimeout(() => { setSuccess(false); onSuccess(); }, 1500);
+  };
+
+  const categories = [...new Set(menuItems.map(i => i.category))];
+  const filtered = menuItems.filter(item => {
+    if (catFilter !== 'tutti' && item.category !== catFilter) return false;
+    if (search && !item.name.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+  const cucinaItems = filtered.filter(i => (i.reparto || (CAT_CUCINA.includes(i.category) ? 'cucina' : 'bar')) === 'cucina');
+  const barItems = filtered.filter(i => (i.reparto || (CAT_CUCINA.includes(i.category) ? 'cucina' : 'bar')) === 'bar');
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <div className="w-8 h-8 border-2 border-[#C69C6D]/30 border-t-[#C69C6D] rounded-full animate-spin" />
+    </div>
+  );
+
+  if (success) return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <CheckCircle2 size={48} className="text-green-400" />
+      <p className="font-display text-2xl text-white tracking-widest">Comanda Inviata!</p>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Selezione tavolo (solo nuova comanda) */}
+      {!ordineEsistente && (
+        <div className="mb-4">
+          <p className="font-body text-xs text-[#E5E5E5]/40 uppercase tracking-widest mb-2">Seleziona tavolo</p>
+          <div className="flex flex-wrap gap-2">
+            {tavoli.sort((a,b) => a.numero - b.numero).map(t => (
+              <button key={t.id} onClick={() => setTavoloSelezionato(t)}
+                className={`w-12 h-12 rounded-sm border font-display text-lg transition-all ${tavoloSelezionato?.id === t.id ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B]' : 'border-[#E5E5E5]/20 text-white hover:border-[#C69C6D]/50'}`}>
+                {t.numero}
+              </button>
+            ))}
+          </div>
+          {tavoloSelezionato && (
+            <div className="flex items-center gap-3 mt-3">
+              <span className="font-body text-sm text-[#E5E5E5]/50 flex items-center gap-1.5"><Users size={13} /> Coperti:</span>
+              <button onClick={() => setCoperti(c => Math.max(1, c-1))} className="w-7 h-7 border border-[#E5E5E5]/20 text-white rounded-sm flex items-center justify-center hover:border-[#C69C6D]">−</button>
+              <span className="text-white font-body w-6 text-center">{coperti}</span>
+              <button onClick={() => setCoperti(c => c+1)} className="w-7 h-7 border border-[#E5E5E5]/20 text-white rounded-sm flex items-center justify-center hover:border-[#C69C6D]">+</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab mobile */}
+      <div className="flex border-b border-[#C69C6D]/10 lg:hidden mb-3">
+        <button onClick={() => setTab('menu')}
+          className={`flex-1 py-3 font-body text-sm transition-all ${tab === 'menu' ? 'border-b-2 border-[#C69C6D] text-[#C69C6D]' : 'text-[#E5E5E5]/40'}`}>
+          Menu
+        </button>
+        <button onClick={() => setTab('comanda')}
+          className={`flex-1 py-3 font-body text-sm transition-all relative ${tab === 'comanda' ? 'border-b-2 border-[#C69C6D] text-[#C69C6D]' : 'text-[#E5E5E5]/40'}`}>
+          Comanda
+          {righe.length > 0 && <span className="absolute top-2 right-6 bg-[#C69C6D] text-[#0A0A0B] text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">{righe.length}</span>}
+        </button>
+      </div>
+
+      {/* Layout due colonne */}
+      <div className="flex flex-1 gap-4 overflow-hidden min-h-[500px] lg:min-h-[600px]">
+
+        {/* Pannello menu */}
+        <div className={`flex-1 overflow-y-auto ${tab === 'comanda' ? 'hidden lg:block' : 'block'}`}>
+          <div className="relative mb-3">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E5E5E5]/30" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca..."
+              className="w-full bg-[#161618] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-9 pr-4 py-2.5 rounded-sm font-body text-sm outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20" />
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
+            <button onClick={() => setCatFilter('tutti')}
+              className={`shrink-0 px-3 py-1.5 rounded-sm text-xs font-body border transition-all ${catFilter === 'tutti' ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-semibold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+              Tutti
+            </button>
+            {categories.map(c => (
+              <button key={c} onClick={() => setCatFilter(c)}
+                className={`shrink-0 px-3 py-1.5 rounded-sm text-xs font-body border transition-all ${catFilter === c ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-semibold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+                {CAT_LABELS[c] || c}
+              </button>
+            ))}
+          </div>
+
+          {cucinaItems.length > 0 && (
+            <div className="mb-4">
+              <h3 className="font-body text-xs text-orange-400/80 tracking-widest uppercase mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-orange-400 rounded-full" /> Cucina
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                {cucinaItems.map(item => <MenuCard key={item.id} item={item} color="orange" onAdd={aggiungiItem} righe={righe} />)}
+              </div>
+            </div>
+          )}
+          {barItems.length > 0 && (
+            <div className="mb-4">
+              <h3 className="font-body text-xs text-blue-400/80 tracking-widest uppercase mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" /> Bar
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                {barItems.map(item => <MenuCard key={item.id} item={item} color="blue" onAdd={aggiungiItem} righe={righe} />)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Pannello comanda */}
+        <div className={`lg:w-80 bg-[#0d0d0f] border border-[#C69C6D]/15 rounded-sm flex flex-col ${tab === 'menu' ? 'hidden lg:flex' : 'flex w-full'}`}>
+          <div className="p-3 border-b border-[#C69C6D]/10">
+            <div className="flex items-center justify-between">
+              <span className="font-display text-base text-white tracking-widest">Comanda</span>
+              <span className="font-body text-xs text-[#E5E5E5]/40">{righe.length > 0 ? `${righe.length} articoli` : 'vuota'}</span>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {righe.length === 0 ? (
+              <div className="text-center py-10">
+                <Receipt size={28} className="mx-auto mb-3 text-[#E5E5E5]/10" />
+                <p className="text-[#E5E5E5]/25 font-body text-sm">Seleziona articoli dal menu</p>
+              </div>
+            ) : righe.map(r => (
+              <div key={r._tmp} className={`border rounded-sm p-3 ${r.reparto === 'bar' ? 'border-blue-900/50 bg-[#0e0e1a]' : 'border-[#C69C6D]/20 bg-[#161618]'}`}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <span className="font-body text-white text-sm font-medium leading-snug">{r.nome_item}</span>
+                  <button onClick={() => rimuoviRiga(r._tmp)} className="text-red-400/40 hover:text-red-400 shrink-0"><Trash2 size={14} /></button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => cambiaQty(r._tmp, -1)} className="w-7 h-7 border border-[#E5E5E5]/20 text-white flex items-center justify-center rounded-sm hover:border-[#C69C6D]"><Minus size={11} /></button>
+                    <span className="text-white font-body w-6 text-center text-sm">{r.quantita}</span>
+                    <button onClick={() => cambiaQty(r._tmp, 1)} className="w-7 h-7 border border-[#E5E5E5]/20 text-white flex items-center justify-center rounded-sm hover:border-[#C69C6D]"><Plus size={11} /></button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => togglePriorita(r._tmp)}
+                      className={`p-1.5 rounded-sm border transition-all ${r.priorita === 'urgente' ? 'border-red-400 text-red-400 bg-red-400/10' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/20 hover:border-red-400/40'}`}>
+                      <AlertCircle size={12} />
+                    </button>
+                    <span className={`font-body font-semibold text-sm ${r.reparto === 'bar' ? 'text-blue-400' : 'text-[#C69C6D]'}`}>€{r.prezzo_totale.toFixed(2)}</span>
+                  </div>
+                </div>
+                <input
+                  value={noteRiga[r._tmp] || ''}
+                  onChange={e => setNoteRiga(prev => ({ ...prev, [r._tmp]: e.target.value }))}
+                  placeholder="Nota cucina/bar..."
+                  className="w-full mt-2 bg-[#0A0A0B] border border-[#E5E5E5]/10 text-[#E5E5E5]/80 px-3 py-1.5 rounded-sm font-body text-xs outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="px-3 pb-2">
+            <div className="flex items-center gap-1.5 mb-1">
+              <StickyNote size={11} className="text-[#E5E5E5]/30" />
+              <span className="font-body text-xs text-[#E5E5E5]/30">Note generali</span>
+            </div>
+            <textarea value={noteGenerali} onChange={e => setNoteGenerali(e.target.value)} rows={2}
+              placeholder="Allergie, richieste speciali..."
+              className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/10 text-[#E5E5E5]/80 px-3 py-2 rounded-sm font-body text-xs outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20 resize-none" />
+          </div>
+
+          <div className="p-3 border-t border-[#C69C6D]/10">
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-body text-xs text-[#E5E5E5]/40">Totale bozza</span>
+              <span className="font-display text-2xl text-[#C69C6D]">€{totale.toFixed(2)}</span>
+            </div>
+            <button
+              onClick={inviaComanda}
+              disabled={sending || righe.length === 0 || !tavoloSelezionato}
+              className="w-full py-3 bg-[#C69C6D] hover:bg-[#D4AA7D] text-[#0A0A0B] font-body font-bold text-sm tracking-widest uppercase rounded-sm transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+            >
+              <Send size={15} />
+              {sending ? 'Invio...' : `Invia (${righe.length})`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MenuCard({ item, color, onAdd, righe }) {
+  const qty = righe.filter(r => r.menu_item_id === item.id).reduce((s, r) => s + r.quantita, 0);
+  const borderClass = color === 'blue'
+    ? 'border-blue-900/30 hover:border-blue-400/50 bg-[#0e0e1a]'
+    : 'border-[#E5E5E5]/10 hover:border-[#C69C6D]/50 bg-[#161618]';
+  const priceClass = color === 'blue' ? 'text-blue-400' : 'text-[#C69C6D]';
+  return (
+    <button onClick={() => onAdd(item)}
+      className={`relative border ${borderClass} rounded-sm p-3 text-left transition-all active:scale-95 w-full`}>
+      {qty > 0 && (
+        <span className={`absolute top-2 right-2 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center ${color === 'blue' ? 'bg-blue-500 text-white' : 'bg-[#C69C6D] text-[#0A0A0B]'}`}>{qty}</span>
+      )}
+      <p className="font-body text-white text-sm font-medium pr-6 leading-snug">{item.name}</p>
+      {item.description && <p className="font-body text-[#E5E5E5]/35 text-xs mt-0.5 line-clamp-1">{item.description}</p>}
+      <span className={`font-body font-semibold text-sm mt-2 block ${priceClass}`}>€{Number(item.price).toFixed(2)}</span>
+    </button>
+  );
+}
