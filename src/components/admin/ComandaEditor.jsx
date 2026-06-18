@@ -16,7 +16,7 @@ const CAT_CUCINA = ['antipasti','primi','romanissimi','secondi','contorni','dolc
  *   ordineEsistente: Ordine | null  — se presente, aggiunge righe a quell'ordine
  */
 export default function ComandaEditor({ onSuccess, ordineEsistente }) {
-  const [tavoli, setTavoli] = useState([]);
+  const [numeroTavoloInput, setNumeroTavoloInput] = useState('');
   const [tavoloSelezionato, setTavoloSelezionato] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [righe, setRighe] = useState([]);
@@ -33,15 +33,16 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
 
   useEffect(() => {
     const init = async () => {
-      const [menu, tv, me] = await Promise.all([
+      const [menu, me] = await Promise.all([
         base44.entities.MenuItem.filter({ active: true }, 'sortOrder', 200),
-        ordineEsistente ? Promise.resolve([]) : base44.entities.Tavolo.list('numero', 50),
         base44.auth.me().catch(() => null),
       ]);
       setMenuItems(menu);
-      setTavoli(tv);
       setUser(me);
-      if (ordineEsistente) setTavoloSelezionato({ id: ordineEsistente.tavolo_id, numero: ordineEsistente.numero_tavolo });
+      if (ordineEsistente) {
+        setTavoloSelezionato({ id: ordineEsistente.tavolo_id, numero: ordineEsistente.numero_tavolo });
+        setNumeroTavoloInput(String(ordineEsistente.numero_tavolo));
+      }
       setLoading(false);
     };
     init();
@@ -84,9 +85,7 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
   const totale = righe.reduce((s, r) => s + r.prezzo_totale, 0);
 
   const inviaComanda = async () => {
-    if (righe.length === 0) return;
-    const tavolo = tavoloSelezionato;
-    if (!tavolo) return;
+    if (righe.length === 0 || !tavoloSelezionato) return;
     setSending(true);
 
     const now = new Date().toISOString();
@@ -99,8 +98,8 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
     } else {
       // Crea nuovo ordine
       const nuovoOrdine = await base44.entities.Ordine.create({
-        tavolo_id: tavolo.id,
-        numero_tavolo: tavolo.numero,
+        tavolo_id: tavoloSelezionato.id,
+        numero_tavolo: tavoloSelezionato.numero,
         cameriere_id: user?.id || '',
         cameriere_nome: user?.full_name || '',
         stato: 'inviato',
@@ -109,10 +108,8 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
         totale,
       });
       ordineId = nuovoOrdine.id;
-      tavoloId = tavolo.id;
-      numeroTavolo = tavolo.numero;
-      // Aggiorna stato tavolo
-      await base44.entities.Tavolo.update(tavolo.id, { stato: 'occupato', ordine_attivo_id: ordineId }).catch(() => {});
+      tavoloId = tavoloSelezionato.id;
+      numeroTavolo = tavoloSelezionato.numero;
     }
 
     // Crea le righe
@@ -173,26 +170,33 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Selezione tavolo (solo nuova comanda) */}
+      {/* Inserimento tavolo manuale (solo nuova comanda) */}
       {!ordineEsistente && (
-        <div className="mb-4">
-          <p className="font-body text-xs text-[#E5E5E5]/40 uppercase tracking-widest mb-2">Seleziona tavolo</p>
-          <div className="flex flex-wrap gap-2">
-            {tavoli.sort((a,b) => a.numero - b.numero).map(t => (
-              <button key={t.id} onClick={() => setTavoloSelezionato(t)}
-                className={`w-12 h-12 rounded-sm border font-display text-lg transition-all ${tavoloSelezionato?.id === t.id ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B]' : 'border-[#E5E5E5]/20 text-white hover:border-[#C69C6D]/50'}`}>
-                {t.numero}
-              </button>
-            ))}
+        <div className="mb-4 flex flex-wrap items-end gap-4">
+          <div>
+            <p className="font-body text-xs text-[#E5E5E5]/40 uppercase tracking-widest mb-2">N° Tavolo</p>
+            <input
+              type="number"
+              min="1"
+              value={numeroTavoloInput}
+              onChange={e => {
+                setNumeroTavoloInput(e.target.value);
+                const n = parseInt(e.target.value);
+                if (n > 0) setTavoloSelezionato({ id: `tavolo_${n}`, numero: n });
+                else setTavoloSelezionato(null);
+              }}
+              placeholder="es. 5"
+              className="w-24 bg-[#161618] border border-[#E5E5E5]/20 text-white text-center font-display text-2xl px-3 py-2 rounded-sm outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20"
+            />
           </div>
-          {tavoloSelezionato && (
-            <div className="flex items-center gap-3 mt-3">
-              <span className="font-body text-sm text-[#E5E5E5]/50 flex items-center gap-1.5"><Users size={13} /> Coperti:</span>
-              <button onClick={() => setCoperti(c => Math.max(1, c-1))} className="w-7 h-7 border border-[#E5E5E5]/20 text-white rounded-sm flex items-center justify-center hover:border-[#C69C6D]">−</button>
-              <span className="text-white font-body w-6 text-center">{coperti}</span>
-              <button onClick={() => setCoperti(c => c+1)} className="w-7 h-7 border border-[#E5E5E5]/20 text-white rounded-sm flex items-center justify-center hover:border-[#C69C6D]">+</button>
+          <div>
+            <p className="font-body text-xs text-[#E5E5E5]/40 uppercase tracking-widest mb-2">Coperti</p>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setCoperti(c => Math.max(1, c-1))} className="w-9 h-9 border border-[#E5E5E5]/20 text-white rounded-sm flex items-center justify-center hover:border-[#C69C6D] font-display text-lg">−</button>
+              <span className="text-white font-display text-2xl w-8 text-center">{coperti}</span>
+              <button onClick={() => setCoperti(c => c+1)} className="w-9 h-9 border border-[#E5E5E5]/20 text-white rounded-sm flex items-center justify-center hover:border-[#C69C6D] font-display text-lg">+</button>
             </div>
-          )}
+          </div>
         </div>
       )}
 
