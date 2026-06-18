@@ -70,7 +70,22 @@ export default function Cucina() {
   useEffect(() => {
     load();
     const interval = setInterval(load, 8000);
-    return () => clearInterval(interval);
+
+    // Subscription real-time: notifica acustica ogni volta che arriva una nuova riga cucina
+    const unsubscribe = base44.entities.RigaOrdine.subscribe((event) => {
+      if (event.type === 'create') {
+        const r = event.data;
+        if (r?.reparto === 'cucina' && ['inviato', 'ricevuto'].includes(r?.stato)) {
+          playBeep();
+          load();
+        }
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
   }, []);
 
   const prendiInCarico = async (ordineId) => {
