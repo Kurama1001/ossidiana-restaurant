@@ -23,7 +23,13 @@ export default function AdminUsers() {
     setInviting(true);
     setMessage(null);
     try {
-      await base44.users.inviteUser(inviteEmail, inviteRole);
+      // inviteUser accetta solo "user" o "admin"; per ruoli staff usiamo "user" e poi aggiorniamo
+      const baseRole = inviteRole === 'admin' ? 'admin' : 'user';
+      const invited = await base44.users.inviteUser(inviteEmail, baseRole);
+      // Se il ruolo desiderato è uno staff role, aggiorniamo subito il record
+      if (inviteRole !== 'user' && inviteRole !== 'admin' && invited?.id) {
+        await base44.entities.User.update(invited.id, { role: inviteRole });
+      }
       setMessage({ type: 'success', text: `Invito inviato a ${inviteEmail}` });
       setInviteEmail('');
       loadUsers();
