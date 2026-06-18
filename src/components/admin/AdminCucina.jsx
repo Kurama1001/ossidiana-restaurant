@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { RefreshCw, Clock, AlertCircle } from 'lucide-react';
+import { RefreshCw, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const STATI_LABELS = { inviato: 'Nuovo', ricevuto: 'Ricevuto', in_preparazione: 'In prep.', pronto: 'Pronto' };
 const STATI_COLORS = {
@@ -24,7 +24,7 @@ export default function AdminCucina() {
 
   const load = async () => {
     const data = await base44.entities.RigaOrdine.filter({ reparto: 'cucina' }, 'created_date', 200);
-    const attive = data.filter(r => ['inviato','ricevuto','in_preparazione','pronto'].includes(r.stato));
+    const attive = data.filter(r => ['inviato', 'ricevuto', 'in_preparazione', 'pronto'].includes(r.stato));
     prevCount.current = attive.length;
     setRighe(attive);
     setLoading(false);
@@ -49,6 +49,8 @@ export default function AdminCucina() {
   };
 
   const filtrate = filtro === 'tutte' ? righe : righe.filter(r => r.stato === filtro);
+
+  // Raggruppa per tavolo
   const grouped = filtrate.reduce((acc, r) => {
     const key = r.numero_tavolo || r.tavolo_id;
     if (!acc[key]) acc[key] = { numero: r.numero_tavolo, righe: [] };
@@ -75,7 +77,7 @@ export default function AdminCucina() {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-5">
-        {[['tutte','Tutte'], ['inviato','Nuove'], ['ricevuto','Ricevute'], ['in_preparazione','In prep.']].map(([val, lab]) => (
+        {[['tutte', 'Tutte'], ['inviato', 'Nuove'], ['ricevuto', 'Ricevute'], ['in_preparazione', 'In prep.']].map(([val, lab]) => (
           <button key={val} onClick={() => setFiltro(val)}
             className={`px-4 py-2 rounded-sm text-sm font-body border transition-all ${filtro === val ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B]' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
             {lab}
@@ -89,60 +91,97 @@ export default function AdminCucina() {
         <div className="py-20 text-center text-[#E5E5E5]/30 font-body text-lg">Nessuna comanda in attesa</div>
       ) : (
         <div className="space-y-4">
-          {Object.entries(grouped).map(([key, group]) => (
-            <div key={key} className="bg-[#161618] border border-[#C69C6D]/10 rounded-sm overflow-hidden">
-              <div className="bg-[#1a1a1a] px-4 py-3 flex items-center gap-3 border-b border-[#C69C6D]/10">
-                <span className="font-display text-xl text-white">Tavolo {group.numero}</span>
-                <span className="text-[#E5E5E5]/30 font-body text-sm">{group.righe.length} articoli</span>
-              </div>
-              <div className="divide-y divide-[#C69C6D]/5">
-                {group.righe.map(riga => {
-                  const min = minutiDa(riga.sent_at || riga.created_date);
-                  return (
-                    <div key={riga.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-body text-white text-base font-semibold">
-                            {riga.quantita}× {riga.nome_item}
-                          </span>
-                          {riga.priorita === 'urgente' && <AlertCircle size={15} className="text-red-400" />}
-                        </div>
-                        {riga.note && <p className="font-body text-yellow-300/80 text-sm italic">📝 {riga.note}</p>}
-                        {min !== null && (
-                          <div className="flex items-center gap-1 text-[#E5E5E5]/30 text-xs font-body mt-1">
-                            <Clock size={11} /> {min} min fa
+          {Object.entries(grouped)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([key, group]) => {
+              // Raggruppa le righe del tavolo per fase, ordinate fase 1 → n
+              const fasiUsate = [...new Set(group.righe.map(r => r.fase || 1))].sort((a, b) => a - b);
+              const righePerFase = fasiUsate.reduce((acc, f) => {
+                acc[f] = group.righe
+                  .filter(r => (r.fase || 1) === f)
+                  .sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+                return acc;
+              }, {});
+
+              return (
+                <div key={key} className="bg-[#161618] border border-[#C69C6D]/10 rounded-sm overflow-hidden">
+                  {/* Header tavolo */}
+                  <div className="bg-[#1a1a1a] px-4 py-3 flex items-center gap-3 border-b border-[#C69C6D]/10">
+                    <span className="font-display text-xl text-white">Tavolo {group.numero}</span>
+                    <span className="text-[#E5E5E5]/30 font-body text-sm">{group.righe.length} articoli</span>
+                    <span className="text-[#E5E5E5]/20 font-body text-xs ml-auto">{fasiUsate.length} fase{fasiUsate.length > 1 ? 'i' : 'e'}</span>
+                  </div>
+
+                  {/* Articoli raggruppati per FASE */}
+                  {fasiUsate.map(f => {
+                    const righeF = righePerFase[f];
+                    const tuttePronte = righeF.every(r => r.stato === 'pronto');
+                    return (
+                      <div key={f}>
+                        {/* Header fase */}
+                        <div className={`px-4 py-2 flex items-center gap-2 border-b ${tuttePronte ? 'bg-green-900/15 border-green-500/15' : 'bg-[#C69C6D]/5 border-[#C69C6D]/10'}`}>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 font-body text-xs font-bold ${tuttePronte ? 'bg-green-600 text-white' : 'bg-[#C69C6D] text-[#0A0A0B]'}`}>
+                            {f}
                           </div>
-                        )}
+                          <span className={`font-body text-xs uppercase tracking-widest font-semibold ${tuttePronte ? 'text-green-400' : 'text-[#C69C6D]'}`}>
+                            Fase {f}{tuttePronte ? ' · Completata' : ''}
+                          </span>
+                          {tuttePronte && <CheckCircle2 size={12} className="text-green-400" />}
+                        </div>
+
+                        {/* Righe della fase */}
+                        <div className="divide-y divide-[#C69C6D]/5">
+                          {righeF.map(riga => {
+                            const min = minutiDa(riga.sent_at || riga.created_date);
+                            return (
+                              <div key={riga.id} className="p-4 pl-10 flex flex-col sm:flex-row sm:items-center gap-3">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-body text-white text-base font-semibold">
+                                      {riga.quantita}× {riga.nome_item}
+                                    </span>
+                                    {riga.priorita === 'urgente' && <AlertCircle size={15} className="text-red-400" />}
+                                  </div>
+                                  {riga.note && <p className="font-body text-yellow-300/80 text-sm italic">📝 {riga.note}</p>}
+                                  {min !== null && (
+                                    <div className="flex items-center gap-1 text-[#E5E5E5]/30 text-xs font-body mt-1">
+                                      <Clock size={11} /> {min} min fa
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-2 items-center">
+                                  {riga.stato === 'inviato' && (
+                                    <button onClick={() => cambiaStato(riga, 'ricevuto')} disabled={updating === riga.id}
+                                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-sm font-body text-sm font-semibold transition-all">
+                                      ✓ Ricevuto
+                                    </button>
+                                  )}
+                                  {riga.stato === 'ricevuto' && (
+                                    <button onClick={() => cambiaStato(riga, 'in_preparazione')} disabled={updating === riga.id}
+                                      className="px-4 py-2.5 bg-yellow-600 hover:bg-yellow-500 text-white rounded-sm font-body text-sm font-semibold transition-all">
+                                      🍳 In prep.
+                                    </button>
+                                  )}
+                                  {(riga.stato === 'in_preparazione' || riga.stato === 'ricevuto') && (
+                                    <button onClick={() => cambiaStato(riga, 'pronto')} disabled={updating === riga.id}
+                                      className="px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-sm font-body text-sm font-semibold transition-all">
+                                      ✔ Pronto
+                                    </button>
+                                  )}
+                                  <span className={`px-3 py-1.5 border rounded-sm text-xs font-body self-center ${STATI_COLORS[riga.stato] || ''}`}>
+                                    {STATI_LABELS[riga.stato]}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {riga.stato === 'inviato' && (
-                          <button onClick={() => cambiaStato(riga, 'ricevuto')} disabled={updating === riga.id}
-                            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-sm font-body text-sm font-semibold transition-all">
-                            ✓ Ricevuto
-                          </button>
-                        )}
-                        {riga.stato === 'ricevuto' && (
-                          <button onClick={() => cambiaStato(riga, 'in_preparazione')} disabled={updating === riga.id}
-                            className="px-4 py-2.5 bg-yellow-600 hover:bg-yellow-500 text-white rounded-sm font-body text-sm font-semibold transition-all">
-                            🍳 In prep.
-                          </button>
-                        )}
-                        {(riga.stato === 'in_preparazione' || riga.stato === 'ricevuto') && (
-                          <button onClick={() => cambiaStato(riga, 'pronto')} disabled={updating === riga.id}
-                            className="px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-sm font-body text-sm font-semibold transition-all">
-                            ✔ Pronto
-                          </button>
-                        )}
-                        <span className={`px-3 py-1.5 border rounded-sm text-xs font-body self-center ${STATI_COLORS[riga.stato] || ''}`}>
-                          {STATI_LABELS[riga.stato]}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+                    );
+                  })}
+                </div>
+              );
+            })}
         </div>
       )}
     </div>
