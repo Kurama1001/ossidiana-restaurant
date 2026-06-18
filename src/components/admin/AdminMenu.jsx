@@ -3,13 +3,15 @@ import { base44 } from '@/api/base44Client';
 import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Copy, Wand2, Loader2, Search, Upload } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 
-const CATEGORIES = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci'];
-const CATEGORY_LABELS = { antipasti: 'Antipasti', primi: 'Primi', romanissimi: 'Romanissimi', secondi: 'Secondi', contorni: 'Contorni', dolci: 'Dolci' };
+const CATEGORIES = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci', 'acqua', 'vino', 'birra', 'cocktail', 'caffe_amari', 'bevande'];
+const CATEGORY_LABELS = { antipasti: 'Antipasti', primi: 'Primi', romanissimi: 'Romanissimi', secondi: 'Secondi', contorni: 'Contorni', dolci: 'Dolci', acqua: 'Acqua', vino: 'Vino', birra: 'Birra', cocktail: 'Cocktail', caffe_amari: 'Caffè & Amari', bevande: 'Bevande' };
 const DIETARY_TAGS = ['vegetariano', 'pesce', 'carne', 'senza_lattosio', 'senza_glutine_su_richiesta', 'piccante'];
 const DIETARY_LABELS = { vegetariano: 'Vegetariano', pesce: 'Pesce', carne: 'Carne', senza_lattosio: 'Senza Lattosio', senza_glutine_su_richiesta: 'Senza Glutine (richiesta)', piccante: 'Piccante' };
 
+const BEVANDE_CATS = ['acqua', 'vino', 'birra', 'cocktail', 'caffe_amari', 'bevande'];
+
 const emptyForm = {
-  name: '', description: '', category: 'antipasti',
+  name: '', description: '', category: 'antipasti', reparto: 'cucina',
   price: '', imageUrl: '', imagePrompt: '', allergens: '',
   dietaryTags: [], active: true, featured: false, sortOrder: '',
 };
@@ -53,6 +55,7 @@ export default function AdminMenu() {
       price: item.price?.toString() || '',
       sortOrder: item.sortOrder?.toString() || '',
       dietaryTags: item.dietaryTags || [],
+      reparto: item.reparto || (BEVANDE_CATS.includes(item.category) ? 'bar' : 'cucina'),
     });
     setShowForm(true);
   };
@@ -258,9 +261,23 @@ export default function AdminMenu() {
               {/* Category */}
               <div>
                 <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Categoria *</label>
-                <select value={form.category} onChange={e => set('category', e.target.value)}
+                <select value={form.category} onChange={e => {
+                  const cat = e.target.value;
+                  set('category', cat);
+                  set('reparto', BEVANDE_CATS.includes(cat) ? 'bar' : 'cucina');
+                }}
                   className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm">
                   {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
+                </select>
+              </div>
+
+              {/* Reparto */}
+              <div>
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Reparto</label>
+                <select value={form.reparto || 'cucina'} onChange={e => set('reparto', e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm">
+                  <option value="cucina">🍽 Cucina</option>
+                  <option value="bar">🍹 Bar</option>
                 </select>
               </div>
 

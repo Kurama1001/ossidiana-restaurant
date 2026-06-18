@@ -1,22 +1,26 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { TrendingUp, ShoppingBag, Users, Clock, RefreshCw } from 'lucide-react';
-import { format, startOfDay, endOfDay, subDays } from 'date-fns';
+import { TrendingUp, ShoppingBag, Users, Clock, RefreshCw, CalendarDays } from 'lucide-react';
+import { startOfDay, subDays } from 'date-fns';
 
 export default function AdminReport() {
   const [ordini, setOrdini] = useState([]);
   const [righe, setRighe] = useState([]);
+  const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState('oggi');
 
   const load = async () => {
     setLoading(true);
-    const [ords, rigs] = await Promise.all([
+    const today = new Date().toISOString().split('T')[0];
+    const [ords, rigs, res] = await Promise.all([
       base44.entities.Ordine.list('-created_date', 500),
       base44.entities.RigaOrdine.list('-created_date', 1000),
+      base44.entities.Reservation.filter({ res_date: today }, '-created_date', 50).catch(() => []),
     ]);
     setOrdini(ords);
     setRighe(rigs);
+    setReservations(res);
     setLoading(false);
   };
 
@@ -36,7 +40,10 @@ export default function AdminReport() {
   const totaleVendite = ordFiltrati.reduce((s, o) => s + (o.totale || 0), 0);
   const numOrdini = ordFiltrati.length;
 
-  // Piatti più venduti
+  // Ordini attivi oggi (non chiusi)
+  const ordiniAttivi = filterByPeriodo(ordini).filter(o => !['chiuso','annullato'].includes(o.stato));
+
+  // Top piatti
   const countItems = righeFiltrate.reduce((acc, r) => {
     if (!acc[r.nome_item]) acc[r.nome_item] = { nome: r.nome_item, reparto: r.reparto, qty: 0, totale: 0 };
     acc[r.nome_item].qty += r.quantita || 0;
@@ -90,26 +97,47 @@ export default function AdminReport() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <KpiCard icon={TrendingUp} label="Vendite" value={`€${totaleVendite.toFixed(2)}`} color="text-[#C69C6D]" />
             <KpiCard icon={ShoppingBag} label="Ordini chiusi" value={numOrdini} color="text-green-400" />
-            <KpiCard icon={Users} label="Camerieri attivi" value={Object.keys(perCameriere).length} color="text-blue-400" />
-            <KpiCard icon={Clock} label="Tempo medio cucina" value={tempoMedioCucina !== null ? `${tempoMedioCucina} min` : '—'} color="text-yellow-400" />
+            <KpiCard icon={Clock} label="Ordini attivi" value={ordiniAttivi.length} color="text-yellow-400" />
+            <KpiCard icon={CalendarDays} label="Prenotazioni oggi" value={reservations.length} color="text-blue-400" />
           </div>
 
+          {/* Prenotazioni del giorno */}
+          {reservations.length > 0 && (
+            <div className="bg-[#161618] border border-[#C69C6D]/10 rounded-sm p-5 mb-6">
+              <h3 className="font-body text-sm text-[#E5E5E5]/60 mb-4">📅 Prenotazioni di oggi</h3>
+              <div className="space-y-2">
+                {reservations.map(r => (
+                  <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-2 border-b border-[#C69C6D]/5 last:border-0">
+                    <div>
+                      <p className="font-body text-sm text-white">{r.customer_name}</p>
+                      <p className="font-body text-xs text-[#E5E5E5]/40">{r.guests} persone · {r.res_time}</p>
+                    </div>
+                    <span className={`text-xs font-body border px-2.5 py-1 rounded-full ${
+                      r.status === 'confirmed' ? 'bg-green-400/10 text-green-400 border-green-400/20' :
+                      r.status === 'cancelled' ? 'bg-red-400/10 text-red-400 border-red-400/20' :
+                      'bg-yellow-400/10 text-yellow-400 border-yellow-400/20'
+                    }`}>
+                      {r.status === 'confirmed' ? 'Confermata' : r.status === 'cancelled' ? 'Annullata' : 'In attesa'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Piatti cucina */}
             <Section title="🍽 Piatti più venduti">
               {topCucina.length === 0 ? <Empty /> : topCucina.map((item, i) => (
                 <Row key={item.nome} rank={i+1} label={item.nome} value={`${item.qty} pz`} sub={`€${item.totale.toFixed(2)}`} />
               ))}
             </Section>
 
-            {/* Bevande bar */}
             <Section title="🍹 Bevande più vendute">
               {topBar.length === 0 ? <Empty /> : topBar.map((item, i) => (
                 <Row key={item.nome} rank={i+1} label={item.nome} value={`${item.qty} pz`} sub={`€${item.totale.toFixed(2)}`} />
               ))}
             </Section>
 
-            {/* Per cameriere */}
             <Section title="👤 Totale per cameriere">
               {Object.keys(perCameriere).length === 0 ? <Empty /> :
                 Object.values(perCameriere).sort((a,b) => b.totale - a.totale).map((c, i) => (
@@ -118,7 +146,6 @@ export default function AdminReport() {
               }
             </Section>
 
-            {/* Metodi pagamento */}
             <Section title="💳 Metodi di pagamento">
               {(() => {
                 const mp = ordFiltrati.reduce((acc, o) => {
@@ -133,6 +160,15 @@ export default function AdminReport() {
                   ));
               })()}
             </Section>
+
+            {tempoMedioCucina !== null && (
+              <Section title="⏱ Tempo medio preparazione cucina">
+                <div className="text-center py-4">
+                  <span className="font-display text-5xl text-[#C69C6D]">{tempoMedioCucina}</span>
+                  <span className="font-body text-[#E5E5E5]/40 ml-2">minuti</span>
+                </div>
+              </Section>
+            )}
           </div>
         </>
       )}

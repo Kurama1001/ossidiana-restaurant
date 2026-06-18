@@ -1,34 +1,34 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import AdminDashboard from '@/components/admin/AdminDashboard';
 import AdminReservations from '@/components/admin/AdminReservations';
 import AdminOrders from '@/components/admin/AdminOrders';
 import AdminMenu from '@/components/admin/AdminMenu';
 import AdminUsers from '@/components/admin/AdminUsers';
 import AdminGallery from '@/components/admin/AdminGallery';
 import AdminChiSiamo from '@/components/admin/AdminChiSiamo';
-import AdminTavoli from '@/components/admin/AdminTavoli';
 import AdminReport from '@/components/admin/AdminReport';
+import AdminComande from '@/components/admin/AdminComande';
+import AdminCucina from '@/components/admin/AdminCucina';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { LayoutDashboard, CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info, TableProperties, BarChart2, GripVertical } from 'lucide-react';
+import { CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info, BarChart2, GripVertical, ClipboardList, ChefHat } from 'lucide-react';
 
 const DEFAULT_TABS = [
-  { id: 'dashboard',    label: 'Dashboard',    icon: 'LayoutDashboard' },
-  { id: 'tavoli',       label: 'Tavoli',        icon: 'TableProperties' },
-  { id: 'reservations', label: 'Prenotazioni',  icon: 'CalendarDays' },
-  { id: 'orders',       label: 'Asporto',       icon: 'ShoppingBag' },
-  { id: 'menu',         label: 'Menu',          icon: 'UtensilsCrossed' },
-  { id: 'report',       label: 'Report',        icon: 'BarChart2' },
-  { id: 'gallery',      label: 'Galleria',      icon: 'Images' },
-  { id: 'chi_siamo',    label: 'Chi Siamo',     icon: 'Info' },
-  { id: 'users',        label: 'Utenti',        icon: 'Users' },
+  { id: 'comande',      label: 'Comande',       icon: 'ClipboardList' },
+  { id: 'cucina',       label: 'Cucina',         icon: 'ChefHat' },
+  { id: 'report',       label: 'Report',         icon: 'BarChart2' },
+  { id: 'reservations', label: 'Prenotazioni',   icon: 'CalendarDays' },
+  { id: 'orders',       label: 'Asporto',        icon: 'ShoppingBag' },
+  { id: 'menu',         label: 'Menu',           icon: 'UtensilsCrossed' },
+  { id: 'gallery',      label: 'Galleria',       icon: 'Images' },
+  { id: 'chi_siamo',    label: 'Chi Siamo',      icon: 'Info' },
+  { id: 'users',        label: 'Utenti',         icon: 'Users' },
 ];
 
-const ICONS = { LayoutDashboard, CalendarDays, ShoppingBag, UtensilsCrossed, Users, Images, Info, TableProperties, BarChart2 };
+const ICONS = { CalendarDays, ShoppingBag, UtensilsCrossed, Users, Images, Info, BarChart2, ClipboardList, ChefHat };
 
 const TAB_COMPONENTS = {
-  dashboard:    AdminDashboard,
-  tavoli:       AdminTavoli,
+  comande:      AdminComande,
+  cucina:       AdminCucina,
   reservations: AdminReservations,
   orders:       AdminOrders,
   menu:         AdminMenu,
@@ -55,7 +55,7 @@ function loadTabOrder() {
 
 export default function Admin() {
   const [tabs, setTabs] = useState(loadTabOrder);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('comande');
   const [reordering, setReordering] = useState(false);
   const { logout } = useAuth();
 
