@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, RefreshCw, Clock, Users, Receipt, Send, ChefHat, CheckCircle2 } from 'lucide-react';
+import { Plus, RefreshCw, Clock, Users, Receipt, Trash2, X } from 'lucide-react';
 import AdminComande from '@/components/admin/AdminComande';
 
 // Stati semplificati per il cameriere
@@ -24,6 +24,10 @@ export default function Sala() {
   const [ordineSelezionato, setOrdineSelezionato] = useState(null);
   const [ordini, setOrdini] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modalAnnulla, setModalAnnulla] = useState(null); // ordine selezionato per annullamento
+  const [righeModal, setRigheModal] = useState([]);
+  const [loadingModal, setLoadingModal] = useState(false);
+  const [deleting, setDeleting] = useState(null);
 
   const load = async () => {
     const oggi = new Date();
@@ -50,6 +54,32 @@ export default function Sala() {
   };
 
   const goHome = () => { setView('home'); setOrdineSelezionato(null); load(); };
+
+  const apriModalAnnulla = async (ordine) => {
+    setModalAnnulla(ordine);
+    setLoadingModal(true);
+    const righe = await base44.entities.RigaOrdine.filter({ ordine_id: ordine.id }, 'created_date', 200);
+    setRigheModal(righe.filter(r => !['annullato', 'consegnato'].includes(r.stato)));
+    setLoadingModal(false);
+  };
+
+  const annullaRigaModal = async (rigaId) => {
+    setDeleting(rigaId);
+    await base44.entities.RigaOrdine.update(rigaId, { stato: 'annullato' });
+    setRigheModal(prev => prev.filter(r => r.id !== rigaId));
+    setDeleting(null);
+  };
+
+  const annullaTuttoModal = async () => {
+    if (!modalAnnulla) return;
+    setDeleting('all');
+    await Promise.all(righeModal.map(r => base44.entities.RigaOrdine.update(r.id, { stato: 'annullato' })));
+    await base44.entities.Ordine.update(modalAnnulla.id, { stato: 'annullato' }).catch(() => {});
+    setModalAnnulla(null);
+    setRigheModal([]);
+    setDeleting(null);
+    load();
+  };
 
   if (view === 'nuova' || view === 'modifica') {
     const isModifica = view === 'modifica';
@@ -139,18 +169,82 @@ export default function Sala() {
                       <div className="flex flex-col items-end gap-2 shrink-0">
                         <StatoBadgeCameriere stato={ordine.stato} />
                         {!['chiuso', 'annullato'].includes(ordine.stato) && (
-                          <button
-                            onClick={() => { setOrdineSelezionato(ordine); setView('modifica'); }}
-                            className="text-xs font-body px-3 py-1.5 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all flex items-center gap-1"
-                          >
-                            <Plus size={11} /> Aggiungi
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => apriModalAnnulla(ordine)}
+                              className="text-xs font-body px-3 py-1.5 border border-red-500/30 text-red-400/70 hover:border-red-500/60 hover:text-red-400 hover:bg-red-500/10 rounded-sm transition-all flex items-center gap-1"
+                            >
+                              <Trash2 size={11} /> Annulla
+                            </button>
+                            <button
+                              onClick={() => { setOrdineSelezionato(ordine); setView('modifica'); }}
+                              className="text-xs font-body px-3 py-1.5 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all flex items-center gap-1"
+                            >
+                              <Plus size={11} /> Aggiungi
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
                   </div>
                 );
               })}
+          </div>
+        )}
+
+        {/* Modale annullamento */}
+        {modalAnnulla && (
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-4">
+            <div className="bg-[#161618] border border-red-500/30 rounded-sm w-full max-w-md max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-[#E5E5E5]/10">
+                <div>
+                  <h3 className="font-display text-xl text-white tracking-widest">Annulla Comanda</h3>
+                  <p className="font-body text-xs text-[#E5E5E5]/40 mt-0.5">Tavolo {modalAnnulla.numero_tavolo}</p>
+                </div>
+                <button onClick={() => { setModalAnnulla(null); setRigheModal([]); }}
+                  className="p-2 text-[#E5E5E5]/40 hover:text-white transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4">
+                {loadingModal ? (
+                  <p className="text-center text-[#E5E5E5]/30 font-body py-6">Caricamento...</p>
+                ) : righeModal.length === 0 ? (
+                  <p className="text-center text-[#E5E5E5]/30 font-body py-6">Nessun articolo da annullare</p>
+                ) : (
+                  <div className="space-y-2">
+                    {righeModal.map(r => (
+                      <div key={r.id} className="flex items-center justify-between gap-3 bg-[#0A0A0B] border border-[#E5E5E5]/10 rounded-sm px-3 py-2.5">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-body text-white text-sm">{r.quantita}× {r.nome_item}</p>
+                          {r.note && <p className="font-body text-xs text-yellow-300/50 italic">{r.note}</p>}
+                        </div>
+                        <button
+                          onClick={() => annullaRigaModal(r.id)}
+                          disabled={deleting === r.id}
+                          className="shrink-0 p-2 border border-red-500/40 text-red-400 hover:bg-red-500/10 rounded-sm transition-all"
+                        >
+                          {deleting === r.id ? <div className="w-4 h-4 border border-red-400/50 border-t-red-400 rounded-full animate-spin" /> : <X size={14} />}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {righeModal.length > 0 && (
+                <div className="p-4 border-t border-[#E5E5E5]/10">
+                  <button
+                    onClick={() => { if (window.confirm('Annullare TUTTA la comanda?')) annullaTuttoModal(); }}
+                    disabled={deleting === 'all'}
+                    className="w-full py-3 border border-red-500/50 text-red-400 hover:bg-red-500/10 font-body text-sm tracking-widest uppercase rounded-sm transition-all flex items-center justify-center gap-2"
+                  >
+                    {deleting === 'all' ? <div className="w-4 h-4 border border-red-400/50 border-t-red-400 rounded-full animate-spin" /> : <><Trash2 size={14} /> Annulla tutto</>}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

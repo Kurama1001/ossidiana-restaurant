@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { RefreshCw, Clock, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { RefreshCw, Clock, AlertCircle, CheckCircle2, Loader2, Trash2, X } from 'lucide-react';
 
 function minutiDa(ts) {
   if (!ts) return null;
@@ -117,6 +117,34 @@ export default function Cucina() {
     setUpdating(null);
   };
 
+  // Annulla singola riga
+  const annullaRiga = async (ordineId, rigaId) => {
+    setUpdating(rigaId);
+    await base44.entities.RigaOrdine.update(rigaId, { stato: 'annullato' });
+    setOrdini(prev => {
+      const ord = { ...prev[ordineId] };
+      ord.righe = ord.righe.filter(r => r.id !== rigaId);
+      if (ord.righe.length === 0) {
+        base44.entities.Ordine.update(ordineId, { stato: 'annullato' }).catch(() => {});
+        const { [ordineId]: _, ...rest } = prev;
+        return rest;
+      }
+      ord.stato_calc = statoOrdine(ord.righe);
+      return { ...prev, [ordineId]: ord };
+    });
+    setUpdating(null);
+  };
+
+  // Annulla tutto l'ordine
+  const annullaTutto = async (ordineId) => {
+    setUpdating(ordineId + '_all');
+    const ord = ordini[ordineId];
+    await Promise.all(ord.righe.map(r => base44.entities.RigaOrdine.update(r.id, { stato: 'annullato' })));
+    await base44.entities.Ordine.update(ordineId, { stato: 'annullato' }).catch(() => {});
+    setOrdini(prev => { const { [ordineId]: _, ...rest } = prev; return rest; });
+    setUpdating(null);
+  };
+
   const nuoviCount = Object.values(ordini).filter(o => o.stato_calc === 'nuovo').length;
 
   return (
@@ -159,22 +187,32 @@ export default function Cucina() {
                   className={`border rounded-sm overflow-hidden ${isNuovo ? 'border-red-500/60 bg-[#1a0a0a]' : 'border-yellow-500/30 bg-[#111108]'}`}>
 
                   {/* Header ordine */}
-                  <div className={`px-4 py-3 flex items-center justify-between border-b ${isNuovo ? 'border-red-500/20 bg-red-900/10' : 'border-yellow-500/10 bg-yellow-900/5'}`}>
+                  <div className={`px-4 py-3 flex items-center justify-between gap-2 border-b ${isNuovo ? 'border-red-500/20 bg-red-900/10' : 'border-yellow-500/10 bg-yellow-900/5'}`}>
                     <div className="flex items-center gap-3">
                       <span className="font-display text-2xl text-white">Tavolo {ord.numero}</span>
                       {isNuovo && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full font-body font-bold animate-pulse">NUOVO</span>}
                       {isInLav && <span className="text-xs bg-yellow-600/80 text-white px-2 py-0.5 rounded-full font-body">IN LAVORAZIONE</span>}
                     </div>
-                    {/* Pulsante presa in carico per TUTTO l'ordine */}
-                    {isNuovo && (
+                    <div className="flex items-center gap-2">
+                      {/* Annulla tutto */}
                       <button
-                        onClick={() => prendiInCarico(ordineId)}
-                        disabled={updating === ordineId}
-                        className="px-4 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black rounded-sm font-body text-sm font-bold transition-all flex items-center gap-2 min-w-[140px] justify-center"
+                        onClick={() => { if (window.confirm(`Annullare tutta la comanda del Tavolo ${ord.numero}?`)) annullaTutto(ordineId); }}
+                        disabled={updating === ordineId + '_all'}
+                        className="px-3 py-2 border border-red-500/40 text-red-400 hover:bg-red-500/10 rounded-sm font-body text-xs transition-all flex items-center gap-1.5"
                       >
-                        {updating === ordineId ? <Loader2 size={15} className="animate-spin" /> : '🍳 Prendi in carico'}
+                        {updating === ordineId + '_all' ? <Loader2 size={13} className="animate-spin" /> : <><Trash2 size={13} /> Annulla tutto</>}
                       </button>
-                    )}
+                      {/* Presa in carico */}
+                      {isNuovo && (
+                        <button
+                          onClick={() => prendiInCarico(ordineId)}
+                          disabled={updating === ordineId}
+                          className="px-4 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black rounded-sm font-body text-sm font-bold transition-all flex items-center gap-2 min-w-[140px] justify-center"
+                        >
+                          {updating === ordineId ? <Loader2 size={15} className="animate-spin" /> : '🍳 Prendi in carico'}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Righe articoli */}
@@ -200,17 +238,30 @@ export default function Cucina() {
                               </div>
                             )}
                           </div>
-                          {/* Bottone pronto per singolo articolo (solo se in lavorazione) */}
-                          {isInLav && !isPronto && (
-                            <button
-                              onClick={() => segnaArticoloPronto(ordineId, riga.id)}
-                              disabled={updating === riga.id}
-                              className="px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-sm font-body text-sm font-semibold transition-all flex items-center gap-2"
-                            >
-                              {updating === riga.id ? <Loader2 size={14} className="animate-spin" /> : <><CheckCircle2 size={14} /> Pronto</>}
-                            </button>
-                          )}
-                          {isPronto && <span className="text-green-400 font-body text-sm flex items-center gap-1"><CheckCircle2 size={14} /> Pronto</span>}
+                          <div className="flex items-center gap-2">
+                            {/* Bottone pronto per singolo articolo (solo se in lavorazione) */}
+                            {isInLav && !isPronto && (
+                              <button
+                                onClick={() => segnaArticoloPronto(ordineId, riga.id)}
+                                disabled={updating === riga.id}
+                                className="px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-sm font-body text-sm font-semibold transition-all flex items-center gap-2"
+                              >
+                                {updating === riga.id ? <Loader2 size={14} className="animate-spin" /> : <><CheckCircle2 size={14} /> Pronto</>}
+                              </button>
+                            )}
+                            {isPronto && <span className="text-green-400 font-body text-sm flex items-center gap-1"><CheckCircle2 size={14} /> Pronto</span>}
+                            {/* Annulla singola riga */}
+                            {!isPronto && (
+                              <button
+                                onClick={() => { if (window.confirm(`Annullare "${riga.nome_item}"?`)) annullaRiga(ordineId, riga.id); }}
+                                disabled={updating === riga.id}
+                                className="p-2 border border-red-500/30 text-red-400/60 hover:text-red-400 hover:border-red-500/60 hover:bg-red-500/10 rounded-sm transition-all"
+                                title="Annulla articolo"
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
