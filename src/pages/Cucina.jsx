@@ -215,60 +215,77 @@ export default function Cucina() {
                     </div>
                   </div>
 
-                  {/* Righe articoli */}
-                  <div className="divide-y divide-white/5">
-                    {ord.righe.map(riga => {
-                      const min = minutiDa(riga.sent_at || riga.created_date);
-                      const isPronto = riga.stato === 'pronto';
+                  {/* Righe articoli raggruppate per FASE */}
+                  {(() => {
+                    const fasiUsate = [...new Set(ord.righe.map(r => r.fase || 1))].sort((a, b) => a - b);
+                    return fasiUsate.map(f => {
+                      const righeF = ord.righe.filter(r => (r.fase || 1) === f);
+                      const tuttePronte = righeF.every(r => r.stato === 'pronto' || r.stato === 'consegnato');
                       return (
-                        <div key={riga.id} className={`p-4 flex flex-col sm:flex-row sm:items-center gap-3 ${isPronto ? 'opacity-40' : ''}`}>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              {riga.fase && (
-                                <span className="w-5 h-5 rounded-full bg-[#C69C6D] text-[#0A0A0B] text-[10px] font-bold flex items-center justify-center shrink-0">{riga.fase}</span>
-                              )}
-                              <span className={`font-body text-lg font-semibold ${isPronto ? 'line-through text-white/40' : 'text-white'}`}>
-                                {riga.quantita}× {riga.nome_item}
-                              </span>
-                              {riga.priorita === 'urgente' && <AlertCircle size={16} className="text-red-400" />}
+                        <div key={f}>
+                          {/* Header fase */}
+                          <div className={`px-4 py-2 flex items-center gap-2 border-t border-b ${tuttePronte ? 'border-green-500/15 bg-green-900/10' : 'border-white/5 bg-white/[0.02]'}`}>
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 font-body text-xs font-bold ${tuttePronte ? 'bg-green-600 text-white' : 'bg-[#C69C6D] text-[#0A0A0B]'}`}>
+                              {f}
                             </div>
-                            {riga.note && (
-                              <p className="font-body text-yellow-300/80 text-sm italic">📝 {riga.note}</p>
-                            )}
-                            {min !== null && (
-                              <div className="flex items-center gap-1 text-white/30 text-xs font-body mt-1">
-                                <Clock size={11} /> {min} min fa
-                              </div>
-                            )}
+                            <span className={`font-body text-xs uppercase tracking-widest font-semibold ${tuttePronte ? 'text-green-400' : 'text-[#C69C6D]'}`}>
+                              Fase {f}{tuttePronte ? ' · Completata' : ''}
+                            </span>
+                            {tuttePronte && <CheckCircle2 size={12} className="text-green-400" />}
                           </div>
-                          <div className="flex items-center gap-2">
-                            {/* Bottone pronto per singolo articolo (solo se in lavorazione) */}
-                            {isInLav && !isPronto && (
-                              <button
-                                onClick={() => segnaArticoloPronto(ordineId, riga.id)}
-                                disabled={updating === riga.id}
-                                className="px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-sm font-body text-sm font-semibold transition-all flex items-center gap-2"
-                              >
-                                {updating === riga.id ? <Loader2 size={14} className="animate-spin" /> : <><CheckCircle2 size={14} /> Pronto</>}
-                              </button>
-                            )}
-                            {isPronto && <span className="text-green-400 font-body text-sm flex items-center gap-1"><CheckCircle2 size={14} /> Pronto</span>}
-                            {/* Annulla singola riga */}
-                            {!isPronto && (
-                              <button
-                                onClick={() => { if (window.confirm(`Annullare "${riga.nome_item}"?`)) annullaRiga(ordineId, riga.id); }}
-                                disabled={updating === riga.id}
-                                className="p-2 border border-red-500/30 text-red-400/60 hover:text-red-400 hover:border-red-500/60 hover:bg-red-500/10 rounded-sm transition-all"
-                                title="Annulla articolo"
-                              >
-                                <X size={14} />
-                              </button>
-                            )}
+                          {/* Righe della fase */}
+                          <div className="divide-y divide-white/5">
+                            {righeF.map(riga => {
+                              const min = minutiDa(riga.sent_at || riga.created_date);
+                              const isPronto = riga.stato === 'pronto' || riga.stato === 'consegnato';
+                              return (
+                                <div key={riga.id} className={`p-4 flex flex-col sm:flex-row sm:items-center gap-3 pl-8 ${isPronto ? 'opacity-40' : ''}`}>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className={`font-body text-lg font-semibold ${isPronto ? 'line-through text-white/40' : 'text-white'}`}>
+                                        {riga.quantita}× {riga.nome_item}
+                                      </span>
+                                      {riga.priorita === 'urgente' && <AlertCircle size={16} className="text-red-400" />}
+                                    </div>
+                                    {riga.note && (
+                                      <p className="font-body text-yellow-300/80 text-sm italic">📝 {riga.note}</p>
+                                    )}
+                                    {min !== null && (
+                                      <div className="flex items-center gap-1 text-white/30 text-xs font-body mt-1">
+                                        <Clock size={11} /> {min} min fa
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {isInLav && !isPronto && (
+                                      <button
+                                        onClick={() => segnaArticoloPronto(ordineId, riga.id)}
+                                        disabled={updating === riga.id}
+                                        className="px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-sm font-body text-sm font-semibold transition-all flex items-center gap-2"
+                                      >
+                                        {updating === riga.id ? <Loader2 size={14} className="animate-spin" /> : <><CheckCircle2 size={14} /> Pronto</>}
+                                      </button>
+                                    )}
+                                    {isPronto && <span className="text-green-400 font-body text-sm flex items-center gap-1"><CheckCircle2 size={14} /> Pronto</span>}
+                                    {!isPronto && (
+                                      <button
+                                        onClick={() => { if (window.confirm(`Annullare "${riga.nome_item}"?`)) annullaRiga(ordineId, riga.id); }}
+                                        disabled={updating === riga.id}
+                                        className="p-2 border border-red-500/30 text-red-400/60 hover:text-red-400 hover:border-red-500/60 hover:bg-red-500/10 rounded-sm transition-all"
+                                        title="Annulla articolo"
+                                      >
+                                        <X size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       );
-                    })}
-                  </div>
+                    });
+                  })()}
                 </div>
               );
             })}
