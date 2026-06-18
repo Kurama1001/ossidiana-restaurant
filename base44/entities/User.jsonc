@@ -1,17 +1,17 @@
 {
+  "name": "User",
+  "type": "object",
   "properties": {
     "role": {
       "type": "string",
-      "description": "The role of the user in the app",
       "enum": [
         "admin",
-        "user"
-      ]
+        "user",
+        "cucina",
+        "cameriere"
+      ],
+      "default": "user",
+      "description": "Ruolo utente: admin, user (cliente), cucina, cameriere"
     }
-  },
-  "required": [
-    "role"
-  ],
-  "name": "User",
-  "type": "object"
+  }
 }

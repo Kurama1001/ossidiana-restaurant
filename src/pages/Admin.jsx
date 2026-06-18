@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import AdminReservations from '@/components/admin/AdminReservations';
@@ -9,35 +9,66 @@ import AdminGallery from '@/components/admin/AdminGallery';
 import AdminChiSiamo from '@/components/admin/AdminChiSiamo';
 import AdminTavoli from '@/components/admin/AdminTavoli';
 import AdminReport from '@/components/admin/AdminReport';
-import { LayoutDashboard, CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info, TableProperties, BarChart2 } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { LayoutDashboard, CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info, TableProperties, BarChart2, GripVertical } from 'lucide-react';
 
-const TABS = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'tavoli', label: 'Tavoli', icon: TableProperties },
-  { id: 'reservations', label: 'Prenotazioni', icon: CalendarDays },
-  { id: 'orders', label: 'Asporto', icon: ShoppingBag },
-  { id: 'menu', label: 'Menu', icon: UtensilsCrossed },
-  { id: 'report', label: 'Report', icon: BarChart2 },
-  { id: 'gallery', label: 'Galleria', icon: Images },
-  { id: 'chi_siamo', label: 'Chi Siamo', icon: Info },
-  { id: 'users', label: 'Utenti', icon: Users },
+const DEFAULT_TABS = [
+  { id: 'dashboard',    label: 'Dashboard',    icon: 'LayoutDashboard' },
+  { id: 'tavoli',       label: 'Tavoli',        icon: 'TableProperties' },
+  { id: 'reservations', label: 'Prenotazioni',  icon: 'CalendarDays' },
+  { id: 'orders',       label: 'Asporto',       icon: 'ShoppingBag' },
+  { id: 'menu',         label: 'Menu',          icon: 'UtensilsCrossed' },
+  { id: 'report',       label: 'Report',        icon: 'BarChart2' },
+  { id: 'gallery',      label: 'Galleria',      icon: 'Images' },
+  { id: 'chi_siamo',    label: 'Chi Siamo',     icon: 'Info' },
+  { id: 'users',        label: 'Utenti',        icon: 'Users' },
 ];
 
+const ICONS = { LayoutDashboard, CalendarDays, ShoppingBag, UtensilsCrossed, Users, Images, Info, TableProperties, BarChart2 };
+
+const TAB_COMPONENTS = {
+  dashboard:    AdminDashboard,
+  tavoli:       AdminTavoli,
+  reservations: AdminReservations,
+  orders:       AdminOrders,
+  menu:         AdminMenu,
+  report:       AdminReport,
+  gallery:      AdminGallery,
+  chi_siamo:    AdminChiSiamo,
+  users:        AdminUsers,
+};
+
+const STORAGE_KEY = 'ossidiana_admin_tab_order';
+
+function loadTabOrder() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const ids = JSON.parse(saved);
+      const ordered = ids.map(id => DEFAULT_TABS.find(t => t.id === id)).filter(Boolean);
+      const missing = DEFAULT_TABS.filter(t => !ids.includes(t.id));
+      return [...ordered, ...missing];
+    }
+  } catch {}
+  return DEFAULT_TABS;
+}
+
 export default function Admin() {
+  const [tabs, setTabs] = useState(loadTabOrder);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [reordering, setReordering] = useState(false);
   const { logout } = useAuth();
 
-  const TabContent = {
-    dashboard: AdminDashboard,
-    tavoli: AdminTavoli,
-    reservations: AdminReservations,
-    orders: AdminOrders,
-    menu: AdminMenu,
-    report: AdminReport,
-    gallery: AdminGallery,
-    chi_siamo: AdminChiSiamo,
-    users: AdminUsers,
-  }[activeTab];
+  const TabContent = TAB_COMPONENTS[activeTab];
+
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+    const reordered = Array.from(tabs);
+    const [removed] = reordered.splice(result.source.index, 1);
+    reordered.splice(result.destination.index, 0, removed);
+    setTabs(reordered);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(reordered.map(t => t.id)));
+  };
 
   return (
     <div className="bg-[#0A0A0B] min-h-screen pt-20">
@@ -47,35 +78,71 @@ export default function Admin() {
             <p className="font-body text-[#C69C6D] tracking-[0.4em] uppercase text-xs mb-1">Gestione</p>
             <h1 className="font-display text-4xl text-white tracking-widest">Area Admin</h1>
           </div>
-          <button
-            onClick={() => logout()}
-            className="flex items-center gap-2 text-sm font-body text-[#E5E5E5]/40 hover:text-red-400 transition-colors"
-          >
-            <LogOut size={14} /> Esci
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setReordering(r => !r)}
+              className={`flex items-center gap-2 text-sm font-body px-3 py-2 border rounded-sm transition-colors ${reordering ? 'border-[#C69C6D] text-[#C69C6D] bg-[#C69C6D]/10' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/40 hover:border-[#C69C6D]/40'}`}
+            >
+              <GripVertical size={14} /> {reordering ? 'Fine' : 'Ordina'}
+            </button>
+            <button
+              onClick={() => logout()}
+              className="flex items-center gap-2 text-sm font-body text-[#E5E5E5]/40 hover:text-red-400 transition-colors"
+            >
+              <LogOut size={14} /> Esci
+            </button>
+          </div>
         </div>
 
-        {/* Tab nav */}
-        <div className="flex flex-wrap gap-2 mb-8 border-b border-[#C69C6D]/10 pb-4">
-          {TABS.map(tab => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 text-sm font-body tracking-wide rounded-sm border transition-all min-h-[44px] ${
-                  activeTab === tab.id
-                    ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-semibold'
-                    : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'
-                }`}
+        {/* Tab nav con drag & drop */}
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable droppableId="admin-tabs" direction="horizontal">
+            {(provided) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="flex flex-wrap gap-2 mb-8 border-b border-[#C69C6D]/10 pb-4"
               >
-                <Icon size={14} /> {tab.label}
-              </button>
-            );
-          })}
-        </div>
+                {tabs.map((tab, index) => {
+                  const Icon = ICONS[tab.icon];
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <Draggable key={tab.id} draggableId={tab.id} index={index} isDragDisabled={!reordering}>
+                      {(prov, snapshot) => (
+                        <div
+                          ref={prov.innerRef}
+                          {...prov.draggableProps}
+                          {...(reordering ? prov.dragHandleProps : {})}
+                          style={prov.draggableProps.style}
+                        >
+                          <button
+                            onClick={() => !reordering && setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-body tracking-wide rounded-sm border transition-all min-h-[44px] ${
+                              snapshot.isDragging
+                                ? 'border-[#C69C6D] bg-[#C69C6D]/20 text-[#C69C6D] shadow-lg'
+                                : isActive && !reordering
+                                  ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-semibold'
+                                  : reordering
+                                    ? 'border-[#C69C6D]/30 text-[#E5E5E5]/60 cursor-grab active:cursor-grabbing'
+                                    : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'
+                            }`}
+                          >
+                            {reordering && <GripVertical size={12} className="text-[#C69C6D]/50" />}
+                            {Icon && <Icon size={14} />}
+                            {tab.label}
+                          </button>
+                        </div>
+                      )}
+                    </Draggable>
+                  );
+                })}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
 
-        <TabContent />
+        {TabContent && <TabContent />}
       </div>
     </div>
   );

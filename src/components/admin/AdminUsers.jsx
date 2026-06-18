@@ -71,7 +71,9 @@ export default function AdminUsers() {
           </div>
           <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}
             className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none transition font-body text-sm">
-            <option value="user">Utente</option>
+            <option value="user">Cliente</option>
+            <option value="cameriere">Cameriere</option>
+            <option value="cucina">Cucina</option>
             <option value="admin">Admin</option>
           </select>
           <button type="submit" disabled={inviting}
@@ -116,7 +118,9 @@ export default function AdminUsers() {
                       onChange={e => setEditing(prev => ({ ...prev, role: e.target.value }))}
                       className="bg-[#0A0A0B] border border-[#C69C6D]/40 text-[#E5E5E5] px-3 py-1.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm"
                     >
-                      <option value="user">Utente</option>
+                      <option value="user">Cliente</option>
+                      <option value="cameriere">Cameriere</option>
+                      <option value="cucina">Cucina</option>
                       <option value="admin">Admin</option>
                     </select>
                     <div className="flex gap-1.5">
@@ -139,11 +143,12 @@ export default function AdminUsers() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={`text-xs px-3 py-1 rounded-full border font-body ${
-                        u.role === 'admin'
-                          ? 'border-[#C69C6D]/50 text-[#C69C6D]'
-                          : 'border-[#E5E5E5]/15 text-[#E5E5E5]/40'
+                        u.role === 'admin'      ? 'border-[#C69C6D]/50 text-[#C69C6D]' :
+                        u.role === 'cameriere'  ? 'border-blue-400/40 text-blue-400' :
+                        u.role === 'cucina'     ? 'border-orange-400/40 text-orange-400' :
+                                                  'border-[#E5E5E5]/15 text-[#E5E5E5]/40'
                       }`}>
-                        {u.role === 'admin' ? 'Admin' : 'Utente'}
+                        {{ admin: 'Admin', cameriere: 'Cameriere', cucina: 'Cucina', user: 'Cliente' }[u.role] || u.role}
                       </span>
                       <button onClick={() => startEdit(u)} title="Modifica"
                         className="p-2 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all min-w-[36px] min-h-[36px] flex items-center justify-center">

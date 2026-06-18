@@ -1,18 +1,28 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User } from 'lucide-react';
+import { Menu, X, User, ChefHat, UtensilsCrossed } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
-const navLinks = [
+const PUBLIC_LINKS = [
   { href: '/', label: 'Home' },
   { href: '/menu', label: 'Menu' },
   { href: '/ordini', label: 'Asporto' },
 ];
 
+const STAFF_LINKS = {
+  cameriere: [
+    { href: '/sala', label: 'Sala', icon: UtensilsCrossed },
+  ],
+  cucina: [
+    { href: '/cucina', label: 'Cucina', icon: ChefHat },
+  ],
+};
+
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [authed, setAuthed] = useState(false);
+  const [userRole, setUserRole] = useState(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -22,10 +32,18 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    base44.auth.isAuthenticated().then(setAuthed);
+    base44.auth.isAuthenticated().then(ok => {
+      setAuthed(ok);
+      if (ok) base44.auth.me().then(u => setUserRole(u?.role)).catch(() => {});
+      else setUserRole(null);
+    });
   }, [location]);
 
   useEffect(() => setOpen(false), [location]);
+
+  // Staff roles: mostra solo i link specifici, non il menu pubblico
+  const isStaff = ['cucina', 'cameriere'].includes(userRole);
+  const navLinks = isStaff ? (STAFF_LINKS[userRole] || []) : PUBLIC_LINKS;
 
   return (
     <nav
@@ -40,30 +58,41 @@ export default function Navbar() {
 
         {/* Desktop */}
         <div className="hidden md:flex items-center gap-8">
-          {navLinks.map(l => (
+          {navLinks.map(l => {
+            const Icon = l.icon;
+            return (
+              <Link
+                key={l.href}
+                to={l.href}
+                className={`font-body text-sm tracking-widest uppercase transition-colors hover:text-[#C69C6D] flex items-center gap-1.5 ${
+                  location.pathname.startsWith(l.href) && l.href !== '/' ? 'text-[#C69C6D]' : location.pathname === l.href ? 'text-[#C69C6D]' : 'text-[#E5E5E5]'
+                }`}
+              >
+                {Icon && <Icon size={15} />}{l.label}
+              </Link>
+            );
+          })}
+          {!isStaff && (
             <Link
-              key={l.href}
-              to={l.href}
-              className={`font-body text-sm tracking-widest uppercase transition-colors hover:text-[#C69C6D] ${
-                location.pathname === l.href ? 'text-[#C69C6D]' : 'text-[#E5E5E5]'
-              }`}
+              to="/prenotazioni"
+              className="ml-4 px-5 py-2 border border-[#C69C6D] text-[#C69C6D] text-sm tracking-widest uppercase font-body hover:bg-[#C69C6D] hover:text-[#0A0A0B] transition-all duration-300 rounded-sm"
             >
-              {l.label}
+              Prenota
             </Link>
-          ))}
-          <Link
-            to="/prenotazioni"
-            className="ml-4 px-5 py-2 border border-[#C69C6D] text-[#C69C6D] text-sm tracking-widest uppercase font-body hover:bg-[#C69C6D] hover:text-[#0A0A0B] transition-all duration-300 rounded-sm"
-          >
-            Prenota
-          </Link>
+          )}
           {authed ? (
-            <Link
-              to="/profilo"
-              className={`transition-colors hover:text-[#C69C6D] ${location.pathname === '/profilo' ? 'text-[#C69C6D]' : 'text-[#E5E5E5]'}`}
-            >
-              <User size={20} />
-            </Link>
+            isStaff ? (
+              <button onClick={() => base44.auth.logout('/')} className="font-body text-sm tracking-widest uppercase text-[#E5E5E5]/40 hover:text-red-400 transition-colors">
+                Esci
+              </button>
+            ) : (
+              <Link
+                to="/profilo"
+                className={`transition-colors hover:text-[#C69C6D] ${location.pathname === '/profilo' ? 'text-[#C69C6D]' : 'text-[#E5E5E5]'}`}
+              >
+                <User size={20} />
+              </Link>
+            )
           ) : (
             <Link
               to="/login"
@@ -87,30 +116,41 @@ export default function Navbar() {
       {/* Mobile menu */}
       {open && (
         <div className="md:hidden bg-[#0A0A0B]/98 backdrop-blur-md border-t border-[#C69C6D]/20 px-5 py-6 flex flex-col gap-5">
-          {navLinks.map(l => (
+          {navLinks.map(l => {
+            const Icon = l.icon;
+            return (
+              <Link
+                key={l.href}
+                to={l.href}
+                className={`font-body text-base tracking-widest uppercase transition-colors flex items-center gap-2 ${
+                  location.pathname === l.href ? 'text-[#C69C6D]' : 'text-[#E5E5E5]'
+                }`}
+              >
+                {Icon && <Icon size={16} />}{l.label}
+              </Link>
+            );
+          })}
+          {!isStaff && (
             <Link
-              key={l.href}
-              to={l.href}
-              className={`font-body text-base tracking-widest uppercase transition-colors ${
-                location.pathname === l.href ? 'text-[#C69C6D]' : 'text-[#E5E5E5]'
-              }`}
+              to="/prenotazioni"
+              className="mt-2 px-5 py-3 border border-[#C69C6D] text-[#C69C6D] text-sm tracking-widest uppercase font-body text-center hover:bg-[#C69C6D] hover:text-[#0A0A0B] transition-all duration-300 rounded-sm"
             >
-              {l.label}
+              Prenota un Tavolo
             </Link>
-          ))}
-          <Link
-            to="/prenotazioni"
-            className="mt-2 px-5 py-3 border border-[#C69C6D] text-[#C69C6D] text-sm tracking-widest uppercase font-body text-center hover:bg-[#C69C6D] hover:text-[#0A0A0B] transition-all duration-300 rounded-sm"
-          >
-            Prenota un Tavolo
-          </Link>
+          )}
           {authed ? (
-            <Link
-              to="/profilo"
-              className={`font-body text-base tracking-widest uppercase transition-colors flex items-center gap-2 ${location.pathname === '/profilo' ? 'text-[#C69C6D]' : 'text-[#E5E5E5]'}`}
-            >
-              <User size={16} /> Profilo
-            </Link>
+            isStaff ? (
+              <button onClick={() => base44.auth.logout('/')} className="font-body text-base tracking-widest uppercase text-red-400/70 transition-colors text-left">
+                Esci
+              </button>
+            ) : (
+              <Link
+                to="/profilo"
+                className={`font-body text-base tracking-widest uppercase transition-colors flex items-center gap-2 ${location.pathname === '/profilo' ? 'text-[#C69C6D]' : 'text-[#E5E5E5]'}`}
+              >
+                <User size={16} /> Profilo
+              </Link>
+            )
           ) : (
             <Link
               to="/login"
