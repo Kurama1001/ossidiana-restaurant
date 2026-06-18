@@ -224,6 +224,9 @@ export default function Cucina() {
                         <div key={riga.id} className={`p-4 flex flex-col sm:flex-row sm:items-center gap-3 ${isPronto ? 'opacity-40' : ''}`}>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
+                              {riga.fase && (
+                                <span className="w-5 h-5 rounded-full bg-[#C69C6D] text-[#0A0A0B] text-[10px] font-bold flex items-center justify-center shrink-0">{riga.fase}</span>
+                              )}
                               <span className={`font-body text-lg font-semibold ${isPronto ? 'line-through text-white/40' : 'text-white'}`}>
                                 {riga.quantita}× {riga.nome_item}
                               </span>

@@ -34,6 +34,11 @@
       ],
       "description": "Reparto di destinazione"
     },
+    "fase": {
+      "type": "number",
+      "default": 1,
+      "description": "Fase di uscita (1 = prima, 2 = seconda, ecc.)"
+    },
     "quantita": {
       "type": "number",
       "default": 1,

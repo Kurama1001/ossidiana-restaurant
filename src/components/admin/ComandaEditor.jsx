@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Minus, Trash2, Send, Search, AlertCircle, Users, Receipt, StickyNote, CheckCircle2 } from 'lucide-react';
+import { Plus, Minus, Trash2, Send, Search, AlertCircle, Users, Receipt, StickyNote, CheckCircle2, Layers } from 'lucide-react';
 
 const CAT_LABELS = {
   antipasti:'Antipasti', primi:'Primi', romanissimi:'Romanissimi', secondi:'Secondi',
@@ -8,12 +8,13 @@ const CAT_LABELS = {
   birra:'Birra', cocktail:'Cocktail', caffe_amari:'Caffè & Amari', bevande:'Bevande',
 };
 const CAT_CUCINA = ['antipasti','primi','romanissimi','secondi','contorni','dolci'];
+const MAX_FASI = 5;
 
 /**
  * ComandaEditor
  * Props:
- *   onSuccess: () => void  — chiamato dopo invio riuscito
- *   ordineEsistente: Ordine | null  — se presente, aggiunge righe a quell'ordine
+ *   onSuccess: () => void
+ *   ordineEsistente: Ordine | null
  */
 export default function ComandaEditor({ onSuccess, ordineEsistente }) {
   const [numeroTavoloInput, setNumeroTavoloInput] = useState('');
@@ -21,11 +22,13 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
   const [menuItems, setMenuItems] = useState([]);
   const [righe, setRighe] = useState([]);
   const [noteRiga, setNoteRiga] = useState({});
+  const [faseRiga, setFaseRiga] = useState({});      // key -> numero fase
   const [noteGenerali, setNoteGenerali] = useState(ordineEsistente?.note_generali || '');
   const [coperti, setCoperti] = useState(ordineEsistente?.coperti || 2);
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('tutti');
   const [tab, setTab] = useState('menu');
+  const [faseAttiva, setFaseAttiva] = useState(1);   // fase corrente selezionata per nuovi articoli
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
@@ -49,15 +52,19 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
   }, []);
 
   const aggiungiItem = (item) => {
+    const fase = faseAttiva;
     setRighe(prev => {
-      const existing = prev.find(r => r.menu_item_id === item.id && !noteRiga[r._tmp]);
+      // Raggruppa per item + fase (senza nota extra)
+      const existing = prev.find(r => r.menu_item_id === item.id && r.fase === fase && !noteRiga[r._tmp]);
       if (existing) return prev.map(r =>
-        r.menu_item_id === item.id && !noteRiga[r._tmp]
+        r._tmp === existing._tmp
           ? { ...r, quantita: r.quantita + 1, prezzo_totale: (r.quantita + 1) * r.prezzo_unitario }
           : r
       );
+      const key = Date.now() + Math.random();
+      setFaseRiga(prev2 => ({ ...prev2, [key]: fase }));
       return [...prev, {
-        _tmp: Date.now() + Math.random(),
+        _tmp: key,
         menu_item_id: item.id,
         nome_item: item.name,
         categoria: item.category,
@@ -66,6 +73,7 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
         prezzo_unitario: item.price,
         prezzo_totale: item.price,
         priorita: 'normale',
+        fase,
       }];
     });
   };
@@ -82,7 +90,15 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
     : r
   ));
 
+  const cambiaFaseRiga = (key, fase) => {
+    setFaseRiga(prev => ({ ...prev, [key]: fase }));
+    setRighe(prev => prev.map(r => r._tmp === key ? { ...r, fase } : r));
+  };
+
   const totale = righe.reduce((s, r) => s + r.prezzo_totale, 0);
+
+  // Fasi usate
+  const fasiUsate = [...new Set(righe.map(r => r.fase || 1))].sort((a,b) => a-b);
 
   const inviaComanda = async () => {
     if (righe.length === 0 || !tavoloSelezionato) return;
@@ -96,7 +112,6 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
       tavoloId = ordineEsistente.tavolo_id;
       numeroTavolo = ordineEsistente.numero_tavolo;
     } else {
-      // Crea nuovo ordine
       const nuovoOrdine = await base44.entities.Ordine.create({
         tavolo_id: tavoloSelezionato.id,
         numero_tavolo: tavoloSelezionato.numero,
@@ -112,7 +127,6 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
       numeroTavolo = tavoloSelezionato.numero;
     }
 
-    // Crea le righe
     await Promise.all(righe.map(r => base44.entities.RigaOrdine.create({
       ordine_id: ordineId,
       tavolo_id: tavoloId,
@@ -121,6 +135,7 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
       nome_item: r.nome_item,
       categoria: r.categoria,
       reparto: r.reparto,
+      fase: r.fase || 1,
       quantita: r.quantita,
       prezzo_unitario: r.prezzo_unitario,
       prezzo_totale: r.prezzo_totale,
@@ -131,7 +146,6 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
     })));
 
     if (ordineEsistente) {
-      // Aggiorna totale ordine
       const prevTotale = ordineEsistente.totale || 0;
       await base44.entities.Ordine.update(ordineId, {
         stato: 'inviato',
@@ -168,17 +182,21 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
     </div>
   );
 
+  // Righe raggruppate per fase (per la visualizzazione nella colonna comanda)
+  const righePerFase = fasiUsate.reduce((acc, f) => {
+    acc[f] = righe.filter(r => (r.fase || 1) === f);
+    return acc;
+  }, {});
+
   return (
     <div className="flex flex-col h-full">
-      {/* Inserimento tavolo manuale (solo nuova comanda) */}
+      {/* Intestazione tavolo + coperti */}
       {!ordineEsistente && (
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <div>
             <p className="font-body text-xs text-[#E5E5E5]/40 uppercase tracking-widest mb-2">N° Tavolo</p>
             <input
-              type="number"
-              min="1"
-              value={numeroTavoloInput}
+              type="number" min="1" value={numeroTavoloInput}
               onChange={e => {
                 setNumeroTavoloInput(e.target.value);
                 const n = parseInt(e.target.value);
@@ -199,6 +217,29 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
           </div>
         </div>
       )}
+
+      {/* Selettore fase attiva (per i nuovi articoli) */}
+      <div className="mb-3 flex items-center gap-3">
+        <div className="flex items-center gap-1.5 text-[#E5E5E5]/40">
+          <Layers size={13} />
+          <span className="font-body text-xs uppercase tracking-widest">Fase</span>
+        </div>
+        <div className="flex gap-1.5 flex-wrap">
+          {Array.from({ length: MAX_FASI }, (_, i) => i + 1).map(f => (
+            <button key={f} onClick={() => setFaseAttiva(f)}
+              className={`w-8 h-8 rounded-sm border font-body text-sm font-bold transition-all ${
+                faseAttiva === f
+                  ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B]'
+                  : fasiUsate.includes(f)
+                    ? 'border-[#C69C6D]/40 text-[#C69C6D]/70 hover:border-[#C69C6D]'
+                    : 'border-[#E5E5E5]/15 text-[#E5E5E5]/30 hover:border-[#E5E5E5]/40'
+              }`}>
+              {f}
+            </button>
+          ))}
+        </div>
+        <span className="font-body text-xs text-[#E5E5E5]/30 italic">Gli articoli selezionati andranno in Fase {faseAttiva}</span>
+      </div>
 
       {/* Tab mobile */}
       <div className="flex border-b border-[#C69C6D]/10 lg:hidden mb-3">
@@ -242,7 +283,7 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
                 <span className="w-1.5 h-1.5 bg-orange-400 rounded-full" /> Cucina
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-                {cucinaItems.map(item => <MenuCard key={item.id} item={item} color="orange" onAdd={aggiungiItem} righe={righe} />)}
+                {cucinaItems.map(item => <MenuCard key={item.id} item={item} color="orange" onAdd={aggiungiItem} righe={righe} faseAttiva={faseAttiva} />)}
               </div>
             </div>
           )}
@@ -252,13 +293,13 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
                 <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" /> Bar
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-                {barItems.map(item => <MenuCard key={item.id} item={item} color="blue" onAdd={aggiungiItem} righe={righe} />)}
+                {barItems.map(item => <MenuCard key={item.id} item={item} color="blue" onAdd={aggiungiItem} righe={righe} faseAttiva={faseAttiva} />)}
               </div>
             </div>
           )}
         </div>
 
-        {/* Pannello comanda */}
+        {/* Pannello comanda raggruppato per fasi */}
         <div className={`lg:w-80 bg-[#0d0d0f] border border-[#C69C6D]/15 rounded-sm flex flex-col ${tab === 'menu' ? 'hidden lg:flex' : 'flex w-full'}`}>
           <div className="p-3 border-b border-[#C69C6D]/10">
             <div className="flex items-center justify-between">
@@ -267,40 +308,68 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div className="flex-1 overflow-y-auto p-3 space-y-4">
             {righe.length === 0 ? (
               <div className="text-center py-10">
                 <Receipt size={28} className="mx-auto mb-3 text-[#E5E5E5]/10" />
                 <p className="text-[#E5E5E5]/25 font-body text-sm">Seleziona articoli dal menu</p>
               </div>
-            ) : righe.map(r => (
-              <div key={r._tmp} className={`border rounded-sm p-3 ${r.reparto === 'bar' ? 'border-blue-900/50 bg-[#0e0e1a]' : 'border-[#C69C6D]/20 bg-[#161618]'}`}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <span className="font-body text-white text-sm font-medium leading-snug">{r.nome_item}</span>
-                  <button onClick={() => rimuoviRiga(r._tmp)} className="text-red-400/40 hover:text-red-400 shrink-0"><Trash2 size={14} /></button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <button onClick={() => cambiaQty(r._tmp, -1)} className="w-7 h-7 border border-[#E5E5E5]/20 text-white flex items-center justify-center rounded-sm hover:border-[#C69C6D]"><Minus size={11} /></button>
-                    <span className="text-white font-body w-6 text-center text-sm">{r.quantita}</span>
-                    <button onClick={() => cambiaQty(r._tmp, 1)} className="w-7 h-7 border border-[#E5E5E5]/20 text-white flex items-center justify-center rounded-sm hover:border-[#C69C6D]"><Plus size={11} /></button>
+            ) : (
+              fasiUsate.map(f => (
+                <div key={f}>
+                  {/* Header fase */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-full bg-[#C69C6D] flex items-center justify-center shrink-0">
+                      <span className="font-body text-xs font-bold text-[#0A0A0B]">{f}</span>
+                    </div>
+                    <span className="font-body text-xs text-[#C69C6D] uppercase tracking-widest">Fase {f}</span>
+                    <div className="flex-1 h-px bg-[#C69C6D]/15" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => togglePriorita(r._tmp)}
-                      className={`p-1.5 rounded-sm border transition-all ${r.priorita === 'urgente' ? 'border-red-400 text-red-400 bg-red-400/10' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/20 hover:border-red-400/40'}`}>
-                      <AlertCircle size={12} />
-                    </button>
-                    <span className={`font-body font-semibold text-sm ${r.reparto === 'bar' ? 'text-blue-400' : 'text-[#C69C6D]'}`}>€{r.prezzo_totale.toFixed(2)}</span>
+
+                  {/* Righe di questa fase */}
+                  <div className="space-y-2 pl-2">
+                    {righePerFase[f].map(r => (
+                      <div key={r._tmp} className={`border rounded-sm p-3 ${r.reparto === 'bar' ? 'border-blue-900/50 bg-[#0e0e1a]' : 'border-[#C69C6D]/20 bg-[#161618]'}`}>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <span className="font-body text-white text-sm font-medium leading-snug">{r.nome_item}</span>
+                          <button onClick={() => rimuoviRiga(r._tmp)} className="text-red-400/40 hover:text-red-400 shrink-0"><Trash2 size={14} /></button>
+                        </div>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => cambiaQty(r._tmp, -1)} className="w-7 h-7 border border-[#E5E5E5]/20 text-white flex items-center justify-center rounded-sm hover:border-[#C69C6D]"><Minus size={11} /></button>
+                            <span className="text-white font-body w-6 text-center text-sm">{r.quantita}</span>
+                            <button onClick={() => cambiaQty(r._tmp, 1)} className="w-7 h-7 border border-[#E5E5E5]/20 text-white flex items-center justify-center rounded-sm hover:border-[#C69C6D]"><Plus size={11} /></button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => togglePriorita(r._tmp)}
+                              className={`p-1.5 rounded-sm border transition-all ${r.priorita === 'urgente' ? 'border-red-400 text-red-400 bg-red-400/10' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/20 hover:border-red-400/40'}`}>
+                              <AlertCircle size={12} />
+                            </button>
+                            <span className={`font-body font-semibold text-sm ${r.reparto === 'bar' ? 'text-blue-400' : 'text-[#C69C6D]'}`}>€{r.prezzo_totale.toFixed(2)}</span>
+                          </div>
+                        </div>
+                        {/* Cambio fase per riga */}
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <span className="font-body text-xs text-[#E5E5E5]/30">Fase:</span>
+                          {Array.from({ length: MAX_FASI }, (_, i) => i + 1).map(fi => (
+                            <button key={fi} onClick={() => cambiaFaseRiga(r._tmp, fi)}
+                              className={`w-5 h-5 rounded-full text-[10px] font-bold transition-all ${(r.fase || 1) === fi ? 'bg-[#C69C6D] text-[#0A0A0B]' : 'border border-[#E5E5E5]/20 text-[#E5E5E5]/30 hover:border-[#C69C6D]/50'}`}>
+                              {fi}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          value={noteRiga[r._tmp] || ''}
+                          onChange={e => setNoteRiga(prev => ({ ...prev, [r._tmp]: e.target.value }))}
+                          placeholder="Nota cucina/bar..."
+                          className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/10 text-[#E5E5E5]/80 px-3 py-1.5 rounded-sm font-body text-xs outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <input
-                  value={noteRiga[r._tmp] || ''}
-                  onChange={e => setNoteRiga(prev => ({ ...prev, [r._tmp]: e.target.value }))}
-                  placeholder="Nota cucina/bar..."
-                  className="w-full mt-2 bg-[#0A0A0B] border border-[#E5E5E5]/10 text-[#E5E5E5]/80 px-3 py-1.5 rounded-sm font-body text-xs outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20"
-                />
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           <div className="px-3 pb-2">
@@ -333,8 +402,10 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
   );
 }
 
-function MenuCard({ item, color, onAdd, righe }) {
-  const qty = righe.filter(r => r.menu_item_id === item.id).reduce((s, r) => s + r.quantita, 0);
+function MenuCard({ item, color, onAdd, righe, faseAttiva }) {
+  // Mostra totale qty in tutta la comanda, e badge separato per la fase attiva
+  const qtyTot = righe.filter(r => r.menu_item_id === item.id).reduce((s, r) => s + r.quantita, 0);
+  const qtyFase = righe.filter(r => r.menu_item_id === item.id && (r.fase || 1) === faseAttiva).reduce((s, r) => s + r.quantita, 0);
   const borderClass = color === 'blue'
     ? 'border-blue-900/30 hover:border-blue-400/50 bg-[#0e0e1a]'
     : 'border-[#E5E5E5]/10 hover:border-[#C69C6D]/50 bg-[#161618]';
@@ -342,8 +413,11 @@ function MenuCard({ item, color, onAdd, righe }) {
   return (
     <button onClick={() => onAdd(item)}
       className={`relative border ${borderClass} rounded-sm p-3 text-left transition-all active:scale-95 w-full`}>
-      {qty > 0 && (
-        <span className={`absolute top-2 right-2 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center ${color === 'blue' ? 'bg-blue-500 text-white' : 'bg-[#C69C6D] text-[#0A0A0B]'}`}>{qty}</span>
+      {qtyTot > 0 && (
+        <span className={`absolute top-2 right-2 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center ${color === 'blue' ? 'bg-blue-500 text-white' : 'bg-[#C69C6D] text-[#0A0A0B]'}`}>{qtyTot}</span>
+      )}
+      {qtyFase > 0 && qtyFase !== qtyTot && (
+        <span className="absolute top-2 right-8 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center bg-white/20 text-white">{qtyFase}</span>
       )}
       <p className="font-body text-white text-sm font-medium pr-6 leading-snug">{item.name}</p>
       {item.description && <p className="font-body text-[#E5E5E5]/35 text-xs mt-0.5 line-clamp-1">{item.description}</p>}

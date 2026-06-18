@@ -147,7 +147,9 @@ export default function Sala() {
                 const cfg = STATO_CONFIG[ordine.stato] || STATO_CONFIG.aperto;
                 const min = minutiDa(ordine.created_date);
                 return (
-                  <div key={ordine.id} className={`${cfg.bg} border ${cfg.border} rounded-sm p-4`}>
+                  <div key={ordine.id}
+                    className={`${cfg.bg} border ${cfg.border} rounded-sm p-4 cursor-pointer hover:brightness-110 transition-all`}
+                    onClick={() => { setOrdineSelezionato(ordine); setView('modifica'); }}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <span className="font-display text-4xl text-white shrink-0">{ordine.numero_tavolo}</span>
@@ -171,16 +173,10 @@ export default function Sala() {
                         {!['chiuso', 'annullato'].includes(ordine.stato) && (
                           <div className="flex items-center gap-1.5">
                             <button
-                              onClick={() => apriModalAnnulla(ordine)}
+                              onClick={(e) => { e.stopPropagation(); apriModalAnnulla(ordine); }}
                               className="text-xs font-body px-3 py-1.5 border border-red-500/30 text-red-400/70 hover:border-red-500/60 hover:text-red-400 hover:bg-red-500/10 rounded-sm transition-all flex items-center gap-1"
                             >
                               <Trash2 size={11} /> Annulla
-                            </button>
-                            <button
-                              onClick={() => { setOrdineSelezionato(ordine); setView('modifica'); }}
-                              className="text-xs font-body px-3 py-1.5 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all flex items-center gap-1"
-                            >
-                              <Plus size={11} /> Aggiungi
                             </button>
                           </div>
                         )}
