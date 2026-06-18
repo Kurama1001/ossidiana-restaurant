@@ -219,26 +219,31 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
       )}
 
       {/* Selettore fase attiva (per i nuovi articoli) */}
-      <div className="mb-3 flex items-center gap-3">
-        <div className="flex items-center gap-1.5 text-[#E5E5E5]/40">
-          <Layers size={13} />
-          <span className="font-body text-xs uppercase tracking-widest">Fase</span>
+      <div className="mb-4 bg-[#0d0d0f] border border-[#C69C6D]/20 rounded-sm px-4 py-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Layers size={13} className="text-[#C69C6D]" />
+          <span className="font-body text-xs text-[#C69C6D] uppercase tracking-widest font-semibold">Fase di uscita</span>
+          <span className="font-body text-xs text-[#E5E5E5]/30 italic ml-auto">I piatti aggiunti andranno in Fase {faseAttiva}</span>
         </div>
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
           {Array.from({ length: MAX_FASI }, (_, i) => i + 1).map(f => (
             <button key={f} onClick={() => setFaseAttiva(f)}
-              className={`w-8 h-8 rounded-sm border font-body text-sm font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-3 h-9 rounded-sm border font-body text-sm font-bold transition-all ${
                 faseAttiva === f
                   ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B]'
                   : fasiUsate.includes(f)
-                    ? 'border-[#C69C6D]/40 text-[#C69C6D]/70 hover:border-[#C69C6D]'
+                    ? 'border-[#C69C6D]/40 text-[#C69C6D]/70 bg-[#C69C6D]/5 hover:border-[#C69C6D]'
                     : 'border-[#E5E5E5]/15 text-[#E5E5E5]/30 hover:border-[#E5E5E5]/40'
               }`}>
-              {f}
+              Fase {f}
+              {fasiUsate.includes(f) && (
+                <span className={`text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold ${faseAttiva === f ? 'bg-[#0A0A0B]/30 text-[#0A0A0B]' : 'bg-[#C69C6D]/20 text-[#C69C6D]'}`}>
+                  {righe.filter(r => (r.fase || 1) === f).length}
+                </span>
+              )}
             </button>
           ))}
         </div>
-        <span className="font-body text-xs text-[#E5E5E5]/30 italic">Gli articoli selezionati andranno in Fase {faseAttiva}</span>
       </div>
 
       {/* Tab mobile */}
@@ -349,12 +354,12 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
                           </div>
                         </div>
                         {/* Cambio fase per riga */}
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className="font-body text-xs text-[#E5E5E5]/30">Fase:</span>
+                        <div className="flex items-center gap-1 mb-1.5 flex-wrap">
+                          <span className="font-body text-[10px] text-[#E5E5E5]/30 mr-1">Fase:</span>
                           {Array.from({ length: MAX_FASI }, (_, i) => i + 1).map(fi => (
                             <button key={fi} onClick={() => cambiaFaseRiga(r._tmp, fi)}
-                              className={`w-5 h-5 rounded-full text-[10px] font-bold transition-all ${(r.fase || 1) === fi ? 'bg-[#C69C6D] text-[#0A0A0B]' : 'border border-[#E5E5E5]/20 text-[#E5E5E5]/30 hover:border-[#C69C6D]/50'}`}>
-                              {fi}
+                              className={`px-2 h-5 rounded-sm text-[10px] font-bold transition-all ${(r.fase || 1) === fi ? 'bg-[#C69C6D] text-[#0A0A0B]' : 'border border-[#E5E5E5]/20 text-[#E5E5E5]/30 hover:border-[#C69C6D]/50 hover:text-[#C69C6D]/70'}`}>
+                              F{fi}
                             </button>
                           ))}
                         </div>

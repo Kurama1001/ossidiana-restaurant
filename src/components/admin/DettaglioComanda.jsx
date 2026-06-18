@@ -162,6 +162,9 @@ export default function DettaglioComanda({ ordine, onBack, onRefreshOrdine }) {
                               {r.priorita === 'urgente' && (
                                 <AlertCircle size={13} className="text-red-400 shrink-0" />
                               )}
+                              <span className="font-body text-[10px] px-1.5 py-0.5 bg-[#C69C6D]/15 text-[#C69C6D] border border-[#C69C6D]/20 rounded-sm font-bold">
+                                F{r.fase || 1}
+                              </span>
                             </div>
                             {r.note && (
                               <p className="font-body text-xs text-yellow-300/60 italic mt-0.5">📝 {r.note}</p>
