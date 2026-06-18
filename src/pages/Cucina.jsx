@@ -16,10 +16,106 @@ function statoOrdine(righe) {
   return 'nuovo';
 }
 
+function PrintPopup({ righe, onClose }) {
+  const handlePrint = () => {
+    const win = window.open('', '_blank', 'width=400,height=600');
+    const ora = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const fasiUsate = [...new Set(righe.map(r => r.fase || 1))].sort((a, b) => a - b);
+    const righePerFase = fasiUsate.reduce((acc, f) => {
+      acc[f] = righe.filter(r => (r.fase || 1) === f);
+      return acc;
+    }, {});
+
+    const fasi = fasiUsate.map(f => `
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;font-weight:bold;border-bottom:1px dashed #000;padding-bottom:4px;margin-bottom:6px">
+          — FASE ${f} —
+        </div>
+        ${righePerFase[f].map(r => `
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:15px;font-weight:bold">${r.quantita}× ${r.nome_item}${r.priorita === 'urgente' ? ' ⚡' : ''}</span>
+          </div>
+          ${r.note ? `<div style="font-size:12px;font-style:italic;margin-left:8px">📝 ${r.note}</div>` : ''}
+        `).join('')}
+      </div>
+    `).join('');
+
+    const tavolo = righe[0]?.numero_tavolo || '?';
+    win.document.write(`
+      <html><head><title>Comanda Tavolo ${tavolo}</title>
+      <style>body{font-family:monospace;padding:16px;max-width:300px}</style></head>
+      <body>
+        <div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:4px">CUCINA</div>
+        <div style="text-align:center;font-size:13px;margin-bottom:12px;border-bottom:2px solid #000;padding-bottom:8px">
+          Tavolo <strong>${tavolo}</strong> · ${ora}
+        </div>
+        ${fasi}
+        <div style="margin-top:16px;border-top:1px dashed #000;padding-top:8px;text-align:center;font-size:11px">
+          ${new Date().toLocaleDateString('it-IT')}
+        </div>
+        <script>window.onload=()=>{window.print();window.close();}<\/script>
+      </body></html>
+    `);
+    win.document.close();
+    onClose();
+  };
+
+  const tavolo = righe[0]?.numero_tavolo || '?';
+  const fasiUsate = [...new Set(righe.map(r => r.fase || 1))].sort((a, b) => a - b);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+      <div className="bg-[#1a0a0a] border-2 border-red-500/60 rounded-sm w-full max-w-sm">
+        <div className="px-5 py-4 border-b border-red-500/20 flex items-center justify-between">
+          <div>
+            <p className="font-body text-xs text-red-400 uppercase tracking-widest mb-0.5">Nuova comanda</p>
+            <p className="font-display text-3xl text-white">Tavolo {tavolo}</p>
+          </div>
+          <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse">
+            {righe.length} articol{righe.length === 1 ? 'o' : 'i'}
+          </span>
+        </div>
+        <div className="p-4 max-h-60 overflow-y-auto space-y-3">
+          {fasiUsate.map(f => (
+            <div key={f}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-5 h-5 rounded-full bg-[#C69C6D] flex items-center justify-center">
+                  <span className="font-body text-[10px] font-bold text-[#0A0A0B]">{f}</span>
+                </div>
+                <span className="font-body text-xs text-[#C69C6D] uppercase tracking-widest">Fase {f}</span>
+              </div>
+              {righe.filter(r => (r.fase || 1) === f).map(r => (
+                <div key={r.id} className="pl-7 mb-1">
+                  <span className="font-body text-white text-base font-semibold">
+                    {r.quantita}× {r.nome_item}
+                    {r.priorita === 'urgente' && <span className="text-red-400 ml-1">⚡</span>}
+                  </span>
+                  {r.note && <p className="font-body text-yellow-300/70 text-xs italic">{r.note}</p>}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="p-4 border-t border-red-500/20 flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 py-3 border border-[#E5E5E5]/20 text-[#E5E5E5]/50 font-body text-sm rounded-sm hover:border-[#E5E5E5]/40 transition-all">
+            Ignora
+          </button>
+          <button onClick={handlePrint}
+            className="flex-1 py-3 bg-[#C69C6D] hover:bg-[#D4AA7D] text-[#0A0A0B] font-body font-bold text-sm rounded-sm transition-all flex items-center justify-center gap-2">
+            🖨️ Stampa
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Cucina() {
   const [ordini, setOrdini] = useState({});
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
+  const [printQueue, setPrintQueue] = useState([]); // righe da stampare
   const prevIds = useRef(new Set());
   const audioCtxRef = useRef(null);
 
@@ -71,13 +167,24 @@ export default function Cucina() {
     load();
     const interval = setInterval(load, 8000);
 
-    // Subscription real-time: notifica acustica ogni volta che arriva una nuova riga cucina
+    // Buffer per raccogliere le righe arrivate in breve tempo (stesso invio)
+    let buffer = [];
+    let bufferTimer = null;
+
     const unsubscribe = base44.entities.RigaOrdine.subscribe((event) => {
       if (event.type === 'create') {
         const r = event.data;
         if (r?.reparto === 'cucina' && ['inviato', 'ricevuto'].includes(r?.stato)) {
           playBeep();
           load();
+          // Accumula le righe nel buffer per 800ms poi mostra il popup
+          buffer.push(r);
+          clearTimeout(bufferTimer);
+          bufferTimer = setTimeout(() => {
+            const righe = [...buffer];
+            buffer = [];
+            setPrintQueue(righe);
+          }, 800);
         }
       }
     });
@@ -160,6 +267,9 @@ export default function Cucina() {
 
   return (
     <div className="min-h-screen bg-[#080808] p-4 pt-20">
+      {printQueue.length > 0 && (
+        <PrintPopup righe={printQueue} onClose={() => setPrintQueue([])} />
+      )}
       {/* Header pagina */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
