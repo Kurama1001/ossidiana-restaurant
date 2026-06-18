@@ -29,15 +29,18 @@ export default function AdminComande() {
   const [deleting, setDeleting] = useState(null);
 
   const load = async () => {
-    const oggi = new Date();
-    oggi.setHours(0, 0, 0, 0);
-    const data = await base44.entities.Ordine.list('-created_date', 200);
-    const attivi = data.filter(o =>
-      !['chiuso', 'annullato'].includes(o.stato) &&
-      new Date(o.created_date) >= oggi
-    );
-    setOrdini(attivi);
-    setLoading(false);
+    try {
+      const oggi = new Date();
+      oggi.setHours(0, 0, 0, 0);
+      const data = await base44.entities.Ordine.list('-created_date', 200);
+      const attivi = data.filter(o =>
+        !['chiuso', 'annullato'].includes(o.stato) &&
+        new Date(o.created_date) >= oggi
+      );
+      setOrdini(attivi);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -51,7 +54,7 @@ export default function AdminComande() {
   const apriModalAnnulla = async (ordine) => {
     setModalAnnulla(ordine);
     setLoadingModal(true);
-    const righe = await base44.entities.RigaOrdine.filter({ ordine_id: ordine.id }, 'created_date', 200);
+    const righe = await base44.entities.RigaOrdine.filter({ ordine_id: ordine.id }, '-created_date', 200);
     setRigheModal(righe.filter(r => !['annullato', 'consegnato'].includes(r.stato)));
     setLoadingModal(false);
   };

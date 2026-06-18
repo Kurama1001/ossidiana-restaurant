@@ -30,15 +30,18 @@ export default function Sala() {
   const [deleting, setDeleting] = useState(null);
 
   const load = async () => {
-    const oggi = new Date();
-    oggi.setHours(0, 0, 0, 0);
-    const data = await base44.entities.Ordine.list('-created_date', 200);
-    const attivi = data.filter(o =>
-      !['chiuso', 'annullato'].includes(o.stato) &&
-      new Date(o.created_date) >= oggi
-    );
-    setOrdini(attivi);
-    setLoading(false);
+    try {
+      const oggi = new Date();
+      oggi.setHours(0, 0, 0, 0);
+      const data = await base44.entities.Ordine.list('-created_date', 200);
+      const attivi = data.filter(o =>
+        !['chiuso', 'annullato'].includes(o.stato) &&
+        new Date(o.created_date) >= oggi
+      );
+      setOrdini(attivi);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
