@@ -1,510 +1,243 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Plus, Minus, Trash2, Send, Search, StickyNote, AlertCircle, ChevronRight, Receipt, ArrowLeft, Layers } from 'lucide-react';
+import { Plus, RefreshCw, Clock, Users, Receipt, Trash2, X } from 'lucide-react';
+import ComandaEditor from './ComandaEditor.jsx';
 
-const CAT_LABELS = {
-  antipasti:'Antipasti', primi:'Primi', romanissimi:'Romanissimi', secondi:'Secondi',
-  contorni:'Contorni', dolci:'Dolci', acqua:'Acqua', vino:'Vino',
-  birra:'Birra', cocktail:'Cocktail', caffe_amari:'Caffè & Amari', bevande:'Bevande',
+const STATO_CONFIG = {
+  aperto:          { label: 'Aperta',          border: 'border-[#E5E5E5]/15', text: 'text-[#E5E5E5]/50', dot: 'bg-[#E5E5E5]/30' },
+  inviato:         { label: 'In preparazione', border: 'border-yellow-500/40', text: 'text-yellow-400',    dot: 'bg-yellow-400 animate-pulse' },
+  in_preparazione: { label: 'In preparazione', border: 'border-yellow-500/40', text: 'text-yellow-400',    dot: 'bg-yellow-400 animate-pulse' },
+  parziale_pronto: { label: 'In preparazione', border: 'border-yellow-500/40', text: 'text-yellow-400',    dot: 'bg-yellow-400 animate-pulse' },
+  pronto:          { label: 'Terminata',        border: 'border-green-500/50',  text: 'text-green-400',    dot: 'bg-green-500' },
+  servito:         { label: 'Terminata',        border: 'border-green-500/50',  text: 'text-green-400',    dot: 'bg-green-500' },
+  da_pagare:       { label: 'Da pagare',        border: 'border-purple-400/50', text: 'text-purple-400',   dot: 'bg-purple-400' },
 };
-const CAT_CUCINA = ['antipasti','primi','romanissimi','secondi','contorni','dolci'];
 
-// Colori fasi
-const FASE_COLORS = ['border-blue-500/50 bg-blue-500/5', 'border-purple-500/50 bg-purple-500/5', 'border-orange-500/50 bg-orange-500/5', 'border-pink-500/50 bg-pink-500/5', 'border-teal-500/50 bg-teal-500/5'];
-const FASE_HEADER_COLORS = ['text-blue-400', 'text-purple-400', 'text-orange-400', 'text-pink-400', 'text-teal-400'];
+function minutiDa(ts) {
+  if (!ts) return null;
+  return Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
+}
 
-export default function AdminComande({ onGoToHome, ordineEsistente }) {
-  const [menuItems, setMenuItems] = useState([]);
-  // fasi: array di {label, righe: [{_tmp, ...}]}
-  const [fasi, setFasi] = useState([{ label: 'Fase 1', righe: [] }]);
-  const [faseAttiva, setFaseAttiva] = useState(0); // quale fase si sta compilando
-  const [righeInviate, setRigheInviate] = useState([]);
-  const [ordine, setOrdine] = useState(null);
-  const [numeroTavolo, setNumeroTavolo] = useState('');
-  const [coperti, setCoperti] = useState(2);
-  const [noteGenerali, setNoteGenerali] = useState('');
-  const [noteRiga, setNoteRiga] = useState({});
-  const [search, setSearch] = useState('');
-  const [catFilter, setCatFilter] = useState('tutti');
+export default function AdminComande() {
+  const [view, setView] = useState('lista'); // 'lista' | 'nuova' | 'modifica'
+  const [ordineSelezionato, setOrdineSelezionato] = useState(null);
+  const [ordini, setOrdini] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false); // schermata di conferma
-  const [user, setUser] = useState(null);
-  const [showSetup, setShowSetup] = useState(true);
-  const [mobileTab, setMobileTab] = useState('menu'); // 'menu' | 'comanda'
+  const [modalAnnulla, setModalAnnulla] = useState(null);
+  const [righeModal, setRigheModal] = useState([]);
+  const [loadingModal, setLoadingModal] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+
+  const load = async () => {
+    const oggi = new Date();
+    oggi.setHours(0, 0, 0, 0);
+    const data = await base44.entities.Ordine.list('-created_date', 200);
+    const attivi = data.filter(o =>
+      !['chiuso', 'annullato'].includes(o.stato) &&
+      new Date(o.created_date) >= oggi
+    );
+    setOrdini(attivi);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const init = async () => {
-      const [menu, me] = await Promise.all([
-        base44.entities.MenuItem.filter({ active: true }, 'sortOrder', 200),
-        base44.auth.me().catch(() => null),
-      ]);
-      setMenuItems(menu);
-      setUser(me);
-      // Se viene passato un ordine esistente, caricalo subito
-      if (ordineEsistente) {
-        setOrdine(ordineEsistente);
-        setNumeroTavolo(String(ordineEsistente.numero_tavolo));
-        setCoperti(ordineEsistente.coperti || 2);
-        setNoteGenerali(ordineEsistente.note_generali || '');
-        const rigs = await base44.entities.RigaOrdine.filter({ ordine_id: ordineEsistente.id }, 'created_date', 200);
-        setRigheInviate(rigs.filter(r => r.stato !== 'bozza' && r.stato !== 'annullato'));
-        setShowSetup(false);
-      }
-      setLoading(false);
-    };
-    init();
+    load();
+    const interval = setInterval(load, 15000);
+    return () => clearInterval(interval);
   }, []);
 
-  const iniziaOrdine = async () => {
-    if (!numeroTavolo) return;
-    const ordiniAperti = await base44.entities.Ordine.filter({ numero_tavolo: parseInt(numeroTavolo) }, '-created_date', 5);
-    const aperto = ordiniAperti.find(o => !['chiuso', 'annullato'].includes(o.stato));
-    if (aperto) {
-      setOrdine(aperto);
-      const rigs = await base44.entities.RigaOrdine.filter({ ordine_id: aperto.id }, 'created_date', 200);
-      setRigheInviate(rigs.filter(r => r.stato !== 'bozza' && r.stato !== 'annullato'));
-      setNoteGenerali(aperto.note_generali || '');
-      setCoperti(aperto.coperti || 2);
-    }
-    setShowSetup(false);
+  const goLista = () => { setView('lista'); setOrdineSelezionato(null); load(); };
+
+  const apriModalAnnulla = async (ordine) => {
+    setModalAnnulla(ordine);
+    setLoadingModal(true);
+    const righe = await base44.entities.RigaOrdine.filter({ ordine_id: ordine.id }, 'created_date', 200);
+    setRigheModal(righe.filter(r => !['annullato', 'consegnato'].includes(r.stato)));
+    setLoadingModal(false);
   };
 
-  const getOrCreaOrdine = async () => {
-    if (ordine) return ordine;
-    const nuovo = await base44.entities.Ordine.create({
-      tavolo_id: `tavolo_${numeroTavolo}`,
-      numero_tavolo: parseInt(numeroTavolo),
-      cameriere_id: user?.id || '',
-      cameriere_nome: user?.full_name || '',
-      stato: 'aperto',
-      coperti,
-      note_generali: noteGenerali,
-      totale: 0,
-    });
-    setOrdine(nuovo);
-    return nuovo;
+  const annullaRigaModal = async (rigaId) => {
+    setDeleting(rigaId);
+    await base44.entities.RigaOrdine.update(rigaId, { stato: 'annullato' });
+    setRigheModal(prev => prev.filter(r => r.id !== rigaId));
+    setDeleting(null);
   };
 
-  const aggiungiItem = (item) => {
-    setFasi(prev => prev.map((f, i) => {
-      if (i !== faseAttiva) return f;
-      const existing = f.righe.find(r => r.menu_item_id === item.id && !noteRiga[r._tmp]);
-      if (existing) {
-        return { ...f, righe: f.righe.map(r => r.menu_item_id === item.id && !noteRiga[r._tmp]
-          ? { ...r, quantita: r.quantita + 1, prezzo_totale: (r.quantita + 1) * r.prezzo_unitario }
-          : r
-        )};
-      }
-      return { ...f, righe: [...f.righe, {
-        _tmp: Date.now() + Math.random(),
-        menu_item_id: item.id,
-        nome_item: item.name,
-        categoria: item.category,
-        reparto: item.reparto || (CAT_CUCINA.includes(item.category) ? 'cucina' : 'bar'),
-        quantita: 1,
-        prezzo_unitario: item.price,
-        prezzo_totale: item.price,
-        stato: 'bozza',
-        priorita: 'normale',
-        fase: faseAttiva,
-      }]};
-    }));
+  const annullaTuttoModal = async () => {
+    if (!modalAnnulla) return;
+    setDeleting('all');
+    await Promise.all(righeModal.map(r => base44.entities.RigaOrdine.update(r.id, { stato: 'annullato' })));
+    await base44.entities.Ordine.update(modalAnnulla.id, { stato: 'annullato' }).catch(() => {});
+    setModalAnnulla(null);
+    setRigheModal([]);
+    setDeleting(null);
+    load();
   };
 
-  const cambiaQty = (faseIdx, key, delta) => setFasi(prev => prev.map((f, i) => i !== faseIdx ? f : {
-    ...f, righe: f.righe.map(r => r._tmp === key
-      ? { ...r, quantita: Math.max(1, r.quantita + delta), prezzo_totale: Math.max(1, r.quantita + delta) * r.prezzo_unitario }
-      : r
-    )
-  }));
-
-  const rimuoviRiga = (faseIdx, key) => setFasi(prev => prev.map((f, i) => i !== faseIdx ? f : {
-    ...f, righe: f.righe.filter(r => r._tmp !== key)
-  }));
-
-  const togglePriorita = (faseIdx, key) => setFasi(prev => prev.map((f, i) => i !== faseIdx ? f : {
-    ...f, righe: f.righe.map(r => r._tmp === key
-      ? { ...r, priorita: r.priorita === 'urgente' ? 'normale' : 'urgente' }
-      : r
-    )
-  }));
-
-  const aggiungiFase = () => {
-    const n = fasi.length + 1;
-    setFasi(prev => [...prev, { label: `Fase ${n}`, righe: [] }]);
-    setFaseAttiva(fasi.length);
-  };
-
-  const rimuoviFase = (idx) => {
-    if (fasi.length <= 1) return;
-    setFasi(prev => prev.filter((_, i) => i !== idx));
-    setFaseAttiva(Math.max(0, faseAttiva - 1));
-  };
-
-  const rinominaFase = (idx, label) => setFasi(prev => prev.map((f, i) => i === idx ? { ...f, label } : f));
-
-  const tutteLeRighe = fasi.flatMap(f => f.righe);
-  const totale = tutteLeRighe.reduce((s, r) => s + r.prezzo_totale, 0)
-    + righeInviate.reduce((s, r) => s + (r.prezzo_totale || 0), 0);
-  const totaleArticoli = tutteLeRighe.length;
-
-  const inviaComanda = async () => {
-    if (totaleArticoli === 0) return;
-    setSending(true);
-    const ord = await getOrCreaOrdine();
-    const now = new Date().toISOString();
-    const allRighe = fasi.flatMap((f, faseIdx) => f.righe.map(r => ({ ...r, faseLabel: f.label, faseIdx })));
-    await Promise.all(allRighe.map(r => base44.entities.RigaOrdine.create({
-      ordine_id: ord.id,
-      tavolo_id: ord.tavolo_id,
-      numero_tavolo: parseInt(numeroTavolo),
-      menu_item_id: r.menu_item_id,
-      nome_item: r.nome_item,
-      categoria: r.categoria,
-      reparto: r.reparto,
-      quantita: r.quantita,
-      prezzo_unitario: r.prezzo_unitario,
-      prezzo_totale: r.prezzo_totale,
-      note: (noteRiga[r._tmp] ? noteRiga[r._tmp] + ' ' : '') + `[${r.faseLabel}]`,
-      stato: 'inviato',
-      priorita: r.priorita,
-      sent_at: now,
-    })));
-    await base44.entities.Ordine.update(ord.id, { stato: 'inviato', note_generali: noteGenerali, coperti, totale });
-    setSending(false);
-    setSent(true);
-    setTimeout(() => {
-      setSent(false);
-      if (onGoToHome) onGoToHome();
-    }, 1800);
-  };
-
-  const nuovoTavolo = () => {
-    setShowSetup(true);
-    setNumeroTavolo('');
-    setOrdine(null);
-    setFasi([{ label: 'Fase 1', righe: [] }]);
-    setFaseAttiva(0);
-    setRigheInviate([]);
-    setNoteGenerali('');
-    setCoperti(2);
-    setNoteRiga({});
-  };
-
-  const categories = [...new Set(menuItems.map(i => i.category))];
-  const filtered = menuItems.filter(item => {
-    if (catFilter !== 'tutti' && item.category !== catFilter) return false;
-    if (search && !item.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
-  const cucina = filtered.filter(i => (i.reparto || (CAT_CUCINA.includes(i.category) ? 'cucina' : 'bar')) === 'cucina');
-  const bar = filtered.filter(i => (i.reparto || (CAT_CUCINA.includes(i.category) ? 'cucina' : 'bar')) === 'bar');
-
-  if (loading) return <div className="py-20 text-center text-[#E5E5E5]/30 font-body">Caricamento...</div>;
-
-  if (sent) return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-6">
-      <div className="w-20 h-20 rounded-full bg-green-500/15 border-2 border-green-500/40 flex items-center justify-center mb-6">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  // Vista editor (nuova comanda o aggiunta a esistente)
+  if (view === 'nuova' || view === 'modifica') {
+    return (
+      <div>
+        <div className="flex items-center gap-3 mb-4">
+          <button onClick={goLista}
+            className="p-2 border border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40 hover:text-[#C69C6D] rounded-sm transition-all text-lg leading-none">
+            ←
+          </button>
+          <h2 className="font-display text-2xl text-white tracking-widest">
+            {view === 'modifica' ? `Tavolo ${ordineSelezionato?.numero_tavolo} · Aggiungi` : 'Nuova Comanda'}
+          </h2>
+        </div>
+        <ComandaEditor
+          onSuccess={goLista}
+          ordineEsistente={view === 'modifica' ? ordineSelezionato : null}
+        />
       </div>
-      <h2 className="font-display text-3xl text-white tracking-widest mb-2">Comanda Inviata!</h2>
-      <p className="font-body text-[#E5E5E5]/50 text-sm">Tavolo {numeroTavolo} · la cucina ha ricevuto l'ordine</p>
-      <div className="mt-6 w-8 h-8 border-2 border-[#C69C6D]/30 border-t-[#C69C6D] rounded-full animate-spin" />
-    </div>
-  );
+    );
+  }
 
-  const fasiBozzaCount = fasi.map(f => f.righe.length);
+  // Vista lista
+  const stats = {
+    totali: ordini.length,
+    inPrep: ordini.filter(o => ['inviato', 'in_preparazione', 'parziale_pronto'].includes(o.stato)).length,
+    terminate: ordini.filter(o => ['pronto', 'servito'].includes(o.stato)).length,
+  };
 
   return (
-    <div className="flex flex-col h-full" style={{ minHeight: 600 }}>
+    <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-3 shrink-0">
-        {showSetup ? (
-          <h2 className="font-display text-xl text-white tracking-widest">Nuova Comanda</h2>
-        ) : (
-          <div className="flex items-center gap-4 w-full">
-            <div>
-              <h2 className="font-display text-2xl text-white tracking-widest leading-none">Tavolo {numeroTavolo}</h2>
-              <div className="flex items-center gap-2 mt-0.5">
-                <button onClick={() => setCoperti(c => Math.max(1, c - 1))} className="text-[#E5E5E5]/40 hover:text-white w-5 h-5 flex items-center justify-center">−</button>
-                <span className="font-body text-xs text-[#E5E5E5]/50">{coperti} coperti</span>
-                <button onClick={() => setCoperti(c => c + 1)} className="text-[#E5E5E5]/40 hover:text-white w-5 h-5 flex items-center justify-center">+</button>
-              </div>
-            </div>
-            <button onClick={nuovoTavolo} className="ml-auto text-xs font-body text-[#E5E5E5]/40 hover:text-[#C69C6D] border border-[#E5E5E5]/15 hover:border-[#C69C6D]/40 px-3 py-1.5 rounded-sm transition-colors">
-              Cambia tavolo
-            </button>
-          </div>
-        )}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="font-display text-2xl text-white tracking-widest">Comande</h2>
+          <p className="font-body text-[#E5E5E5]/40 text-sm mt-0.5">oggi · {ordini.length} tavoli</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={load} className="p-2.5 border border-[#E5E5E5]/15 text-[#E5E5E5]/40 hover:border-[#C69C6D]/40 hover:text-[#C69C6D] rounded-sm transition-all">
+            <RefreshCw size={15} />
+          </button>
+          <button onClick={() => setView('nuova')}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#C69C6D] hover:bg-[#D4AA7D] text-[#0A0A0B] font-body font-bold text-sm tracking-widest uppercase rounded-sm transition-all">
+            <Plus size={15} /> Nuova
+          </button>
+        </div>
       </div>
 
-      {/* Setup tavolo */}
-      {showSetup && (
-        <div className="bg-[#161618] border border-[#C69C6D]/20 rounded-sm p-5 mb-4 shrink-0">
-          <div className="flex flex-wrap items-end gap-4">
-            <div>
-              <label className="block text-xs text-[#E5E5E5]/40 font-body uppercase tracking-widest mb-1.5">Numero Tavolo *</label>
-              <input type="number" min="1" placeholder="Es. 5" autoFocus
-                value={numeroTavolo} onChange={e => setNumeroTavolo(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && iniziaOrdine()}
-                className="w-28 bg-[#0A0A0B] border border-[#E5E5E5]/20 text-white px-4 py-3 rounded-sm focus:border-[#C69C6D] outline-none font-display text-2xl tracking-widest text-center"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-[#E5E5E5]/40 font-body uppercase tracking-widest mb-1.5">Coperti</label>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setCoperti(c => Math.max(1, c - 1))} className="w-10 h-10 border border-[#E5E5E5]/20 text-white flex items-center justify-center rounded-sm hover:border-[#C69C6D] text-lg">−</button>
-                <span className="text-white font-display text-xl w-8 text-center">{coperti}</span>
-                <button onClick={() => setCoperti(c => c + 1)} className="w-10 h-10 border border-[#E5E5E5]/20 text-white flex items-center justify-center rounded-sm hover:border-[#C69C6D] text-lg">+</button>
-              </div>
-            </div>
-            <button onClick={iniziaOrdine} disabled={!numeroTavolo}
-              className="px-6 py-3 bg-[#C69C6D] hover:bg-[#D4AA7D] text-[#0A0A0B] font-body font-bold text-sm tracking-widest uppercase rounded-sm transition-all disabled:opacity-40 flex items-center gap-2 h-[46px]">
-              Avvia <ChevronRight size={15} />
-            </button>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {[
+          { label: 'Attive', value: stats.totali, color: 'text-white' },
+          { label: 'In prep.', value: stats.inPrep, color: 'text-yellow-400' },
+          { label: 'Terminate', value: stats.terminate, color: 'text-green-400' },
+        ].map(s => (
+          <div key={s.label} className="bg-[#161618] border border-[#E5E5E5]/10 rounded-sm p-3 text-center">
+            <div className={`font-display text-2xl ${s.color}`}>{s.value}</div>
+            <div className="font-body text-xs text-[#E5E5E5]/40 mt-0.5">{s.label}</div>
           </div>
+        ))}
+      </div>
+
+      {/* Lista */}
+      {loading ? (
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-[#161618] animate-pulse rounded-sm" />)}
+        </div>
+      ) : ordini.length === 0 ? (
+        <div className="text-center py-20 text-[#E5E5E5]/30 font-body">
+          <Receipt size={40} className="mx-auto mb-4 opacity-20" />
+          <p className="text-lg mb-1">Nessuna comanda oggi</p>
+          <p className="text-sm">Premi "Nuova" per iniziare</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {ordini
+            .sort((a, b) => a.numero_tavolo - b.numero_tavolo)
+            .map(ordine => {
+              const cfg = STATO_CONFIG[ordine.stato] || STATO_CONFIG.aperto;
+              const min = minutiDa(ordine.created_date);
+              return (
+                <div key={ordine.id}
+                  className={`bg-[#161618] border ${cfg.border} rounded-sm p-4 cursor-pointer hover:bg-[#1a1a1c] transition-colors`}
+                  onClick={() => { setOrdineSelezionato(ordine); setView('modifica'); }}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <span className="font-display text-4xl text-white shrink-0">{ordine.numero_tavolo}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
+                          <span className={`font-body text-sm font-semibold ${cfg.text}`}>{cfg.label}</span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5 text-[#E5E5E5]/35 font-body text-xs">
+                          {ordine.coperti && <span className="flex items-center gap-1"><Users size={10} /> {ordine.coperti}</span>}
+                          {min !== null && <span className="flex items-center gap-1"><Clock size={10} /> {min} min</span>}
+                          <span className="text-[#C69C6D]">€{(ordine.totale || 0).toFixed(2)}</span>
+                        </div>
+                        {ordine.note_generali && (
+                          <p className="font-body text-xs text-yellow-300/50 italic mt-0.5 line-clamp-1">📝 {ordine.note_generali}</p>
+                        )}
+                      </div>
+                    </div>
+                    {/* Pulsante annulla (ferma propagazione del click) */}
+                    <button
+                      onClick={e => { e.stopPropagation(); apriModalAnnulla(ordine); }}
+                      className="shrink-0 text-xs font-body px-3 py-1.5 border border-red-500/30 text-red-400/70 hover:border-red-500/60 hover:text-red-400 hover:bg-red-500/10 rounded-sm transition-all flex items-center gap-1"
+                    >
+                      <Trash2 size={11} /> Annulla
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
         </div>
       )}
 
-      {/* Mobile tab switcher */}
-      <div className="flex border-b border-[#C69C6D]/10 mb-3 shrink-0 lg:hidden">
-        <button onClick={() => setMobileTab('menu')}
-          className={`flex-1 py-2.5 font-body text-sm transition-all ${mobileTab === 'menu' ? 'border-b-2 border-[#C69C6D] text-[#C69C6D]' : 'text-[#E5E5E5]/40'}`}>
-          Menu
-        </button>
-        <button onClick={() => setMobileTab('comanda')}
-          className={`flex-1 py-2.5 font-body text-sm transition-all relative ${mobileTab === 'comanda' ? 'border-b-2 border-[#C69C6D] text-[#C69C6D]' : 'text-[#E5E5E5]/40'}`}>
-          Comanda
-          {totaleArticoli > 0 && <span className="absolute top-1 right-4 bg-[#C69C6D] text-[#0A0A0B] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{totaleArticoli}</span>}
-        </button>
-      </div>
-
-      {/* Corpo */}
-      <div className="flex flex-1 gap-5 overflow-hidden min-h-0">
-
-        {/* ===== PANNELLO MENU ===== */}
-        <div className={`flex-1 flex flex-col overflow-hidden ${mobileTab === 'comanda' ? 'hidden lg:flex' : 'flex'}`}>
-          <div className="shrink-0 mb-3">
-            <div className="relative mb-2">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E5E5E5]/30" />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca articolo..."
-                className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-9 pr-4 py-2.5 rounded-sm font-body text-sm outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20" />
-            </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
-              <button onClick={() => setCatFilter('tutti')}
-                className={`shrink-0 px-3 py-1.5 rounded-sm text-xs font-body border transition-all ${catFilter === 'tutti' ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-semibold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
-                Tutti
-              </button>
-              {categories.map(c => (
-                <button key={c} onClick={() => setCatFilter(c)}
-                  className={`shrink-0 px-3 py-1.5 rounded-sm text-xs font-body border transition-all ${catFilter === c ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-semibold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
-                  {CAT_LABELS[c] || c}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Selettore fase attiva */}
-          {!showSetup && (
-            <div className="shrink-0 mb-3 flex flex-wrap items-center gap-2">
-              <span className="font-body text-xs text-[#E5E5E5]/40 uppercase tracking-widest">Aggiungi a:</span>
-              {fasi.map((f, i) => (
-                <button key={i} onClick={() => setFaseAttiva(i)}
-                  className={`px-3 py-1.5 rounded-sm text-xs font-body border transition-all flex items-center gap-1.5
-                    ${faseAttiva === i ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-semibold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
-                  {f.label}
-                  {fasiBozzaCount[i] > 0 && <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ${faseAttiva === i ? 'bg-[#0A0A0B]/30 text-[#0A0A0B]' : 'bg-[#C69C6D]/20 text-[#C69C6D]'}`}>{fasiBozzaCount[i]}</span>}
-                </button>
-              ))}
-              <button onClick={aggiungiFase}
-                className="px-3 py-1.5 rounded-sm text-xs font-body border border-dashed border-[#E5E5E5]/20 text-[#E5E5E5]/40 hover:border-[#C69C6D]/40 hover:text-[#C69C6D] transition-all flex items-center gap-1">
-                <Plus size={11} /> Fase
+      {/* Modale annullamento */}
+      {modalAnnulla && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-[#161618] border border-red-500/30 rounded-sm w-full max-w-md max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-[#E5E5E5]/10">
+              <div>
+                <h3 className="font-display text-xl text-white tracking-widest">Annulla Comanda</h3>
+                <p className="font-body text-xs text-[#E5E5E5]/40 mt-0.5">Tavolo {modalAnnulla.numero_tavolo}</p>
+              </div>
+              <button onClick={() => { setModalAnnulla(null); setRigheModal([]); }}
+                className="p-2 text-[#E5E5E5]/40 hover:text-white transition-colors">
+                <X size={20} />
               </button>
             </div>
-          )}
-
-          <div className="flex-1 overflow-y-auto pr-1">
-            {cucina.length > 0 && (
-              <div className="mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-1.5 h-1.5 bg-orange-400 rounded-full" />
-                  <span className="font-body text-xs text-orange-400/80 uppercase tracking-widest">Cucina</span>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
-                  {cucina.map(item => (
-                    <ArticoloCard key={item.id} item={item} color="orange"
-                      qty={fasi[faseAttiva]?.righe.filter(r => r.menu_item_id === item.id).reduce((s, r) => s + r.quantita, 0) || 0}
-                      onAdd={() => aggiungiItem(item)} disabled={showSetup} />
-                  ))}
-                </div>
-              </div>
-            )}
-            {bar.length > 0 && (
-              <div className="mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                  <span className="font-body text-xs text-blue-400/80 uppercase tracking-widest">Bar</span>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
-                  {bar.map(item => (
-                    <ArticoloCard key={item.id} item={item} color="blue"
-                      qty={fasi[faseAttiva]?.righe.filter(r => r.menu_item_id === item.id).reduce((s, r) => s + r.quantita, 0) || 0}
-                      onAdd={() => aggiungiItem(item)} disabled={showSetup} />
-                  ))}
-                </div>
-              </div>
-            )}
-            {filtered.length === 0 && <p className="text-center text-[#E5E5E5]/25 font-body text-sm py-10">Nessun risultato</p>}
-          </div>
-        </div>
-
-        {/* ===== PANNELLO COMANDA ===== */}
-        <div className={`w-full lg:w-80 shrink-0 bg-[#0d0d0f] border border-[#C69C6D]/15 rounded-sm flex flex-col overflow-hidden ${mobileTab === 'menu' ? 'hidden lg:flex' : 'flex'}`}>
-          <div className="p-4 border-b border-[#C69C6D]/15 shrink-0">
-            <h3 className="font-display text-lg text-white tracking-widest">{numeroTavolo ? `T${numeroTavolo} · Comanda` : 'Comanda'}</h3>
-            <p className="font-body text-xs text-[#E5E5E5]/35 mt-0.5">{totaleArticoli > 0 ? `${totaleArticoli} articoli in ${fasi.filter(f => f.righe.length > 0).length} fase/i` : 'vuota'}</p>
-          </div>
-
-          {righeInviate.length > 0 && (
-            <div className="border-b border-[#C69C6D]/10 max-h-28 overflow-y-auto shrink-0 px-4 py-2">
-              <p className="font-body text-xs text-[#E5E5E5]/30 uppercase tracking-widest mb-1">Già inviati</p>
-              {righeInviate.map(r => (
-                <div key={r.id} className="flex items-center justify-between py-1 gap-2">
-                  <span className="font-body text-xs text-[#E5E5E5]/50 truncate flex-1">{r.quantita}× {r.nome_item}</span>
-                  <StatusBadge stato={r.stato} />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Fasi bozza */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {totaleArticoli === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                <Receipt size={28} className="text-[#E5E5E5]/10 mb-3" />
-                <p className="text-[#E5E5E5]/25 font-body text-sm">
-                  {showSetup ? 'Avvia una comanda per aggiungere articoli' : 'Seleziona articoli dal menu'}
-                </p>
-              </div>
-            ) : fasi.map((f, faseIdx) => f.righe.length === 0 ? null : (
-              <div key={faseIdx} className={`border rounded-sm overflow-hidden ${FASE_COLORS[faseIdx % FASE_COLORS.length]}`}>
-                {/* Intestazione fase */}
-                <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
-                  <div className="flex items-center gap-2">
-                    <Layers size={12} className={FASE_HEADER_COLORS[faseIdx % FASE_HEADER_COLORS.length]} />
-                    <input
-                      value={f.label}
-                      onChange={e => rinominaFase(faseIdx, e.target.value)}
-                      className={`font-body text-xs font-semibold bg-transparent outline-none w-24 ${FASE_HEADER_COLORS[faseIdx % FASE_HEADER_COLORS.length]}`}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-body text-xs text-[#E5E5E5]/30">{f.righe.length} art.</span>
-                    <button onClick={() => setFaseAttiva(faseIdx)}
-                      className={`text-xs px-2 py-0.5 rounded-sm border transition-all font-body ${faseAttiva === faseIdx ? 'border-[#C69C6D] text-[#C69C6D]' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/40 hover:border-[#C69C6D]/40'}`}>
-                      {faseAttiva === faseIdx ? 'attiva' : 'edita'}
-                    </button>
-                    {fasi.length > 1 && (
-                      <button onClick={() => rimuoviFase(faseIdx)} className="text-red-400/40 hover:text-red-400 transition-colors">
-                        <Trash2 size={12} />
+            <div className="flex-1 overflow-y-auto p-4">
+              {loadingModal ? (
+                <p className="text-center text-[#E5E5E5]/30 font-body py-6">Caricamento...</p>
+              ) : righeModal.length === 0 ? (
+                <p className="text-center text-[#E5E5E5]/30 font-body py-6">Nessun articolo da annullare</p>
+              ) : (
+                <div className="space-y-2">
+                  {righeModal.map(r => (
+                    <div key={r.id} className="flex items-center justify-between gap-3 bg-[#0A0A0B] border border-[#E5E5E5]/10 rounded-sm px-3 py-2.5">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-body text-white text-sm">{r.quantita}× {r.nome_item}</p>
+                        {r.note && <p className="font-body text-xs text-yellow-300/50 italic">{r.note}</p>}
+                      </div>
+                      <button onClick={() => annullaRigaModal(r.id)} disabled={deleting === r.id}
+                        className="shrink-0 p-2 border border-red-500/40 text-red-400 hover:bg-red-500/10 rounded-sm transition-all">
+                        {deleting === r.id ? <div className="w-4 h-4 border border-red-400/50 border-t-red-400 rounded-full animate-spin" /> : <X size={14} />}
                       </button>
-                    )}
-                  </div>
-                </div>
-                {/* Righe fase */}
-                <div className="p-2 space-y-1.5">
-                  {f.righe.map(r => (
-                    <div key={r._tmp} className="bg-[#0A0A0B]/40 rounded-sm p-2">
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <span className="font-body text-white text-xs font-medium flex-1 leading-snug">{r.nome_item}</span>
-                        <button onClick={() => rimuoviRiga(faseIdx, r._tmp)} className="text-red-400/40 hover:text-red-400 transition-colors shrink-0">
-                          <Trash2 size={11} />
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => cambiaQty(faseIdx, r._tmp, -1)} className="w-6 h-6 border border-[#E5E5E5]/20 text-white flex items-center justify-center rounded-sm hover:border-[#C69C6D] text-xs">−</button>
-                          <span className="text-white font-body w-5 text-center text-xs">{r.quantita}</span>
-                          <button onClick={() => cambiaQty(faseIdx, r._tmp, 1)} className="w-6 h-6 border border-[#E5E5E5]/20 text-white flex items-center justify-center rounded-sm hover:border-[#C69C6D] text-xs">+</button>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <button onClick={() => togglePriorita(faseIdx, r._tmp)} title="Urgente"
-                            className={`p-1 rounded-sm border transition-all ${r.priorita === 'urgente' ? 'border-red-400 text-red-400' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/20'}`}>
-                            <AlertCircle size={11} />
-                          </button>
-                          <span className={`font-body font-semibold text-xs ${r.reparto === 'bar' ? 'text-blue-400' : 'text-[#C69C6D]'}`}>€{r.prezzo_totale.toFixed(2)}</span>
-                        </div>
-                      </div>
-                      <input
-                        value={noteRiga[r._tmp] || ''}
-                        onChange={e => setNoteRiga(prev => ({ ...prev, [r._tmp]: e.target.value }))}
-                        placeholder="Nota..."
-                        className="w-full mt-1.5 bg-[#0A0A0B] border border-[#E5E5E5]/10 text-[#E5E5E5]/80 px-2 py-1 rounded-sm font-body text-xs outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20"
-                      />
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+            {righeModal.length > 0 && (
+              <div className="p-4 border-t border-[#E5E5E5]/10">
+                <button
+                  onClick={() => { if (window.confirm('Annullare TUTTA la comanda?')) annullaTuttoModal(); }}
+                  disabled={deleting === 'all'}
+                  className="w-full py-3 border border-red-500/50 text-red-400 hover:bg-red-500/10 font-body text-sm tracking-widest uppercase rounded-sm transition-all flex items-center justify-center gap-2">
+                  {deleting === 'all' ? <div className="w-4 h-4 border border-red-400/50 border-t-red-400 rounded-full animate-spin" /> : <><Trash2 size={14} /> Annulla tutto</>}
+                </button>
               </div>
-            ))}
-          </div>
-
-          {/* Note generali */}
-          <div className="px-3 pb-2 shrink-0">
-            <div className="flex items-center gap-1.5 mb-1">
-              <StickyNote size={11} className="text-[#E5E5E5]/30" />
-              <span className="font-body text-xs text-[#E5E5E5]/30">Note generali</span>
-            </div>
-            <textarea value={noteGenerali} onChange={e => setNoteGenerali(e.target.value)} rows={2}
-              placeholder="Allergie, richieste speciali..."
-              className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/10 text-[#E5E5E5]/80 px-3 py-2 rounded-sm font-body text-xs outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20 resize-none" />
-          </div>
-
-          {/* Footer */}
-          <div className="p-3 border-t border-[#C69C6D]/15 shrink-0">
-            <div className="flex justify-between items-center mb-3">
-              <span className="font-body text-xs text-[#E5E5E5]/40">Totale</span>
-              <span className="font-display text-2xl text-[#C69C6D]">€{totale.toFixed(2)}</span>
-            </div>
-            <button onClick={inviaComanda} disabled={sending || totaleArticoli === 0 || showSetup}
-              className="w-full py-4 bg-[#C69C6D] hover:bg-[#D4AA7D] text-[#0A0A0B] font-body font-bold text-sm tracking-widest uppercase rounded-sm transition-all disabled:opacity-40 flex items-center justify-center gap-2">
-              <Send size={15} />
-              {sending ? 'Invio...' : `Invia Comanda${totaleArticoli > 0 ? ` (${totaleArticoli})` : ''}`}
-            </button>
+            )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
-}
-
-function ArticoloCard({ item, color, qty, onAdd, disabled }) {
-  const isBar = color === 'blue';
-  return (
-    <button onClick={onAdd} disabled={disabled}
-      className={`relative rounded-sm p-3 text-left transition-all w-full border
-        ${disabled ? 'opacity-40 cursor-not-allowed' : 'active:scale-95 hover:opacity-90'}
-        ${isBar ? 'bg-[#0e0e1a] border-blue-900/40 hover:border-blue-400/50' : 'bg-[#161618] border-[#E5E5E5]/10 hover:border-[#C69C6D]/50'}`}>
-      {qty > 0 && (
-        <span className={`absolute top-1.5 right-1.5 min-w-[20px] h-5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center
-          ${isBar ? 'bg-blue-500 text-white' : 'bg-[#C69C6D] text-[#0A0A0B]'}`}>{qty}</span>
-      )}
-      <p className="font-body text-white text-sm font-medium leading-snug pr-6">{item.name}</p>
-      {item.description && <p className="font-body text-[#E5E5E5]/35 text-xs mt-0.5 line-clamp-1">{item.description}</p>}
-      <p className={`font-body font-semibold text-sm mt-1.5 ${isBar ? 'text-blue-400' : 'text-[#C69C6D]'}`}>€{Number(item.price).toFixed(2)}</p>
-    </button>
-  );
-}
-
-function StatusBadge({ stato }) {
-  const config = {
-    inviato: 'bg-red-500/20 text-red-300 border-red-500/40',
-    ricevuto: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
-    in_preparazione: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
-    pronto: 'bg-green-500/20 text-green-400 border-green-500/40',
-    consegnato: 'bg-[#E5E5E5]/10 text-[#E5E5E5]/40 border-[#E5E5E5]/15',
-  };
-  const labels = { inviato: 'inviato', ricevuto: 'ricevuto', in_preparazione: 'in prep.', pronto: 'PRONTO', consegnato: 'consegnato' };
-  return <span className={`text-xs px-2 py-0.5 border rounded-full font-body whitespace-nowrap ${config[stato] || ''}`}>{labels[stato] || stato}</span>;
 }

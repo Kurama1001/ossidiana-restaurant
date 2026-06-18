@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, RefreshCw, Clock, Users, Receipt, Trash2, X } from 'lucide-react';
-import AdminComande from '@/components/admin/AdminComande';
+import ComandaEditor from '@/components/admin/ComandaEditor.jsx';
 
 // Stati semplificati per il cameriere
 const STATO_CONFIG = {
@@ -95,7 +95,7 @@ export default function Sala() {
               {isModifica ? `Tavolo ${ordineSelezionato?.numero_tavolo} · Aggiungi` : 'Nuova Comanda'}
             </h1>
           </div>
-          <AdminComande onGoToHome={goHome} ordineEsistente={isModifica ? ordineSelezionato : null} />
+          <ComandaEditor onSuccess={goHome} ordineEsistente={isModifica ? ordineSelezionato : null} />
         </div>
       </div>
     );
