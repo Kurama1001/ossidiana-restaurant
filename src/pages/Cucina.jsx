@@ -195,6 +195,61 @@ export default function Cucina() {
     };
   }, []);
 
+  const stampaComanda = (ord) => {
+    const win = window.open('', '_blank', 'width=400,height=700');
+    const ora = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const data = new Date().toLocaleDateString('it-IT');
+    const fasiUsate = [...new Set(ord.righe.map(r => r.fase || 1))].sort((a, b) => a - b);
+    const righePerFase = fasiUsate.reduce((acc, f) => {
+      acc[f] = ord.righe.filter(r => (r.fase || 1) === f);
+      return acc;
+    }, {});
+
+    const fasiHtml = fasiUsate.map(f => `
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;border-bottom:1px dashed #000;padding-bottom:5px;margin-bottom:8px">
+          ── FASE ${f} ──
+        </div>
+        ${righePerFase[f].map(r => `
+          <div style="margin-bottom:6px">
+            <div style="font-size:16px;font-weight:bold">
+              ${r.quantita}× ${r.nome_item}${r.priorita === 'urgente' ? ' <span style="color:red">⚡ URGENTE</span>' : ''}
+            </div>
+            ${r.note ? `<div style="font-size:12px;font-style:italic;margin-left:10px;color:#555">📝 ${r.note}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+
+    win.document.write(`
+      <html><head><title>Comanda Tavolo ${ord.numero}</title>
+      <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: monospace; padding: 20px; max-width: 320px; }
+        @media print { body { padding: 8px; } }
+      </style></head>
+      <body>
+        <div style="text-align:center; margin-bottom:16px; padding-bottom:12px; border-bottom:2px solid #000">
+          <div style="font-size:22px; font-weight:bold; letter-spacing:6px; text-transform:uppercase; margin-bottom:2px">
+            OSSIDIANA
+          </div>
+          <div style="font-size:11px; letter-spacing:3px; text-transform:uppercase; color:#555">Ristorante</div>
+        </div>
+        <div style="text-align:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px dashed #000">
+          <div style="font-size:13px; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px">COMANDA CUCINA</div>
+          <div style="font-size:28px; font-weight:bold">Tavolo ${ord.numero}</div>
+          <div style="font-size:12px; color:#555; margin-top:4px">${data} · ${ora}</div>
+        </div>
+        ${fasiHtml}
+        <div style="margin-top:20px; border-top:1px dashed #000; padding-top:10px; text-align:center; font-size:10px; color:#888; letter-spacing:1px">
+          OSSIDIANA · CUCINA
+        </div>
+        <script>window.onload=()=>{ window.print(); window.close(); }<\/script>
+      </body></html>
+    `);
+    win.document.close();
+  };
+
   const prendiInCarico = async (ordineId) => {
     setUpdating(ordineId);
     const ord = ordini[ordineId];
@@ -212,6 +267,7 @@ export default function Cucina() {
       }
     }));
     setUpdating(null);
+    stampaComanda(ord);
   };
 
   const segnaArticoloPronto = async (ordineId, rigaId) => {
