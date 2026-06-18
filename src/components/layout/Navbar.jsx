@@ -11,7 +11,7 @@ const PUBLIC_LINKS = [
 
 const STAFF_LINKS = {
   cameriere: [
-    { href: '/sala', label: 'Sala', icon: UtensilsCrossed },
+    { href: '/sala', label: 'Comande', icon: UtensilsCrossed },
   ],
   cucina: [
     { href: '/cucina', label: 'Cucina', icon: ChefHat },

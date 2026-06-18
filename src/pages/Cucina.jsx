@@ -1,38 +1,74 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { RefreshCw, Clock, AlertCircle } from 'lucide-react';
-
-const STATI = ['inviato', 'ricevuto', 'in_preparazione', 'pronto'];
-const STATI_LABELS = { inviato: 'Nuovo', ricevuto: 'Ricevuto', in_preparazione: 'In prep.', pronto: 'Pronto' };
-const STATI_COLORS = {
-  inviato:         'bg-red-500/20 border-red-500/60 text-red-300',
-  ricevuto:        'bg-blue-500/20 border-blue-500/60 text-blue-300',
-  in_preparazione: 'bg-yellow-500/20 border-yellow-500/60 text-yellow-300',
-  pronto:          'bg-green-500/20 border-green-500/60 text-green-300',
-};
+import { RefreshCw, Clock, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 function minutiDa(ts) {
   if (!ts) return null;
-  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
-  return diff;
+  return Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
+}
+
+// Calcola lo stato semplificato di un ordine basato sulle sue righe
+function statoOrdine(righe) {
+  if (righe.length === 0) return null;
+  const stati = righe.map(r => r.stato);
+  if (stati.every(s => s === 'pronto' || s === 'consegnato')) return 'terminato';
+  if (stati.some(s => s === 'in_preparazione')) return 'in_lavorazione';
+  if (stati.some(s => s === 'ricevuto')) return 'ricevuto';
+  return 'nuovo';
 }
 
 export default function Cucina() {
   const [righe, setRighe] = useState([]);
-  const [filtro, setFiltro] = useState('tutte');
+  const [ordini, setOrdini] = useState({}); // ordineId -> { numero, cameriere, stato_calc, righe }
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
-  const prevCount = useRef(0);
-  const audioRef = useRef(null);
+  const prevIds = useRef(new Set());
+  const audioCtxRef = useRef(null);
+
+  const playBeep = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtxRef.current = ctx;
+      [0, 200, 400].forEach(delay => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.4, ctx.currentTime + delay / 1000);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay / 1000 + 0.3);
+        osc.start(ctx.currentTime + delay / 1000);
+        osc.stop(ctx.currentTime + delay / 1000 + 0.4);
+      });
+    } catch {}
+  };
 
   const load = async () => {
-    const data = await base44.entities.RigaOrdine.filter({ reparto: 'cucina' }, 'created_date', 200);
-    const attive = data.filter(r => ['inviato','ricevuto','in_preparazione','pronto'].includes(r.stato));
-    if (attive.length > prevCount.current && prevCount.current > 0) {
-      audioRef.current?.play().catch(() => {});
-    }
-    prevCount.current = attive.length;
+    const data = await base44.entities.RigaOrdine.filter({ reparto: 'cucina' }, 'created_date', 300);
+    const attive = data.filter(r => ['inviato', 'ricevuto', 'in_preparazione', 'pronto'].includes(r.stato));
+
+    // Raggruppa per ordine
+    const grouped = attive.reduce((acc, r) => {
+      if (!acc[r.ordine_id]) acc[r.ordine_id] = { ordineId: r.ordine_id, numero: r.numero_tavolo, righe: [] };
+      acc[r.ordine_id].righe.push(r);
+      return acc;
+    }, {});
+
+    // Calcola stato per ordine
+    Object.values(grouped).forEach(o => { o.stato_calc = statoOrdine(o.righe); });
+
+    // Filtra ordini non ancora terminati
+    const nonTerminati = Object.fromEntries(Object.entries(grouped).filter(([, o]) => o.stato_calc !== 'terminato'));
+
+    // Notifica suono per nuovi ordini
+    const newIds = new Set(Object.keys(nonTerminati));
+    const nuoviOrdini = [...newIds].filter(id => !prevIds.current.has(id));
+    if (nuoviOrdini.length > 0 && prevIds.current.size > 0) playBeep();
+    prevIds.current = newIds;
+
     setRighe(attive);
+    setOrdini(nonTerminati);
     setLoading(false);
   };
 
@@ -42,40 +78,56 @@ export default function Cucina() {
     return () => clearInterval(interval);
   }, []);
 
-  const cambiaStato = async (riga, nuovoStato) => {
-    setUpdating(riga.id);
-    const extra = nuovoStato === 'pronto' ? { ready_at: new Date().toISOString() } : {};
-    await base44.entities.RigaOrdine.update(riga.id, { stato: nuovoStato, ...extra });
-    setRighe(prev => prev.map(r => r.id === riga.id ? { ...r, stato: nuovoStato, ...extra } : r));
-    if (nuovoStato === 'pronto') {
-      setRighe(prev => prev.filter(r => r.id !== riga.id));
-    }
+  // Presa in carico di TUTTO l'ordine
+  const prendiInCarico = async (ordineId) => {
+    setUpdating(ordineId);
+    const ord = ordini[ordineId];
+    const righeNuove = ord.righe.filter(r => r.stato === 'inviato' || r.stato === 'ricevuto');
+    await Promise.all(righeNuove.map(r => base44.entities.RigaOrdine.update(r.id, { stato: 'in_preparazione' })));
+    // Aggiorna stato Ordine
+    await base44.entities.Ordine.update(ordineId, { stato: 'in_preparazione' }).catch(() => {});
+    setOrdini(prev => ({
+      ...prev,
+      [ordineId]: {
+        ...prev[ordineId],
+        stato_calc: 'in_lavorazione',
+        righe: prev[ordineId].righe.map(r => righeNuove.find(nr => nr.id === r.id) ? { ...r, stato: 'in_preparazione' } : r),
+      }
+    }));
     setUpdating(null);
   };
 
-  const filtrate = filtro === 'tutte' ? righe : righe.filter(r => r.stato === filtro);
-  // Raggruppa per tavolo
-  const grouped = filtrate.reduce((acc, r) => {
-    const key = r.tavolo_id;
-    if (!acc[key]) acc[key] = { numero: r.numero_tavolo, righe: [] };
-    acc[key].righe.push(r);
-    return acc;
-  }, {});
+  // Segna articolo singolo come pronto
+  const segnaArticoloPronto = async (ordineId, rigaId) => {
+    setUpdating(rigaId);
+    const now = new Date().toISOString();
+    await base44.entities.RigaOrdine.update(rigaId, { stato: 'pronto', ready_at: now });
+    setOrdini(prev => {
+      const ord = { ...prev[ordineId] };
+      ord.righe = ord.righe.map(r => r.id === rigaId ? { ...r, stato: 'pronto', ready_at: now } : r);
+      ord.stato_calc = statoOrdine(ord.righe);
+      if (ord.stato_calc === 'terminato') {
+        // Aggiorna stato Ordine su DB
+        base44.entities.Ordine.update(ordineId, { stato: 'pronto' }).catch(() => {});
+        const { [ordineId]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [ordineId]: ord };
+    });
+    setUpdating(null);
+  };
 
-  const nuoveCount = righe.filter(r => r.stato === 'inviato').length;
+  const nuoviCount = Object.values(ordini).filter(o => o.stato_calc === 'nuovo').length;
 
   return (
-    <div className="min-h-screen bg-[#080808] p-4">
-      {/* Audio notifica */}
-      <audio ref={audioRef} src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto" />
-
+    <div className="min-h-screen bg-[#080808] p-4 pt-20">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <h1 className="font-display text-3xl text-white tracking-widest">CUCINA</h1>
-          {nuoveCount > 0 && (
+          {nuoviCount > 0 && (
             <span className="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full animate-pulse">
-              {nuoveCount} nuov{nuoveCount === 1 ? 'a' : 'e'}
+              {nuoviCount} nuov{nuoviCount === 1 ? 'o' : 'i'}
             </span>
           )}
         </div>
@@ -84,78 +136,88 @@ export default function Cucina() {
         </button>
       </div>
 
-      {/* Filtri */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        {[['tutte','Tutte'], ['inviato','Nuove'], ['ricevuto','Ricevute'], ['in_preparazione','In prep.']].map(([val, lab]) => (
-          <button key={val} onClick={() => setFiltro(val)}
-            className={`px-4 py-2 rounded-sm text-sm font-body border transition-all ${filtro === val ? 'bg-white text-black border-white' : 'border-white/20 text-white/60 hover:border-white/50'}`}>
-            {lab}
-          </button>
-        ))}
-      </div>
-
       {loading ? (
         <div className="text-center py-20 text-white/40 font-body">Caricamento...</div>
-      ) : Object.keys(grouped).length === 0 ? (
-        <div className="text-center py-20 text-white/40 font-body text-lg">Nessuna comanda in attesa</div>
+      ) : Object.keys(ordini).length === 0 ? (
+        <div className="text-center py-20 text-white/40 font-body text-lg">
+          <CheckCircle2 size={40} className="mx-auto mb-4 opacity-20" />
+          Nessuna comanda in attesa
+        </div>
       ) : (
-        <div className="space-y-4">
-          {Object.entries(grouped).map(([tavoloId, group]) => (
-            <div key={tavoloId} className="bg-[#111] border border-white/10 rounded-sm overflow-hidden">
-              <div className="bg-[#1a1a1a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
-                <span className="font-display text-2xl text-white">Tavolo {group.numero}</span>
-                <span className="text-white/40 font-body text-sm">{group.righe.length} articoli</span>
-              </div>
-              <div className="divide-y divide-white/5">
-                {group.righe.map(riga => {
-                  const min = minutiDa(riga.sent_at || riga.created_date);
-                  return (
-                    <div key={riga.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-body text-white text-lg font-semibold">
-                            {riga.quantita}× {riga.nome_item}
-                          </span>
-                          {riga.priorita === 'urgente' && (
-                            <AlertCircle size={16} className="text-red-400" />
-                          )}
-                        </div>
-                        {riga.note && <p className="font-body text-yellow-300/80 text-sm italic">📝 {riga.note}</p>}
-                        {min !== null && (
-                          <div className="flex items-center gap-1 text-white/30 text-xs font-body mt-1">
-                            <Clock size={11} /> {min} min fa
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {riga.stato === 'inviato' && (
-                          <button onClick={() => cambiaStato(riga, 'ricevuto')} disabled={updating === riga.id}
-                            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-sm font-body text-sm font-semibold transition-all min-w-[110px]">
-                            ✓ Ricevuto
-                          </button>
-                        )}
-                        {riga.stato === 'ricevuto' && (
-                          <button onClick={() => cambiaStato(riga, 'in_preparazione')} disabled={updating === riga.id}
-                            className="px-4 py-2.5 bg-yellow-600 hover:bg-yellow-500 text-white rounded-sm font-body text-sm font-semibold transition-all min-w-[130px]">
-                            🍳 In prep.
-                          </button>
-                        )}
-                        {(riga.stato === 'in_preparazione' || riga.stato === 'ricevuto') && (
-                          <button onClick={() => cambiaStato(riga, 'pronto')} disabled={updating === riga.id}
-                            className="px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-sm font-body text-sm font-semibold transition-all min-w-[100px]">
-                            ✔ Pronto
-                          </button>
-                        )}
-                        <span className={`px-3 py-1.5 border rounded-sm text-xs font-body self-center ${STATI_COLORS[riga.stato] || ''}`}>
-                          {STATI_LABELS[riga.stato]}
-                        </span>
-                      </div>
+        <div className="space-y-4 max-w-2xl mx-auto">
+          {Object.entries(ordini)
+            .sort(([, a], [, b]) => {
+              // Ordina: nuovi prima, poi in lavorazione
+              const order = { nuovo: 0, ricevuto: 1, in_lavorazione: 2 };
+              return (order[a.stato_calc] ?? 9) - (order[b.stato_calc] ?? 9);
+            })
+            .map(([ordineId, ord]) => {
+              const isNuovo = ord.stato_calc === 'nuovo' || ord.stato_calc === 'ricevuto';
+              const isInLav = ord.stato_calc === 'in_lavorazione';
+              return (
+                <div key={ordineId}
+                  className={`border rounded-sm overflow-hidden ${isNuovo ? 'border-red-500/60 bg-[#1a0a0a]' : 'border-yellow-500/30 bg-[#111108]'}`}>
+
+                  {/* Header ordine */}
+                  <div className={`px-4 py-3 flex items-center justify-between border-b ${isNuovo ? 'border-red-500/20 bg-red-900/10' : 'border-yellow-500/10 bg-yellow-900/5'}`}>
+                    <div className="flex items-center gap-3">
+                      <span className="font-display text-2xl text-white">Tavolo {ord.numero}</span>
+                      {isNuovo && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full font-body font-bold animate-pulse">NUOVO</span>}
+                      {isInLav && <span className="text-xs bg-yellow-600/80 text-white px-2 py-0.5 rounded-full font-body">IN LAVORAZIONE</span>}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+                    {/* Pulsante presa in carico per TUTTO l'ordine */}
+                    {isNuovo && (
+                      <button
+                        onClick={() => prendiInCarico(ordineId)}
+                        disabled={updating === ordineId}
+                        className="px-4 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black rounded-sm font-body text-sm font-bold transition-all flex items-center gap-2 min-w-[140px] justify-center"
+                      >
+                        {updating === ordineId ? <Loader2 size={15} className="animate-spin" /> : '🍳 Prendi in carico'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Righe articoli */}
+                  <div className="divide-y divide-white/5">
+                    {ord.righe.map(riga => {
+                      const min = minutiDa(riga.sent_at || riga.created_date);
+                      const isPronto = riga.stato === 'pronto';
+                      return (
+                        <div key={riga.id} className={`p-4 flex flex-col sm:flex-row sm:items-center gap-3 ${isPronto ? 'opacity-40' : ''}`}>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`font-body text-lg font-semibold ${isPronto ? 'line-through text-white/40' : 'text-white'}`}>
+                                {riga.quantita}× {riga.nome_item}
+                              </span>
+                              {riga.priorita === 'urgente' && <AlertCircle size={16} className="text-red-400" />}
+                            </div>
+                            {riga.note && (
+                              <p className="font-body text-yellow-300/80 text-sm italic">📝 {riga.note}</p>
+                            )}
+                            {min !== null && (
+                              <div className="flex items-center gap-1 text-white/30 text-xs font-body mt-1">
+                                <Clock size={11} /> {min} min fa
+                              </div>
+                            )}
+                          </div>
+                          {/* Bottone pronto per singolo articolo (solo se in lavorazione) */}
+                          {isInLav && !isPronto && (
+                            <button
+                              onClick={() => segnaArticoloPronto(ordineId, riga.id)}
+                              disabled={updating === riga.id}
+                              className="px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-sm font-body text-sm font-semibold transition-all flex items-center gap-2"
+                            >
+                              {updating === riga.id ? <Loader2 size={14} className="animate-spin" /> : <><CheckCircle2 size={14} /> Pronto</>}
+                            </button>
+                          )}
+                          {isPronto && <span className="text-green-400 font-body text-sm flex items-center gap-1"><CheckCircle2 size={14} /> Pronto</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
         </div>
       )}
     </div>

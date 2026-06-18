@@ -142,7 +142,11 @@ export default function Admin() {
           </Droppable>
         </DragDropContext>
 
-        {TabContent && <TabContent />}
+        {TabContent && (
+          activeTab === 'comande'
+            ? <AdminComande onGoToHome={() => {}} />
+            : <TabContent />
+        )}
       </div>
     </div>
   );
