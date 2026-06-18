@@ -215,11 +215,12 @@ export default function Cucina() {
                     </div>
                   </div>
 
-                  {/* Righe articoli raggruppate per FASE */}
+                  {/* Righe articoli raggruppate per FASE (ordinate fase 1 → n) */}
                   {(() => {
-                    const fasiUsate = [...new Set(ord.righe.map(r => r.fase || 1))].sort((a, b) => a - b);
+                    const righeOrdinate = [...ord.righe].sort((a, b) => (a.fase || 1) - (b.fase || 1));
+                    const fasiUsate = [...new Set(righeOrdinate.map(r => r.fase || 1))].sort((a, b) => a - b);
                     return fasiUsate.map(f => {
-                      const righeF = ord.righe.filter(r => (r.fase || 1) === f);
+                      const righeF = righeOrdinate.filter(r => (r.fase || 1) === f);
                       const tuttePronte = righeF.every(r => r.stato === 'pronto' || r.stato === 'consegnato');
                       return (
                         <div key={f}>
