@@ -27,9 +27,23 @@
         "romanissimi",
         "secondi",
         "contorni",
-        "dolci"
+        "dolci",
+        "acqua",
+        "vino",
+        "birra",
+        "cocktail",
+        "caffe_amari",
+        "bevande"
       ],
       "description": "Categoria del piatto"
+    },
+    "reparto": {
+      "type": "string",
+      "enum": [
+        "cucina",
+        "bar"
+      ],
+      "description": "Reparto: cucina o bar"
     },
     "price": {
       "type": "number",
@@ -53,16 +67,6 @@
       "default": false,
       "description": "In evidenza in home"
     },
-    "seasonalFrom": {
-      "type": "string",
-      "format": "date",
-      "description": "Disponibile da (data)"
-    },
-    "seasonalTo": {
-      "type": "string",
-      "format": "date",
-      "description": "Disponibile fino a (data)"
-    },
     "allergens": {
       "type": "string",
       "description": "Allergeni (separati da virgola)"
@@ -82,6 +86,10 @@
       },
       "description": "Tag dietetici"
     },
+    "tempo_preparazione": {
+      "type": "number",
+      "description": "Tempo stimato preparazione (minuti)"
+    },
     "sortOrder": {
       "type": "number",
       "description": "Ordine di visualizzazione"
@@ -93,7 +101,6 @@
   },
   "required": [
     "name",
-    "menuType",
     "category",
     "price"
   ],

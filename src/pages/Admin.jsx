@@ -7,13 +7,17 @@ import AdminMenu from '@/components/admin/AdminMenu';
 import AdminUsers from '@/components/admin/AdminUsers';
 import AdminGallery from '@/components/admin/AdminGallery';
 import AdminChiSiamo from '@/components/admin/AdminChiSiamo';
-import { LayoutDashboard, CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info } from 'lucide-react';
+import AdminTavoli from '@/components/admin/AdminTavoli';
+import AdminReport from '@/components/admin/AdminReport';
+import { LayoutDashboard, CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info, TableProperties, BarChart2 } from 'lucide-react';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'tavoli', label: 'Tavoli', icon: TableProperties },
   { id: 'reservations', label: 'Prenotazioni', icon: CalendarDays },
-  { id: 'orders', label: 'Ordini', icon: ShoppingBag },
+  { id: 'orders', label: 'Asporto', icon: ShoppingBag },
   { id: 'menu', label: 'Menu', icon: UtensilsCrossed },
+  { id: 'report', label: 'Report', icon: BarChart2 },
   { id: 'gallery', label: 'Galleria', icon: Images },
   { id: 'chi_siamo', label: 'Chi Siamo', icon: Info },
   { id: 'users', label: 'Utenti', icon: Users },
@@ -25,9 +29,11 @@ export default function Admin() {
 
   const TabContent = {
     dashboard: AdminDashboard,
+    tavoli: AdminTavoli,
     reservations: AdminReservations,
     orders: AdminOrders,
     menu: AdminMenu,
+    report: AdminReport,
     gallery: AdminGallery,
     chi_siamo: AdminChiSiamo,
     users: AdminUsers,

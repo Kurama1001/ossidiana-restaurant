@@ -17,6 +17,12 @@ import Prenotazioni from '@/pages/Prenotazioni';
 import Ordini from '@/pages/Ordini';
 import Admin from '@/pages/Admin';
 import Profilo from '@/pages/Profilo';
+import Sala from '@/pages/Sala';
+import Comanda from '@/pages/Comanda';
+import Cucina from '@/pages/Cucina';
+import Bar from '@/pages/Bar';
+import Cassa from '@/pages/Cassa';
+import StoricoComande from '@/pages/StoricoComande';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -50,6 +56,12 @@ const AuthenticatedApp = () => {
         <Route path="/prenotazioni" element={<Prenotazioni />} />
         <Route path="/ordini" element={<Ordini />} />
         <Route path="/profilo" element={<Profilo />} />
+        <Route path="/sala" element={<Sala />} />
+        <Route path="/comanda/:tavoloId" element={<Comanda />} />
+        <Route path="/cucina" element={<Cucina />} />
+        <Route path="/bar" element={<Bar />} />
+        <Route path="/cassa" element={<Cassa />} />
+        <Route path="/storico-comande" element={<StoricoComande />} />
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} requiredRole="admin" />}>
           <Route path="/admin" element={<Admin />} />
         </Route>

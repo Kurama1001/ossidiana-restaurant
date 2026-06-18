@@ -1,0 +1,104 @@
+{
+  "name": "RigaOrdine",
+  "type": "object",
+  "properties": {
+    "ordine_id": {
+      "type": "string",
+      "description": "ID ordine"
+    },
+    "tavolo_id": {
+      "type": "string",
+      "description": "ID tavolo"
+    },
+    "numero_tavolo": {
+      "type": "number",
+      "description": "Numero tavolo"
+    },
+    "menu_item_id": {
+      "type": "string",
+      "description": "ID MenuItem"
+    },
+    "nome_item": {
+      "type": "string",
+      "description": "Nome articolo"
+    },
+    "categoria": {
+      "type": "string",
+      "description": "Categoria articolo"
+    },
+    "reparto": {
+      "type": "string",
+      "enum": [
+        "cucina",
+        "bar"
+      ],
+      "description": "Reparto di destinazione"
+    },
+    "quantita": {
+      "type": "number",
+      "default": 1,
+      "description": "Quantit\u00e0"
+    },
+    "prezzo_unitario": {
+      "type": "number",
+      "description": "Prezzo unitario"
+    },
+    "prezzo_totale": {
+      "type": "number",
+      "description": "Prezzo totale riga"
+    },
+    "note": {
+      "type": "string",
+      "description": "Note per cucina/bar"
+    },
+    "stato": {
+      "type": "string",
+      "enum": [
+        "bozza",
+        "inviato",
+        "ricevuto",
+        "in_preparazione",
+        "pronto",
+        "consegnato",
+        "annullato"
+      ],
+      "default": "bozza",
+      "description": "Stato riga ordine"
+    },
+    "priorita": {
+      "type": "string",
+      "enum": [
+        "normale",
+        "urgente"
+      ],
+      "default": "normale",
+      "description": "Priorit\u00e0 preparazione"
+    },
+    "sent_at": {
+      "type": "string",
+      "description": "Timestamp invio"
+    },
+    "ready_at": {
+      "type": "string",
+      "description": "Timestamp pronto"
+    },
+    "delivered_at": {
+      "type": "string",
+      "description": "Timestamp consegnato"
+    }
+  },
+  "required": [
+    "ordine_id",
+    "tavolo_id",
+    "menu_item_id",
+    "nome_item",
+    "reparto",
+    "quantita"
+  ],
+  "rls": {
+    "create": {},
+    "read": {},
+    "update": {},
+    "delete": {}
+  }
+}

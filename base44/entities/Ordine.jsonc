@@ -1,0 +1,87 @@
+{
+  "name": "Ordine",
+  "type": "object",
+  "properties": {
+    "tavolo_id": {
+      "type": "string",
+      "description": "ID del tavolo"
+    },
+    "numero_tavolo": {
+      "type": "number",
+      "description": "Numero tavolo"
+    },
+    "cameriere_id": {
+      "type": "string",
+      "description": "ID cameriere"
+    },
+    "cameriere_nome": {
+      "type": "string",
+      "description": "Nome cameriere"
+    },
+    "stato": {
+      "type": "string",
+      "enum": [
+        "aperto",
+        "inviato",
+        "parziale_pronto",
+        "pronto",
+        "servito",
+        "da_pagare",
+        "chiuso",
+        "annullato"
+      ],
+      "default": "aperto",
+      "description": "Stato ordine"
+    },
+    "coperti": {
+      "type": "number",
+      "description": "Numero coperti"
+    },
+    "note_generali": {
+      "type": "string",
+      "description": "Note generali ordine"
+    },
+    "totale": {
+      "type": "number",
+      "default": 0,
+      "description": "Totale ordine in euro"
+    },
+    "sconto": {
+      "type": "number",
+      "default": 0,
+      "description": "Sconto manuale in euro"
+    },
+    "metodo_pagamento": {
+      "type": "string",
+      "enum": [
+        "contanti",
+        "carta",
+        "altro"
+      ],
+      "description": "Metodo di pagamento"
+    },
+    "pagato": {
+      "type": "boolean",
+      "default": false,
+      "description": "Ordine pagato"
+    },
+    "closed_at": {
+      "type": "string",
+      "description": "Data chiusura ordine"
+    }
+  },
+  "required": [
+    "tavolo_id",
+    "numero_tavolo"
+  ],
+  "rls": {
+    "create": {},
+    "read": {},
+    "update": {},
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

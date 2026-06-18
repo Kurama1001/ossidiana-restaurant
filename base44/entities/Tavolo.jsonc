@@ -1,0 +1,55 @@
+{
+  "name": "Tavolo",
+  "type": "object",
+  "properties": {
+    "numero": {
+      "type": "number",
+      "description": "Numero tavolo"
+    },
+    "nome_sala": {
+      "type": "string",
+      "description": "Nome sala o zona"
+    },
+    "coperti": {
+      "type": "number",
+      "description": "Numero massimo coperti"
+    },
+    "stato": {
+      "type": "string",
+      "enum": [
+        "libero",
+        "occupato",
+        "in_preparazione",
+        "pronto",
+        "da_pagare"
+      ],
+      "default": "libero",
+      "description": "Stato attuale del tavolo"
+    },
+    "ordine_attivo_id": {
+      "type": "string",
+      "description": "ID ordine attivo"
+    },
+    "note": {
+      "type": "string",
+      "description": "Note sul tavolo"
+    }
+  },
+  "required": [
+    "numero"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {},
+    "update": {},
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
