@@ -14,7 +14,7 @@ const CAT_CUCINA = ['antipasti','primi','romanissimi','secondi','contorni','dolc
 const FASE_COLORS = ['border-blue-500/50 bg-blue-500/5', 'border-purple-500/50 bg-purple-500/5', 'border-orange-500/50 bg-orange-500/5', 'border-pink-500/50 bg-pink-500/5', 'border-teal-500/50 bg-teal-500/5'];
 const FASE_HEADER_COLORS = ['text-blue-400', 'text-purple-400', 'text-orange-400', 'text-pink-400', 'text-teal-400'];
 
-export default function AdminComande({ onGoToHome }) {
+export default function AdminComande({ onGoToHome, ordineEsistente }) {
   const [menuItems, setMenuItems] = useState([]);
   // fasi: array di {label, righe: [{_tmp, ...}]}
   const [fasi, setFasi] = useState([{ label: 'Fase 1', righe: [] }]);
@@ -29,19 +29,32 @@ export default function AdminComande({ onGoToHome }) {
   const [catFilter, setCatFilter] = useState('tutti');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false); // schermata di conferma
   const [user, setUser] = useState(null);
   const [showSetup, setShowSetup] = useState(true);
   const [mobileTab, setMobileTab] = useState('menu'); // 'menu' | 'comanda'
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.MenuItem.filter({ active: true }, 'sortOrder', 200),
-      base44.auth.me().catch(() => null),
-    ]).then(([menu, me]) => {
+    const init = async () => {
+      const [menu, me] = await Promise.all([
+        base44.entities.MenuItem.filter({ active: true }, 'sortOrder', 200),
+        base44.auth.me().catch(() => null),
+      ]);
       setMenuItems(menu);
       setUser(me);
+      // Se viene passato un ordine esistente, caricalo subito
+      if (ordineEsistente) {
+        setOrdine(ordineEsistente);
+        setNumeroTavolo(String(ordineEsistente.numero_tavolo));
+        setCoperti(ordineEsistente.coperti || 2);
+        setNoteGenerali(ordineEsistente.note_generali || '');
+        const rigs = await base44.entities.RigaOrdine.filter({ ordine_id: ordineEsistente.id }, 'created_date', 200);
+        setRigheInviate(rigs.filter(r => r.stato !== 'bozza' && r.stato !== 'annullato'));
+        setShowSetup(false);
+      }
       setLoading(false);
-    });
+    };
+    init();
   }, []);
 
   const iniziaOrdine = async () => {
@@ -161,8 +174,11 @@ export default function AdminComande({ onGoToHome }) {
     })));
     await base44.entities.Ordine.update(ord.id, { stato: 'inviato', note_generali: noteGenerali, coperti, totale });
     setSending(false);
-    // Torna alla home comande
-    if (onGoToHome) onGoToHome();
+    setSent(true);
+    setTimeout(() => {
+      setSent(false);
+      if (onGoToHome) onGoToHome();
+    }, 1800);
   };
 
   const nuovoTavolo = () => {
@@ -187,6 +203,17 @@ export default function AdminComande({ onGoToHome }) {
   const bar = filtered.filter(i => (i.reparto || (CAT_CUCINA.includes(i.category) ? 'cucina' : 'bar')) === 'bar');
 
   if (loading) return <div className="py-20 text-center text-[#E5E5E5]/30 font-body">Caricamento...</div>;
+
+  if (sent) return (
+    <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-6">
+      <div className="w-20 h-20 rounded-full bg-green-500/15 border-2 border-green-500/40 flex items-center justify-center mb-6">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h2 className="font-display text-3xl text-white tracking-widest mb-2">Comanda Inviata!</h2>
+      <p className="font-body text-[#E5E5E5]/50 text-sm">Tavolo {numeroTavolo} · la cucina ha ricevuto l'ordine</p>
+      <div className="mt-6 w-8 h-8 border-2 border-[#C69C6D]/30 border-t-[#C69C6D] rounded-full animate-spin" />
+    </div>
+  );
 
   const fasiBozzaCount = fasi.map(f => f.righe.length);
 

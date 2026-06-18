@@ -20,7 +20,8 @@ function minutiDa(ts) {
 }
 
 export default function Sala() {
-  const [view, setView] = useState('home'); // 'home' | 'nuova'
+  const [view, setView] = useState('home'); // 'home' | 'nuova' | 'modifica'
+  const [ordineSelezionato, setOrdineSelezionato] = useState(null);
   const [ordini, setOrdini] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,18 +49,23 @@ export default function Sala() {
     terminate: ordini.filter(o => ['pronto', 'servito'].includes(o.stato)).length,
   };
 
-  if (view === 'nuova') {
+  const goHome = () => { setView('home'); setOrdineSelezionato(null); load(); };
+
+  if (view === 'nuova' || view === 'modifica') {
+    const isModifica = view === 'modifica';
     return (
       <div className="min-h-screen bg-[#0A0A0B] p-4 pt-20">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
-            <button onClick={() => { setView('home'); load(); }}
+            <button onClick={goHome}
               className="p-2 border border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40 hover:text-[#C69C6D] rounded-sm transition-all">
               ←
             </button>
-            <h1 className="font-display text-2xl text-white tracking-widest">Nuova Comanda</h1>
+            <h1 className="font-display text-2xl text-white tracking-widest">
+              {isModifica ? `Tavolo ${ordineSelezionato?.numero_tavolo} · Aggiungi` : 'Nuova Comanda'}
+            </h1>
           </div>
-          <AdminComande onGoToHome={() => { setView('home'); load(); }} />
+          <AdminComande onGoToHome={goHome} ordineEsistente={isModifica ? ordineSelezionato : null} />
         </div>
       </div>
     );
@@ -112,12 +118,12 @@ export default function Sala() {
                 const min = minutiDa(ordine.created_date);
                 return (
                   <div key={ordine.id} className={`${cfg.bg} border ${cfg.border} rounded-sm p-4`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <span className="font-display text-4xl text-white">{ordine.numero_tavolo}</span>
-                        <div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <span className="font-display text-4xl text-white shrink-0">{ordine.numero_tavolo}</span>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
                             <span className={`font-body text-sm font-semibold ${cfg.text}`}>{cfg.label}</span>
                           </div>
                           <div className="flex items-center gap-3 mt-0.5 text-[#E5E5E5]/35 font-body text-xs">
@@ -130,7 +136,17 @@ export default function Sala() {
                           )}
                         </div>
                       </div>
-                      <StatoBadgeCameriere stato={ordine.stato} />
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <StatoBadgeCameriere stato={ordine.stato} />
+                        {!['chiuso', 'annullato'].includes(ordine.stato) && (
+                          <button
+                            onClick={() => { setOrdineSelezionato(ordine); setView('modifica'); }}
+                            className="text-xs font-body px-3 py-1.5 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all flex items-center gap-1"
+                          >
+                            <Plus size={11} /> Aggiungi
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
