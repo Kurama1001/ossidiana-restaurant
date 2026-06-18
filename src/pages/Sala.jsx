@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, RefreshCw, Clock, Users, Receipt, Trash2, X } from 'lucide-react';
 import ComandaEditor from '@/components/admin/ComandaEditor.jsx';
+import DettaglioComanda from '@/components/admin/DettaglioComanda.jsx';
 
 // Stati semplificati per il cameriere
 const STATO_CONFIG = {
@@ -84,8 +85,7 @@ export default function Sala() {
     load();
   };
 
-  if (view === 'nuova' || view === 'modifica') {
-    const isModifica = view === 'modifica';
+  if (view === 'nuova') {
     return (
       <div className="min-h-screen bg-[#0A0A0B] p-4 pt-20">
         <div className="max-w-7xl mx-auto">
@@ -94,11 +94,23 @@ export default function Sala() {
               className="p-2 border border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40 hover:text-[#C69C6D] rounded-sm transition-all">
               ←
             </button>
-            <h1 className="font-display text-2xl text-white tracking-widest">
-              {isModifica ? `Tavolo ${ordineSelezionato?.numero_tavolo} · Aggiungi` : 'Nuova Comanda'}
-            </h1>
+            <h1 className="font-display text-2xl text-white tracking-widest">Nuova Comanda</h1>
           </div>
-          <ComandaEditor onSuccess={goHome} ordineEsistente={isModifica ? ordineSelezionato : null} />
+          <ComandaEditor onSuccess={goHome} ordineEsistente={null} />
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'dettaglio' && ordineSelezionato) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0B] p-4 pt-20">
+        <div className="max-w-4xl mx-auto">
+          <DettaglioComanda
+            ordine={ordineSelezionato}
+            onBack={goHome}
+            onRefreshOrdine={load}
+          />
         </div>
       </div>
     );
@@ -152,7 +164,7 @@ export default function Sala() {
                 return (
                   <div key={ordine.id}
                     className={`${cfg.bg} border ${cfg.border} rounded-sm p-4 cursor-pointer hover:brightness-110 transition-all`}
-                    onClick={() => { setOrdineSelezionato(ordine); setView('modifica'); }}>
+                    onClick={() => { setOrdineSelezionato(ordine); setView('dettaglio'); }}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <span className="font-display text-4xl text-white shrink-0">{ordine.numero_tavolo}</span>

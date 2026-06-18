@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, RefreshCw, Clock, Users, Receipt, Trash2, X } from 'lucide-react';
 import ComandaEditor from './ComandaEditor.jsx';
+import DettaglioComanda from './DettaglioComanda.jsx';
 
 const STATO_CONFIG = {
   aperto:          { label: 'Aperta',          border: 'border-[#E5E5E5]/15', text: 'text-[#E5E5E5]/50', dot: 'bg-[#E5E5E5]/30' },
@@ -77,8 +78,8 @@ export default function AdminComande() {
     load();
   };
 
-  // Vista editor (nuova comanda o aggiunta a esistente)
-  if (view === 'nuova' || view === 'modifica') {
+  // Vista nuova comanda
+  if (view === 'nuova') {
     return (
       <div>
         <div className="flex items-center gap-3 mb-4">
@@ -86,15 +87,21 @@ export default function AdminComande() {
             className="p-2 border border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40 hover:text-[#C69C6D] rounded-sm transition-all text-lg leading-none">
             ←
           </button>
-          <h2 className="font-display text-2xl text-white tracking-widest">
-            {view === 'modifica' ? `Tavolo ${ordineSelezionato?.numero_tavolo} · Aggiungi` : 'Nuova Comanda'}
-          </h2>
+          <h2 className="font-display text-2xl text-white tracking-widest">Nuova Comanda</h2>
         </div>
-        <ComandaEditor
-          onSuccess={goLista}
-          ordineEsistente={view === 'modifica' ? ordineSelezionato : null}
-        />
+        <ComandaEditor onSuccess={goLista} ordineEsistente={null} />
       </div>
+    );
+  }
+
+  // Vista dettaglio comanda esistente
+  if (view === 'dettaglio' && ordineSelezionato) {
+    return (
+      <DettaglioComanda
+        ordine={ordineSelezionato}
+        onBack={goLista}
+        onRefreshOrdine={load}
+      />
     );
   }
 
@@ -159,7 +166,7 @@ export default function AdminComande() {
               return (
                 <div key={ordine.id}
                   className={`bg-[#161618] border ${cfg.border} rounded-sm p-4 cursor-pointer hover:bg-[#1a1a1c] transition-colors`}
-                  onClick={() => { setOrdineSelezionato(ordine); setView('modifica'); }}>
+                  onClick={() => { setOrdineSelezionato(ordine); setView('dettaglio'); }}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <span className="font-display text-4xl text-white shrink-0">{ordine.numero_tavolo}</span>
