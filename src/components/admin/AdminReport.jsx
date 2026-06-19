@@ -1,49 +1,75 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { TrendingUp, ShoppingBag, Users, Clock, RefreshCw, CalendarDays } from 'lucide-react';
+import { TrendingUp, ShoppingBag, Clock, RefreshCw, CalendarDays } from 'lucide-react';
 import { startOfDay, subDays } from 'date-fns';
 
 export default function AdminReport() {
-  const [ordini, setOrdini] = useState([]);
+  const [ordini, setOrdini] = useState([]);        // comande (locale)
+  const [ordiniAsporto, setOrdiniAsporto] = useState([]); // asporto (Order)
   const [righe, setRighe] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState('oggi');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const load = async () => {
     setLoading(true);
     const today = new Date().toISOString().split('T')[0];
-    const [ords, rigs, res] = await Promise.all([
+    const [ords, rigs, res, ordersAsporto] = await Promise.all([
       base44.entities.Ordine.list('-created_date', 500),
       base44.entities.RigaOrdine.list('-created_date', 1000),
       base44.entities.Reservation.filter({ res_date: today }, '-created_date', 50).catch(() => []),
+      base44.entities.Order.list('-created_date', 500).catch(() => []),
     ]);
     setOrdini(ords);
     setRighe(rigs);
     setReservations(res);
+    setOrdiniAsporto(ordersAsporto);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
-  const filterByPeriodo = (items) => {
+  const filterByPeriodo = (items, dateField = 'created_date') => {
     const now = new Date();
-    const from = periodo === 'oggi' ? startOfDay(now) :
-      periodo === '7giorni' ? subDays(now, 7) :
-      periodo === '30giorni' ? subDays(now, 30) : new Date(0);
-    return items.filter(o => new Date(o.created_date) >= from);
+    let from, to;
+
+    if (periodo === 'custom') {
+      from = dateFrom ? new Date(dateFrom) : new Date(0);
+      to = dateTo ? new Date(dateTo + 'T23:59:59') : now;
+    } else {
+      to = now;
+      from = periodo === 'oggi' ? startOfDay(now) :
+             periodo === '7giorni' ? subDays(now, 7) :
+             periodo === '30giorni' ? subDays(now, 30) : new Date(0);
+    }
+
+    return items.filter(o => {
+      const d = new Date(o[dateField]);
+      return d >= from && d <= to;
+    });
   };
 
+  // Comande locale chiuse e pagate
   const ordFiltrati = filterByPeriodo(ordini).filter(o => o.stato === 'chiuso' && o.pagato);
+  // Ordini asporto completati
+  const asportoFiltrati = filterByPeriodo(ordiniAsporto).filter(o => ['pronto','completato'].includes(o.status));
+
   const righeFiltrate = filterByPeriodo(righe).filter(r => r.stato !== 'annullato' && r.stato !== 'bozza');
 
-  const totaleVendite = ordFiltrati.reduce((s, o) => s + (o.totale || 0), 0);
-  const numOrdini = ordFiltrati.length;
+  // Vendite = locale + asporto
+  const totaleLocale = ordFiltrati.reduce((s, o) => s + (o.totale || 0), 0);
+  const totaleAsporto = asportoFiltrati.reduce((s, o) => s + (o.total_amount || 0), 0);
+  const totaleVendite = totaleLocale + totaleAsporto;
+
+  const numOrdiniLocale = ordFiltrati.length;
+  const numOrdiniAsporto = asportoFiltrati.length;
 
   // Ordini attivi oggi (non chiusi)
   const ordiniAttivi = filterByPeriodo(ordini).filter(o => !['chiuso','annullato'].includes(o.stato));
 
-  // Top piatti
+  // Top piatti (solo comande locale, da RigaOrdine)
   const countItems = righeFiltrate.reduce((acc, r) => {
     if (!acc[r.nome_item]) acc[r.nome_item] = { nome: r.nome_item, reparto: r.reparto, qty: 0, totale: 0 };
     acc[r.nome_item].qty += r.quantita || 0;
@@ -63,24 +89,28 @@ export default function AdminReport() {
     return acc;
   }, {});
 
-  // Tempi medi preparazione cucina
-  const righeConTempo = righeFiltrate.filter(r => r.reparto === 'cucina' && r.sent_at && r.ready_at);
-  const tempoMedioCucina = righeConTempo.length > 0
-    ? Math.round(righeConTempo.reduce((s, r) => s + (new Date(r.ready_at) - new Date(r.sent_at)) / 60000, 0) / righeConTempo.length)
-    : null;
-
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <h2 className="font-display text-2xl text-white tracking-widest">Report</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select value={periodo} onChange={e => setPeriodo(e.target.value)}
             className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm font-body text-sm outline-none focus:border-[#C69C6D]">
             <option value="oggi">Oggi</option>
             <option value="7giorni">Ultimi 7 giorni</option>
             <option value="30giorni">Ultimi 30 giorni</option>
             <option value="tutto">Tutto</option>
+            <option value="custom">Personalizzato</option>
           </select>
+          {periodo === 'custom' && (
+            <>
+              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm font-body text-sm outline-none focus:border-[#C69C6D]" />
+              <span className="text-[#E5E5E5]/40 font-body text-sm">→</span>
+              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm font-body text-sm outline-none focus:border-[#C69C6D]" />
+            </>
+          )}
           <button onClick={load} className="p-2 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all">
             <RefreshCw size={16} />
           </button>
@@ -95,9 +125,11 @@ export default function AdminReport() {
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <KpiCard icon={TrendingUp} label="Vendite" value={`€${totaleVendite.toFixed(2)}`} color="text-[#C69C6D]" />
-            <KpiCard icon={ShoppingBag} label="Ordini chiusi" value={numOrdini} color="text-green-400" />
-            <KpiCard icon={Clock} label="Ordini attivi" value={ordiniAttivi.length} color="text-yellow-400" />
+            <KpiCard icon={TrendingUp} label="Vendite totali" value={`€${totaleVendite.toFixed(2)}`} color="text-[#C69C6D]"
+              sub={`€${totaleLocale.toFixed(2)} locale · €${totaleAsporto.toFixed(2)} asporto`} />
+            <KpiCard icon={ShoppingBag} label="Ordini chiusi" value={numOrdiniLocale + numOrdiniAsporto} color="text-green-400"
+              sub={`${numOrdiniLocale} locale · ${numOrdiniAsporto} asporto`} />
+            <KpiCard icon={Clock} label="Tavoli attivi" value={ordiniAttivi.length} color="text-yellow-400" />
             <KpiCard icon={CalendarDays} label="Prenotazioni oggi" value={reservations.length} color="text-blue-400" />
           </div>
 
@@ -146,29 +178,7 @@ export default function AdminReport() {
               }
             </Section>
 
-            <Section title="💳 Metodi di pagamento">
-              {(() => {
-                const mp = ordFiltrati.reduce((acc, o) => {
-                  const m = o.metodo_pagamento || 'n.d.';
-                  if (!acc[m]) acc[m] = 0;
-                  acc[m]++;
-                  return acc;
-                }, {});
-                return Object.keys(mp).length === 0 ? <Empty /> :
-                  Object.entries(mp).sort((a,b) => b[1]-a[1]).map(([m, c], i) => (
-                    <Row key={m} rank={i+1} label={m} value={`${c} volte`} />
-                  ));
-              })()}
-            </Section>
 
-            {tempoMedioCucina !== null && (
-              <Section title="⏱ Tempo medio preparazione cucina">
-                <div className="text-center py-4">
-                  <span className="font-display text-5xl text-[#C69C6D]">{tempoMedioCucina}</span>
-                  <span className="font-body text-[#E5E5E5]/40 ml-2">minuti</span>
-                </div>
-              </Section>
-            )}
           </div>
         </>
       )}
@@ -176,12 +186,13 @@ export default function AdminReport() {
   );
 }
 
-function KpiCard({ icon: Icon, label, value, color }) {
+function KpiCard({ icon: Icon, label, value, color, sub }) {
   return (
     <div className="bg-[#161618] border border-[#C69C6D]/10 rounded-sm p-4">
       <Icon size={18} className={`${color} mb-2`} />
       <div className={`font-display text-2xl ${color}`}>{value}</div>
       <div className="font-body text-xs text-[#E5E5E5]/40 mt-1">{label}</div>
+      {sub && <div className="font-body text-[10px] text-[#E5E5E5]/25 mt-1 leading-tight">{sub}</div>}
     </div>
   );
 }
