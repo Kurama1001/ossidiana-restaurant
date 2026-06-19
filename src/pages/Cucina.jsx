@@ -17,7 +17,7 @@ function statoOrdine(righe) {
 }
 
 function PrintPopup({ righe, onClose }) {
-  const handlePrint = () => {
+  const handlePrint = async () => {
     const win = window.open('', '_blank', 'width=400,height=600');
     const ora = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
     const fasiUsate = [...new Set(righe.map(r => r.fase || 1))].sort((a, b) => a - b);
@@ -41,22 +41,36 @@ function PrintPopup({ righe, onClose }) {
     `).join('');
 
     const tavolo = righe[0]?.numero_tavolo || '?';
+    const ordineId = righe[0]?.ordine_id;
+    let coperti = null;
+    if (ordineId) {
+      const ord = await base44.entities.Ordine.filter({ id: ordineId }).then(r => r[0]).catch(() => null);
+      coperti = ord?.coperti || null;
+    }
+
     win.document.write(`
       <html><head><title>Comanda Tavolo ${tavolo}</title>
-      <style>body{font-family:monospace;padding:16px;max-width:300px}</style></head>
+      <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:monospace;padding:16px;max-width:300px}</style></head>
       <body>
-        <div style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:4px">CUCINA</div>
-        <div style="text-align:center;font-size:13px;margin-bottom:12px;border-bottom:2px solid #000;padding-bottom:8px">
-          Tavolo <strong>${tavolo}</strong> · ${ora}
+        <div style="text-align:center; margin-bottom:14px; padding-bottom:10px; border-bottom:2px solid #000">
+          <div style="font-size:22px; font-weight:bold; letter-spacing:6px; text-transform:uppercase">OSSIDIANA</div>
+          <div style="font-size:10px; letter-spacing:3px; text-transform:uppercase; color:#555; margin-top:2px">Cucina Contemporanea</div>
+        </div>
+        <div style="text-align:center;font-size:13px;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Comanda Cucina</div>
+        <div style="text-align:center;margin-bottom:12px;border-bottom:1px dashed #000;padding-bottom:8px">
+          <div style="font-size:24px;font-weight:bold">Tavolo ${tavolo}</div>
+          ${coperti ? `<div style="font-size:14px;font-weight:bold;margin-top:2px">${coperti} coperti</div>` : ''}
+          <div style="font-size:12px;color:#555;margin-top:2px">${new Date().toLocaleDateString('it-IT')} · ${ora}</div>
         </div>
         ${fasi}
-        <div style="margin-top:16px;border-top:1px dashed #000;padding-top:8px;text-align:center;font-size:11px">
-          ${new Date().toLocaleDateString('it-IT')}
+        <div style="margin-top:16px;border-top:1px dashed #000;padding-top:8px;text-align:center;font-size:10px;color:#888;letter-spacing:1px">
+          OSSIDIANA · CUCINA
         </div>
-        <script>window.onload=()=>{window.print();window.close();}<\/script>
       </body></html>
     `);
     win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 400);
     onClose();
   };
 
@@ -237,7 +251,7 @@ export default function Cucina() {
           <div style="font-size:22px; font-weight:bold; letter-spacing:6px; text-transform:uppercase; margin-bottom:2px">
             OSSIDIANA
           </div>
-          <div style="font-size:11px; letter-spacing:3px; text-transform:uppercase; color:#555">Ristorante</div>
+          <div style="font-size:11px; letter-spacing:3px; text-transform:uppercase; color:#555">Cucina Contemporanea</div>
         </div>
         <div style="text-align:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px dashed #000">
           <div style="font-size:13px; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px">COMANDA CUCINA</div>
