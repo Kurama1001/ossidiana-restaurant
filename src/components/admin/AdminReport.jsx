@@ -5,13 +5,16 @@ import { startOfDay, subDays, format, eachDayOfInterval } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  LineChart, Line, CartesianGrid, Legend
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line, CartesianGrid, Legend,
+  PieChart, Pie, Cell
 } from 'recharts';
 
 const GOLD = '#C69C6D';
 const DARK_BG = '#161618';
 const TEXT_DIM = 'rgba(229,229,229,0.4)';
+const PIE_COLORS_GOLD = ['#C69C6D','#D4AA7D','#E8C89A','#A07840','#7A5A30','#F0D8B0'];
+const PIE_COLORS_BLUE = ['#60a5fa','#3b82f6','#93c5fd','#2563eb','#1d4ed8','#bfdbfe'];
 
 // Blocchi disponibili — l'utente può riordinarli
 const BLOCKS_DEFAULT = ['kpi', 'vendite_grafico', 'prenotazioni', 'piatti', 'bevande'];
@@ -181,20 +184,8 @@ export default function AdminReport() {
                 <Row key={item.nome} rank={i + 1} label={item.nome} value={`${item.qty} pz`} sub={`€${item.totale.toFixed(2)}`} />
               ))}
             </BlockShell>
-            <BlockShell title="🍽 Piatti — grafico">
-              {topCucina.length === 0 ? <Empty /> : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={topCucina.slice(0, 6)} layout="vertical" margin={{ left: 10, right: 20 }}>
-                    <XAxis type="number" tick={{ fill: TEXT_DIM, fontSize: 11 }} />
-                    <YAxis type="category" dataKey="nome" tick={{ fill: TEXT_DIM, fontSize: 11 }} width={100} />
-                    <Tooltip
-                      contentStyle={{ background: '#1a1a1c', border: `1px solid ${GOLD}30`, borderRadius: 4 }}
-                      formatter={v => [`${v} pz`, 'Quantità']}
-                    />
-                    <Bar dataKey="qty" fill={GOLD} radius={[0, 3, 3, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+            <BlockShell title="🍽 Piatti — grafico a torta">
+              {topCucina.length === 0 ? <Empty /> : <PieBlock data={topCucina.slice(0, 6)} colors={PIE_COLORS_GOLD} />}
             </BlockShell>
           </div>
         );
@@ -207,20 +198,8 @@ export default function AdminReport() {
                 <Row key={item.nome} rank={i + 1} label={item.nome} value={`${item.qty} pz`} sub={`€${item.totale.toFixed(2)}`} />
               ))}
             </BlockShell>
-            <BlockShell title="🍹 Bevande — grafico">
-              {topBar.length === 0 ? <Empty /> : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={topBar.slice(0, 6)} layout="vertical" margin={{ left: 10, right: 20 }}>
-                    <XAxis type="number" tick={{ fill: TEXT_DIM, fontSize: 11 }} />
-                    <YAxis type="category" dataKey="nome" tick={{ fill: TEXT_DIM, fontSize: 11 }} width={100} />
-                    <Tooltip
-                      contentStyle={{ background: '#1a1a1c', border: `1px solid ${GOLD}30`, borderRadius: 4 }}
-                      formatter={v => [`${v} pz`, 'Quantità']}
-                    />
-                    <Bar dataKey="qty" fill="#60a5fa" radius={[0, 3, 3, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+            <BlockShell title="🍹 Bevande — grafico a torta">
+              {topBar.length === 0 ? <Empty /> : <PieBlock data={topBar.slice(0, 6)} colors={PIE_COLORS_BLUE} />}
             </BlockShell>
           </div>
         );
@@ -363,4 +342,33 @@ function Row({ rank, label, value, sub }) {
 
 function Empty() {
   return <p className="font-body text-xs text-[#E5E5E5]/30 text-center py-4">Nessun dato nel periodo selezionato</p>;
+}
+
+function PieBlock({ data, colors }) {
+  const pieData = data.map(d => ({ name: d.nome, value: d.qty }));
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <ResponsiveContainer width="100%" height={200}>
+        <PieChart>
+          <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={36}>
+            {pieData.map((_, i) => (
+              <Cell key={i} fill={colors[i % colors.length]} />
+            ))}
+          </Pie>
+          <Tooltip
+            contentStyle={{ background: '#1a1a1c', border: `1px solid ${GOLD}30`, borderRadius: 4 }}
+            formatter={(v, name) => [`${v} pz`, name]}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+        {pieData.map((d, i) => (
+          <div key={d.name} className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: colors[i % colors.length] }} />
+            <span className="font-body text-xs text-[#E5E5E5]/50 truncate max-w-[120px]">{d.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
