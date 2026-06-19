@@ -2,6 +2,49 @@ import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { RefreshCw, Clock, AlertCircle, CheckCircle2, Loader2, Trash2, X, Users } from 'lucide-react';
 
+function buildPrintHtml(tavolo, coperti, ora, fasiHtml) {
+  const oggi = new Date().toLocaleDateString('it-IT');
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Comanda Tavolo ${tavolo}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Courier New', monospace; width: 72mm; padding: 6mm 4mm; font-size: 12px; color: #000; }
+  @media print { @page { margin: 0; size: 72mm auto; } body { padding: 4mm 3mm; } }
+  .logo { text-align:center; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 2px solid #000; }
+  .logo-title { font-size: 20px; font-weight: bold; letter-spacing: 8px; text-transform: uppercase; }
+  .logo-sub { font-size: 8px; letter-spacing: 4px; text-transform: uppercase; color: #444; margin-top: 3px; }
+  .header { text-align:center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #000; }
+  .header-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #555; margin-bottom: 6px; }
+  .tavolo-num { font-size: 36px; font-weight: bold; line-height: 1; }
+  .coperti { font-size: 13px; font-weight: bold; margin-top: 4px; letter-spacing: 1px; }
+  .datetime { font-size: 10px; color: #666; margin-top: 4px; }
+  .fase-header { font-size: 10px; font-weight: bold; letter-spacing: 3px; text-transform: uppercase;
+                 border-top: 1px solid #000; border-bottom: 1px solid #000;
+                 padding: 4px 0; margin: 8px 0 6px; text-align: center; background: #f0f0f0; }
+  .item { display: flex; justify-content: space-between; align-items: baseline;
+          padding: 3px 0; border-bottom: 1px dotted #ccc; }
+  .item-name { font-size: 14px; font-weight: bold; flex: 1; }
+  .item-note { font-size: 10px; font-style: italic; color: #444; padding: 1px 0 4px 12px; }
+  .urgent { color: #cc0000; }
+  .footer { margin-top: 12px; border-top: 1px dashed #000; padding-top: 6px;
+            text-align: center; font-size: 9px; color: #888; letter-spacing: 2px; }
+</style></head>
+<body>
+  <div class="logo">
+    <div class="logo-title">OSSIDIANA</div>
+    <div class="logo-sub">Cucina Contemporanea</div>
+  </div>
+  <div class="header">
+    <div class="header-label">◆ Comanda Cucina ◆</div>
+    <div class="tavolo-num">${tavolo}</div>
+    ${coperti ? `<div class="coperti">▲ ${coperti} coperti</div>` : ''}
+    <div class="datetime">${oggi} &nbsp;·&nbsp; ${ora}</div>
+  </div>
+  ${fasiHtml}
+  <div class="footer">OSSIDIANA &nbsp;·&nbsp; CUCINA</div>
+</body></html>`;
+}
+
 function minutiDa(ts) {
   if (!ts) return null;
   return Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
@@ -27,40 +70,18 @@ function PrintPopup({ righe, coperti, onClose }) {
     }, {});
 
     const fasi = fasiUsate.map(f => `
-      <div style="margin-bottom:12px">
-        <div style="font-size:11px;font-weight:bold;border-bottom:1px dashed #000;padding-bottom:4px;margin-bottom:6px">
-          — FASE ${f} —
+      <div class="fase-header">— Fase ${f} —</div>
+      ${righePerFase[f].map(r => `
+        <div class="item">
+          <span class="item-name ${r.priorita === 'urgente' ? 'urgent' : ''}">${r.quantita}× ${r.nome_item}${r.priorita === 'urgente' ? ' ⚡' : ''}</span>
         </div>
-        ${righePerFase[f].map(r => `
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:15px;font-weight:bold">${r.quantita}× ${r.nome_item}${r.priorita === 'urgente' ? ' ⚡' : ''}</span>
-          </div>
-          ${r.note ? `<div style="font-size:12px;font-style:italic;margin-left:8px">📝 ${r.note}</div>` : ''}
-        `).join('')}
-      </div>
+        ${r.note ? `<div class="item-note">📝 ${r.note}</div>` : ''}
+      `).join('')}
     `).join('');
 
     const tavolo = righe[0]?.numero_tavolo || '?';
-    win.document.write(`
-      <html><head><title>Comanda Tavolo ${tavolo}</title>
-      <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:monospace;padding:16px;max-width:300px}</style></head>
-      <body>
-        <div style="text-align:center; margin-bottom:14px; padding-bottom:10px; border-bottom:2px solid #000">
-          <div style="font-size:22px; font-weight:bold; letter-spacing:6px; text-transform:uppercase">OSSIDIANA</div>
-          <div style="font-size:10px; letter-spacing:3px; text-transform:uppercase; color:#555; margin-top:2px">Cucina Contemporanea</div>
-        </div>
-        <div style="text-align:center;font-size:13px;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Comanda Cucina</div>
-        <div style="text-align:center;margin-bottom:12px;border-bottom:1px dashed #000;padding-bottom:8px">
-          <div style="font-size:24px;font-weight:bold">Tavolo ${tavolo}</div>
-          ${coperti ? `<div style="font-size:14px;font-weight:bold;margin-top:2px">${coperti} coperti</div>` : ''}
-          <div style="font-size:12px;color:#555;margin-top:2px">${new Date().toLocaleDateString('it-IT')} · ${ora}</div>
-        </div>
-        ${fasi}
-        <div style="margin-top:16px;border-top:1px dashed #000;padding-top:8px;text-align:center;font-size:10px;color:#888;letter-spacing:1px">
-          OSSIDIANA · CUCINA
-        </div>
-      </body></html>
-    `);
+    const printHtml = buildPrintHtml(tavolo, coperti, ora, fasi);
+    win.document.write(printHtml);
     win.document.close();
     win.focus();
     setTimeout(() => { win.print(); win.close(); }, 400);
@@ -221,47 +242,16 @@ export default function Cucina() {
     }, {});
 
     const fasiHtml = fasiUsate.map(f => `
-      <div style="margin-bottom:14px">
-        <div style="font-size:11px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;border-bottom:1px dashed #000;padding-bottom:5px;margin-bottom:8px">
-          ── FASE ${f} ──
+      <div class="fase-header">— Fase ${f} —</div>
+      ${righePerFase[f].map(r => `
+        <div class="item">
+          <span class="item-name ${r.priorita === 'urgente' ? 'urgent' : ''}">${r.quantita}× ${r.nome_item}${r.priorita === 'urgente' ? ' ⚡' : ''}</span>
         </div>
-        ${righePerFase[f].map(r => `
-          <div style="margin-bottom:6px">
-            <div style="font-size:16px;font-weight:bold">
-              ${r.quantita}× ${r.nome_item}${r.priorita === 'urgente' ? ' <span style="color:red">⚡ URGENTE</span>' : ''}
-            </div>
-            ${r.note ? `<div style="font-size:12px;font-style:italic;margin-left:10px;color:#555">📝 ${r.note}</div>` : ''}
-          </div>
-        `).join('')}
-      </div>
+        ${r.note ? `<div class="item-note">📝 ${r.note}</div>` : ''}
+      `).join('')}
     `).join('');
 
-    win.document.write(`
-      <html><head><title>Comanda Tavolo ${ord.numero}</title>
-      <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family: monospace; padding: 20px; max-width: 320px; }
-        @media print { body { padding: 8px; } }
-      </style></head>
-      <body>
-        <div style="text-align:center; margin-bottom:16px; padding-bottom:12px; border-bottom:2px solid #000">
-          <div style="font-size:22px; font-weight:bold; letter-spacing:6px; text-transform:uppercase; margin-bottom:2px">
-            OSSIDIANA
-          </div>
-          <div style="font-size:11px; letter-spacing:3px; text-transform:uppercase; color:#555">Cucina Contemporanea</div>
-        </div>
-        <div style="text-align:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px dashed #000">
-          <div style="font-size:13px; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px">COMANDA CUCINA</div>
-          <div style="font-size:28px; font-weight:bold">Tavolo ${ord.numero}</div>
-          ${ord.coperti ? `<div style="font-size:14px; font-weight:bold; margin-top:2px">${ord.coperti} coperti</div>` : ''}
-          <div style="font-size:12px; color:#555; margin-top:4px">${data} · ${ora}</div>
-        </div>
-        ${fasiHtml}
-        <div style="margin-top:20px; border-top:1px dashed #000; padding-top:10px; text-align:center; font-size:10px; color:#888; letter-spacing:1px">
-          OSSIDIANA · CUCINA
-        </div>
-      </body></html>
-    `);
+    win.document.write(buildPrintHtml(ord.numero, ord.coperti, ora, fasiHtml));
     win.document.close();
     win.focus();
     setTimeout(() => { win.print(); win.close(); }, 400);
