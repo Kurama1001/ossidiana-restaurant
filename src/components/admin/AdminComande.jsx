@@ -33,7 +33,7 @@ export default function AdminComande() {
     try {
       const oggi = new Date();
       oggi.setHours(0, 0, 0, 0);
-      const data = await base44.entities.Ordine.list('-created_date', 200);
+      const data = await base44.entities.Ordine.filter({}, '-created_date', 200);
       const attivi = data.filter(o =>
         !['chiuso', 'annullato'].includes(o.stato) &&
         new Date(o.created_date) >= oggi
