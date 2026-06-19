@@ -8,8 +8,8 @@ function buildPrintHtml(tavolo, coperti, ora, fasiHtml) {
 <html><head><meta charset="utf-8"><title>Comanda Tavolo ${tavolo}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: 'Courier New', monospace; width: 72mm; padding: 6mm 4mm; font-size: 12px; color: #000; }
-  @media print { @page { margin: 0; size: 72mm auto; } body { padding: 4mm 3mm; } }
+  body { font-family: 'Courier New', monospace; width: 80mm; padding: 6mm 5mm; font-size: 13px; color: #000; }
+  @media print { @page { margin: 0; size: 80mm auto; } body { padding: 5mm 4mm; } }
   .logo { text-align:center; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 2px solid #000; }
   .logo-title { font-size: 20px; font-weight: bold; letter-spacing: 8px; text-transform: uppercase; }
   .logo-sub { font-size: 8px; letter-spacing: 4px; text-transform: uppercase; color: #444; margin-top: 3px; }
