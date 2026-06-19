@@ -10,7 +10,7 @@ const DefaultFallback = () => (
   </div>
 );
 
-export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthenticatedElement, requiredRole }) {
+export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthenticatedElement, requiredRole, allowedRoles }) {
   const { isAuthenticated, isLoadingAuth, authChecked, authError, checkUserAuth, user } = useAuth();
 
   useEffect(() => {
@@ -34,7 +34,14 @@ export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthe
     return unauthenticatedElement;
   }
 
-  if (requiredRole && user?.role !== requiredRole) {
+  // Controlla ruolo singolo (requiredRole) o lista ruoli (allowedRoles)
+  const hasAccess = (() => {
+    if (requiredRole) return user?.role === requiredRole;
+    if (allowedRoles) return allowedRoles.includes(user?.role);
+    return true;
+  })();
+
+  if (!hasAccess) {
     return (
       <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center px-5">
         <div className="text-center">

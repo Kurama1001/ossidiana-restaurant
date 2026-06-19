@@ -55,19 +55,34 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<Layout />}>
+        {/* Pagine pubbliche */}
         <Route path="/" element={<Home />} />
         <Route path="/menu" element={<Menu />} />
         <Route path="/prenotazioni" element={<Prenotazioni />} />
         <Route path="/ordini" element={<Ordini />} />
         <Route path="/profilo" element={<Profilo />} />
-        <Route path="/sala" element={<Sala />} />
-        <Route path="/comanda/:ordineId" element={<Comanda />} />
-        <Route path="/cucina" element={<Cucina />} />
-        <Route path="/bar" element={<Bar />} />
-        <Route path="/cassa" element={<Cassa />} />
-        <Route path="/storico-comande" element={<StoricoComande />} />
+
+        {/* Solo admin */}
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} requiredRole="admin" />}>
           <Route path="/admin" element={<Admin />} />
+          <Route path="/cassa" element={<Cassa />} />
+          <Route path="/storico-comande" element={<StoricoComande />} />
+        </Route>
+
+        {/* Solo cucina (o admin) */}
+        <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} allowedRoles={['cucina', 'admin']} />}>
+          <Route path="/cucina" element={<Cucina />} />
+        </Route>
+
+        {/* Solo cameriere (o admin) */}
+        <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} allowedRoles={['cameriere', 'admin']} />}>
+          <Route path="/sala" element={<Sala />} />
+          <Route path="/comanda/:ordineId" element={<Comanda />} />
+        </Route>
+
+        {/* Solo bar (o admin) */}
+        <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} allowedRoles={['bar', 'admin']} />}>
+          <Route path="/bar" element={<Bar />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
