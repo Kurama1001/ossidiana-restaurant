@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { RefreshCw, Clock, AlertCircle, CheckCircle2, Loader2, Trash2, X } from 'lucide-react';
+import { RefreshCw, Clock, AlertCircle, CheckCircle2, Loader2, Trash2, X, Users } from 'lucide-react';
 
 function minutiDa(ts) {
   if (!ts) return null;
@@ -139,11 +139,15 @@ export default function Cucina() {
   };
 
   const load = async () => {
-    const data = await base44.entities.RigaOrdine.filter({ reparto: 'cucina' }, 'created_date', 300);
+    const [data, ordiniData] = await Promise.all([
+      base44.entities.RigaOrdine.filter({ reparto: 'cucina' }, 'created_date', 300),
+      base44.entities.Ordine.filter({}, '-created_date', 200),
+    ]);
+    const copertiMap = ordiniData.reduce((acc, o) => { acc[o.id] = o.coperti; return acc; }, {});
     const attive = data.filter(r => ['inviato', 'ricevuto', 'in_preparazione', 'pronto'].includes(r.stato));
 
     const grouped = attive.reduce((acc, r) => {
-      if (!acc[r.ordine_id]) acc[r.ordine_id] = { ordineId: r.ordine_id, numero: r.numero_tavolo, righe: [] };
+      if (!acc[r.ordine_id]) acc[r.ordine_id] = { ordineId: r.ordine_id, numero: r.numero_tavolo, coperti: copertiMap[r.ordine_id], righe: [] };
       acc[r.ordine_id].righe.push(r);
       return acc;
     }, {});
@@ -238,16 +242,18 @@ export default function Cucina() {
         <div style="text-align:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px dashed #000">
           <div style="font-size:13px; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px">COMANDA CUCINA</div>
           <div style="font-size:28px; font-weight:bold">Tavolo ${ord.numero}</div>
+          ${ord.coperti ? `<div style="font-size:14px; font-weight:bold; margin-top:2px">${ord.coperti} coperti</div>` : ''}
           <div style="font-size:12px; color:#555; margin-top:4px">${data} · ${ora}</div>
         </div>
         ${fasiHtml}
         <div style="margin-top:20px; border-top:1px dashed #000; padding-top:10px; text-align:center; font-size:10px; color:#888; letter-spacing:1px">
           OSSIDIANA · CUCINA
         </div>
-        <script>window.onload=()=>{ window.print(); window.close(); }<\/script>
       </body></html>
     `);
     win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 400);
   };
 
   const prendiInCarico = async (ordineId) => {
@@ -370,6 +376,11 @@ export default function Cucina() {
                     </span>
                     <div className="flex flex-col gap-1">
                       <span className="font-body text-xs text-white/40 uppercase tracking-widest">Tavolo</span>
+                      {ord.coperti > 0 && (
+                        <span className="flex items-center gap-1 text-white/70 font-body text-sm font-semibold">
+                          <Users size={14} className="text-[#C69C6D]" /> {ord.coperti} coperti
+                        </span>
+                      )}
                       {isNuovo && (
                         <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full font-body font-bold animate-pulse w-fit">
                           NUOVO
