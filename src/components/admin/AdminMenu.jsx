@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Copy, Wand2, Loader2, Search, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Copy, Wand2, Loader2, Search, Upload, FileDown } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 
 const CATEGORIES = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci', 'acqua', 'vino', 'birra', 'cocktail', 'caffe_amari', 'bevande'];
@@ -129,6 +129,34 @@ export default function AdminMenu() {
     setGeneratingDescription(false);
   };
 
+  const exportExcel = () => {
+    const rows = filtered;
+    const headers = ['Nome', 'Categoria', 'Reparto', 'Prezzo (€)', 'Attivo', 'In Evidenza', 'Allergeni', 'Tag Dietetici', 'Descrizione'];
+    const csvRows = [
+      headers.join(';'),
+      ...rows.map(item => [
+        `"${(item.name || '').replace(/"/g, '""')}"`,
+        CATEGORY_LABELS[item.category] || item.category || '',
+        item.reparto || '',
+        Number(item.price || 0).toFixed(2),
+        item.active ? 'Sì' : 'No',
+        item.featured ? 'Sì' : 'No',
+        `"${(item.allergens || '').replace(/"/g, '""')}"`,
+        `"${(item.dietaryTags || []).map(t => DIETARY_LABELS[t] || t).join(', ')}"`,
+        `"${(item.description || '').replace(/"/g, '""')}"`,
+      ].join(';'))
+    ];
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const catLabel = filterCat === 'all' ? 'Tutto_il_Menu' : (CATEGORY_LABELS[filterCat] || filterCat);
+    a.href = url;
+    a.download = `Menu_Ossidiana_${catLabel}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filtered = items.filter(item => {
     if (filterCat !== 'all' && item.category !== filterCat) return false;
     if (filterActive === 'active' && !item.active) return false;
@@ -158,6 +186,10 @@ export default function AdminMenu() {
               className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-8 pr-4 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none w-48"
             />
           </div>
+          <button onClick={exportExcel} title="Esporta in Excel"
+            className="flex items-center gap-1.5 px-3 py-2 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm font-body text-xs transition-all">
+            <FileDown size={14} /> Excel
+          </button>
           <select
             value={filterActive}
             onChange={e => setFilterActive(e.target.value)}
