@@ -16,8 +16,8 @@ function statoOrdine(righe) {
   return 'nuovo';
 }
 
-function PrintPopup({ righe, onClose }) {
-  const handlePrint = async () => {
+function PrintPopup({ righe, coperti, onClose }) {
+  const handlePrint = () => {
     const win = window.open('', '_blank', 'width=400,height=600');
     const ora = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
     const fasiUsate = [...new Set(righe.map(r => r.fase || 1))].sort((a, b) => a - b);
@@ -41,13 +41,6 @@ function PrintPopup({ righe, onClose }) {
     `).join('');
 
     const tavolo = righe[0]?.numero_tavolo || '?';
-    const ordineId = righe[0]?.ordine_id;
-    let coperti = null;
-    if (ordineId) {
-      const ord = await base44.entities.Ordine.filter({ id: ordineId }).then(r => r[0]).catch(() => null);
-      coperti = ord?.coperti || null;
-    }
-
     win.document.write(`
       <html><head><title>Comanda Tavolo ${tavolo}</title>
       <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:monospace;padding:16px;max-width:300px}</style></head>
@@ -129,9 +122,10 @@ export default function Cucina() {
   const [ordini, setOrdini] = useState({});
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
-  const [printQueue, setPrintQueue] = useState([]); // righe da stampare
+  const [printQueue, setPrintQueue] = useState(null); // { righe, coperti } | null
   const prevIds = useRef(new Set());
   const audioCtxRef = useRef(null);
+  const ordiniRef = useRef({});
 
   const playBeep = () => {
     try {
@@ -177,6 +171,7 @@ export default function Cucina() {
     if (nuoviOrdini.length > 0 && prevIds.current.size > 0) playBeep();
     prevIds.current = newIds;
 
+    ordiniRef.current = nonTerminati;
     setOrdini(nonTerminati);
     setLoading(false);
   };
@@ -201,7 +196,9 @@ export default function Cucina() {
           bufferTimer = setTimeout(() => {
             const righe = [...buffer];
             buffer = [];
-            setPrintQueue(righe);
+            const ordineId = righe[0]?.ordine_id;
+            const coperti = ordiniRef.current[ordineId]?.coperti || null;
+            setPrintQueue({ righe, coperti });
           }, 800);
         }
       }
@@ -343,8 +340,8 @@ export default function Cucina() {
 
   return (
     <div className="min-h-screen bg-[#080808] p-4 pt-20">
-      {printQueue.length > 0 && (
-        <PrintPopup righe={printQueue} onClose={() => setPrintQueue([])} />
+      {printQueue && (
+        <PrintPopup righe={printQueue.righe} coperti={printQueue.coperti} onClose={() => setPrintQueue(null)} />
       )}
       {/* Header pagina */}
       <div className="flex items-center justify-between mb-6">
