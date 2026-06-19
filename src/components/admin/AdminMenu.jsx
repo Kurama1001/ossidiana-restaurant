@@ -200,7 +200,7 @@ export default function AdminMenu() {
             <option value="inactive">Solo inattivi</option>
           </select>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1" style={{flexWrap: 'nowrap'}}>
           <button onClick={() => setFilterCat('all')}
             className={`px-3 py-1.5 text-xs font-body tracking-widest uppercase rounded-sm border transition-all ${filterCat === 'all' ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
             Tutte categorie
