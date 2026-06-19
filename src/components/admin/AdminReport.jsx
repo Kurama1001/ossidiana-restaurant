@@ -356,7 +356,9 @@ function PieBlock({ data, colors }) {
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{ background: '#1a1a1c', border: `1px solid ${GOLD}30`, borderRadius: 4 }}
+            contentStyle={{ background: '#1a1a1c', border: `1px solid ${GOLD}30`, borderRadius: 4, color: '#fff' }}
+            labelStyle={{ color: '#fff' }}
+            itemStyle={{ color: '#fff' }}
             formatter={(v, name) => [`${v} pz`, name]}
           />
         </PieChart>
