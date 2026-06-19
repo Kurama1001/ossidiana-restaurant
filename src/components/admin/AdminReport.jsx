@@ -51,10 +51,10 @@ export default function AdminReport() {
     });
   };
 
-  // Comande locale chiuse e pagate
-  const ordFiltrati = filterByPeriodo(ordini).filter(o => o.stato === 'chiuso' && o.pagato);
-  // Ordini asporto completati
-  const asportoFiltrati = filterByPeriodo(ordiniAsporto).filter(o => ['pronto','completato'].includes(o.status));
+  // Comande locale: tutto tranne aperto/annullato
+  const ordFiltrati = filterByPeriodo(ordini).filter(o => !['aperto','annullato'].includes(o.stato));
+  // Ordini asporto: tutti tranne annullati
+  const asportoFiltrati = filterByPeriodo(ordiniAsporto).filter(o => o.status !== 'annullato');
 
   const righeFiltrate = filterByPeriodo(righe).filter(r => r.stato !== 'annullato' && r.stato !== 'bozza');
 
