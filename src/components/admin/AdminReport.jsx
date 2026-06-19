@@ -13,8 +13,8 @@ import {
 const GOLD = '#C69C6D';
 const DARK_BG = '#161618';
 const TEXT_DIM = 'rgba(229,229,229,0.4)';
-const PIE_COLORS_GOLD = ['#C69C6D','#D4AA7D','#E8C89A','#A07840','#7A5A30','#F0D8B0'];
-const PIE_COLORS_BLUE = ['#60a5fa','#3b82f6','#93c5fd','#2563eb','#1d4ed8','#bfdbfe'];
+const PIE_COLORS_GOLD = ['#C69C6D','#e85d04','#f48c06','#6a994e','#8338ec','#ef476f'];
+const PIE_COLORS_BLUE = ['#60a5fa','#f72585','#4cc9f0','#f77f00','#06d6a0','#9b5de5'];
 
 // Blocchi disponibili — l'utente può riordinarli
 const BLOCKS_DEFAULT = ['kpi', 'vendite_grafico', 'prenotazioni', 'piatti', 'bevande'];
