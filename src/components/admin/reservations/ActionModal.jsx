@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
-import { X, Check, Copy, Loader2, Send } from 'lucide-react';
+import { X, Check, Copy, Mail, MessageCircle, Loader2 } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 import { formatDateIt } from './utils';
 
@@ -22,8 +21,6 @@ export default function ActionModal({ actionModal, onClose, onRejectSubmit }) {
   const { type, reservation, text } = actionModal;
   const [motivo, setMotivo] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const isInputStep = type === 'rifiuto' && !text;
@@ -35,20 +32,13 @@ export default function ActionModal({ actionModal, onClose, onRejectSubmit }) {
     setSubmitting(false);
   };
 
-  const handleSendEmail = async () => {
-    setSendingEmail(true);
-    try {
-      await base44.integrations.Core.SendEmail({
-        to: reservation.email,
-        subject: SUBJECTS[type],
-        body: text
-      });
-      setEmailSent(true);
-    } catch (e) {
-      alert('Errore invio email: ' + e.message);
-    }
-    setSendingEmail(false);
-  };
+  const mailtoLink = reservation.email
+    ? `mailto:${reservation.email}?subject=${encodeURIComponent(SUBJECTS[type])}&body=${encodeURIComponent(text)}`
+    : null;
+
+  const whatsappLink = reservation.phone
+    ? `https://wa.me/${reservation.phone.replace(/\D/g, '').replace(/^0/, '39')}?text=${encodeURIComponent(text)}`
+    : null;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(text);
@@ -109,17 +99,22 @@ export default function ActionModal({ actionModal, onClose, onRejectSubmit }) {
             </div>
 
             <div className="flex flex-col gap-2">
-              {reservation.email && (
-                <button onClick={handleSendEmail} disabled={sendingEmail || emailSent}
-                  className="flex items-center justify-center gap-2 py-3 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm font-body text-sm transition-all disabled:opacity-50">
-                  {sendingEmail ? <Loader2 size={14} className="animate-spin" /> : emailSent ? <Check size={14} /> : <Send size={14} />}
-                  {emailSent ? 'Email inviata ✓' : sendingEmail ? 'Invio...' : `Invia email a ${reservation.email}`}
-                </button>
+              {whatsappLink && (
+                <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-500 text-white rounded-sm font-body text-sm font-semibold transition-all">
+                  <MessageCircle size={14} /> Invia su WhatsApp
+                </a>
+              )}
+              {mailtoLink && (
+                <a href={mailtoLink}
+                  className="flex items-center justify-center gap-2 py-3 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm font-body text-sm transition-all">
+                  <Mail size={14} /> Invia email a {reservation.email}
+                </a>
               )}
               <button onClick={handleCopy}
-                className="flex items-center justify-center gap-2 py-3 border border-green-400/30 text-green-400 hover:bg-green-400/10 rounded-sm font-body text-sm transition-all">
+                className="flex items-center justify-center gap-2 py-3 border border-[#E5E5E5]/20 text-[#E5E5E5]/60 hover:bg-[#E5E5E5]/10 rounded-sm font-body text-sm transition-all">
                 {copied ? <Check size={14} /> : <Copy size={14} />}
-                {copied ? 'Copiato!' : 'Copia testo (WhatsApp/SMS)'}
+                {copied ? 'Copiato!' : 'Copia testo'}
               </button>
               <button onClick={onClose}
                 className="py-3 text-[#E5E5E5]/40 hover:text-[#E5E5E5] font-body text-sm transition-colors">
