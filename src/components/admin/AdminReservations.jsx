@@ -1,19 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { Plus, RefreshCw, Search, CalendarDays } from 'lucide-react';
+import { Plus, RefreshCw, Search, CalendarDays, Users, Sun, Moon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 import ReservationCard from '@/components/admin/reservations/ReservationCard';
 import ReservationFormModal from '@/components/admin/reservations/ReservationFormModal';
 import ActionModal from '@/components/admin/reservations/ActionModal';
 import ReservationStats from '@/components/admin/reservations/ReservationStats';
-import { buildConfirmMessage, buildRejectMessage, buildUpdateMessage, buildCancelMessage, FONTE_LABELS, isPendingStatus, isConfirmedStatus } from '@/components/admin/reservations/utils';
+import AgendaDayStrip from '@/components/admin/reservations/AgendaDayStrip';
+import { buildConfirmMessage, buildRejectMessage, buildUpdateMessage, buildCancelMessage, FONTE_LABELS, isPendingStatus, isConfirmedStatus, isCancelledStatus, getTurno, formatDateLong } from '@/components/admin/reservations/utils';
 
 export default function AdminReservations() {
   const { user } = useAuth();
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('oggi');
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [turnoFilter, setTurnoFilter] = useState('all');
+  const [orarioFilter, setOrarioFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterFonte, setFilterFonte] = useState('all');
@@ -121,18 +124,26 @@ export default function AdminReservations() {
   const openEdit = (r) => { setEditing(r); setShowForm(true); };
   const openCreate = () => { setEditing(null); setShowForm(true); };
 
-  const filtered = useMemo(() => {
-    let list = [...reservations];
-    if (view === 'oggi') list = list.filter(r => r.res_date === today);
-    else if (view === 'future') list = list.filter(r => r.res_date > today);
-    else if (view === 'passate') list = list.filter(r => r.res_date < today);
+  // Reservations for the selected day
+  const dayReservations = useMemo(() =>
+    reservations.filter(r => r.res_date === selectedDate),
+    [reservations, selectedDate]
+  );
 
+  // Distinct times for orario filter
+  const availableTimes = useMemo(() => {
+    const times = [...new Set(dayReservations.map(r => r.res_time).filter(Boolean))].sort();
+    return times;
+  }, [dayReservations]);
+
+  // Apply filters
+  const filtered = useMemo(() => {
+    let list = [...dayReservations];
+    if (turnoFilter !== 'all') list = list.filter(r => getTurno(r.res_time) === turnoFilter);
+    if (orarioFilter !== 'all') list = list.filter(r => r.res_time === orarioFilter);
     if (filterStatus !== 'all') {
-      if (filterStatus === 'pending') {
-        list = list.filter(r => isPendingStatus(r.status));
-      } else {
-        list = list.filter(r => r.status === filterStatus);
-      }
+      if (filterStatus === 'pending') list = list.filter(r => isPendingStatus(r.status));
+      else list = list.filter(r => r.status === filterStatus);
     }
     if (filterFonte !== 'all') list = list.filter(r => r.fonte_prenotazione === filterFonte);
     if (search) {
@@ -144,13 +155,58 @@ export default function AdminReservations() {
         r.notes?.toLowerCase().includes(s)
       );
     }
-    if (view === 'passate') {
-      list.sort((a, b) => (b.res_date + ' ' + (b.res_time || '')).localeCompare(a.res_date + ' ' + (a.res_time || '')));
-    } else {
-      list.sort((a, b) => (a.res_time || '').localeCompare(b.res_time || ''));
-    }
+    list.sort((a, b) => (a.res_time || '').localeCompare(b.res_time || ''));
     return list;
-  }, [reservations, view, filterStatus, filterFonte, search, today]);
+  }, [dayReservations, turnoFilter, orarioFilter, filterStatus, filterFonte, search]);
+
+  // Group by turno
+  const pranzoRes = filtered.filter(r => getTurno(r.res_time) === 'pranzo');
+  const cenaRes = filtered.filter(r => getTurno(r.res_time) === 'cena');
+
+  // Day totals (active only)
+  const dayActive = dayReservations.filter(r => !isCancelledStatus(r.status));
+  const dayCoperti = dayActive.reduce((s, r) => s + (r.guests || 0), 0);
+  const dayCount = dayActive.length;
+  const dayPending = dayActive.filter(r => isPendingStatus(r.status)).length;
+
+  const shiftDate = (delta) => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + delta);
+    setSelectedDate(d.toISOString().split('T')[0]);
+  };
+
+  const renderTurnoSection = (label, Icon, list) => {
+    if (turnoFilter !== 'all' && turnoFilter !== label.toLowerCase()) return null;
+    const coperti = list.filter(r => !isCancelledStatus(r.status)).reduce((s, r) => s + (r.guests || 0), 0);
+    const count = list.filter(r => !isCancelledStatus(r.status)).length;
+    return (
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-3 pb-2 border-b border-[#C69C6D]/10">
+          <Icon size={18} className={label === 'Pranzo' ? 'text-yellow-400' : 'text-blue-400'} />
+          <h3 className="font-display text-lg text-white tracking-widest uppercase">{label}</h3>
+          <span className="font-body text-xs text-[#E5E5E5]/40">
+            {count} {count === 1 ? 'prenotazione' : 'prenotazioni'} · <span className="text-[#C69C6D] font-semibold">{coperti} coperti</span>
+          </span>
+        </div>
+        {list.length === 0 ? (
+          <p className="font-body text-sm text-[#E5E5E5]/20 py-4 pl-1">Nessuna prenotazione</p>
+        ) : (
+          <div className="space-y-3">
+            {list.map(r => (
+              <ReservationCard key={r.id} r={r}
+                onConfirm={handleConfirm}
+                onReject={(r) => setActionModal({ type: 'rifiuto', reservation: r, text: null })}
+                onEdit={openEdit}
+                onCancel={handleCancel}
+                onComplete={handleComplete}
+                onNoShow={handleNoShow}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -168,28 +224,90 @@ export default function AdminReservations() {
 
       <ReservationStats reservations={reservations} today={today} />
 
-      <div className="flex gap-2 mb-4">
-        {[
-          { id: 'oggi', label: 'Oggi' },
-          { id: 'future', label: 'Future' },
-          { id: 'passate', label: 'Passate' },
-        ].map(v => (
-          <button key={v.id} onClick={() => setView(v.id)}
-            className={`px-4 py-2 text-xs font-body tracking-widest uppercase rounded-sm border transition-all min-h-[40px] ${
-              view === v.id ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'
-            }`}>
-            {v.label}
+      {/* Day strip — scrollable horizontal calendar */}
+      <AgendaDayStrip
+        reservations={reservations}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+        today={today}
+      />
+
+      {/* Day header + summary */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4 bg-[#161618] border border-[#C69C6D]/10 rounded-sm p-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => shiftDate(-1)}
+            className="p-2 border border-[#E5E5E5]/15 text-[#E5E5E5]/40 hover:border-[#C69C6D]/40 hover:text-[#C69C6D] rounded-sm transition-all">
+            <ChevronLeft size={16} />
           </button>
-        ))}
+          <div className="text-center min-w-[180px]">
+            <p className="font-display text-lg text-white">{formatDateLong(selectedDate)}</p>
+            {selectedDate === today && <p className="font-body text-[10px] text-[#C69C6D] uppercase tracking-widest">Oggi</p>}
+          </div>
+          <button onClick={() => shiftDate(1)}
+            className="p-2 border border-[#E5E5E5]/15 text-[#E5E5E5]/40 hover:border-[#C69C6D]/40 hover:text-[#C69C6D] rounded-sm transition-all">
+            <ChevronRight size={16} />
+          </button>
+          {selectedDate !== today && (
+            <button onClick={() => setSelectedDate(today)}
+              className="ml-1 px-3 py-1.5 text-xs font-body border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all">
+              Oggi
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="text-right">
+            <p className="font-display text-3xl text-[#C69C6D] leading-none">{dayCount}</p>
+            <p className="font-body text-[10px] text-[#E5E5E5]/40 uppercase tracking-widest mt-1">Prenotazioni</p>
+          </div>
+          <div className="w-px h-10 bg-[#C69C6D]/10" />
+          <div className="text-right">
+            <p className="font-display text-3xl text-white leading-none">{dayCoperti}</p>
+            <p className="font-body text-[10px] text-[#E5E5E5]/40 uppercase tracking-widest mt-1">Coperti</p>
+          </div>
+          {dayPending > 0 && (
+            <>
+              <div className="w-px h-10 bg-[#C69C6D]/10" />
+              <div className="text-right">
+                <p className="font-display text-3xl text-yellow-400 leading-none">{dayPending}</p>
+                <p className="font-body text-[10px] text-[#E5E5E5]/40 uppercase tracking-widest mt-1">Da confermare</p>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
+      {/* Filter bar */}
       <div className="flex flex-wrap gap-2 items-center mb-4">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-[180px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E5E5E5]/30" />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Cerca per nome, telefono, note..."
+            placeholder="Cerca nome, telefono, note..."
             className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-8 pr-4 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none" />
         </div>
+        {/* Turno filter */}
+        <div className="flex gap-1 border border-[#E5E5E5]/15 rounded-sm overflow-hidden">
+          {[
+            { id: 'all', label: 'Tutti', icon: CalendarDays },
+            { id: 'pranzo', label: 'Pranzo', icon: Sun },
+            { id: 'cena', label: 'Cena', icon: Moon },
+          ].map(t => {
+            const Icon = t.icon;
+            return (
+              <button key={t.id} onClick={() => setTurnoFilter(t.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-body transition-all min-h-[40px] ${
+                  turnoFilter === t.id ? 'bg-[#C69C6D] text-[#0A0A0B] font-bold' : 'text-[#E5E5E5]/50 hover:text-[#C69C6D]'
+                }`}>
+                <Icon size={13} /> {t.label}
+              </button>
+            );
+          })}
+        </div>
+        {/* Orario filter */}
+        <select value={orarioFilter} onChange={e => setOrarioFilter(e.target.value)}
+          className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm text-xs font-body focus:border-[#C69C6D] outline-none">
+          <option value="all">Tutti gli orari</option>
+          {availableTimes.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
           className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm text-xs font-body focus:border-[#C69C6D] outline-none">
           <option value="all">Tutti gli stati</option>
@@ -208,27 +326,19 @@ export default function AdminReservations() {
         </select>
       </div>
 
-      <p className="text-xs font-body text-[#E5E5E5]/30 mb-3">{filtered.length} prenotazioni</p>
-
+      {/* Timeline */}
       {loading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 bg-[#161618] animate-pulse rounded-sm" />)}</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-[#E5E5E5]/30 font-body">
-          <CalendarDays size={32} className="mx-auto mb-3 opacity-20" />
-          Nessuna prenotazione trovata
+        <div className="text-center py-16 text-[#E5E5E5]/30 font-body">
+          <CalendarDays size={36} className="mx-auto mb-3 opacity-20" />
+          <p className="text-sm">Nessuna prenotazione per questa giornata</p>
+          <button onClick={openCreate} className="mt-4 text-[#C69C6D] hover:underline text-sm">+ Aggiungi prenotazione</button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map(r => (
-            <ReservationCard key={r.id} r={r}
-              onConfirm={handleConfirm}
-              onReject={(r) => setActionModal({ type: 'rifiuto', reservation: r, text: null })}
-              onEdit={openEdit}
-              onCancel={handleCancel}
-              onComplete={handleComplete}
-              onNoShow={handleNoShow}
-            />
-          ))}
+        <div>
+          {renderTurnoSection('Pranzo', Sun, pranzoRes)}
+          {renderTurnoSection('Cena', Moon, cenaRes)}
         </div>
       )}
 

@@ -72,3 +72,33 @@ export function isConfirmedStatus(status) {
 export function isTerminatedStatus(status) {
   return ['cancellata', 'cancelled', 'completata', 'no_show', 'rifiutata'].includes(status);
 }
+
+export function isCancelledStatus(status) {
+  return ['cancellata', 'cancelled', 'rifiutata'].includes(status);
+}
+
+export function getTurno(timeStr) {
+  if (!timeStr) return 'cena';
+  const h = parseInt(timeStr.split(':')[0]);
+  return h < 16 ? 'pranzo' : 'cena';
+}
+
+export function formatDayName(dateStr) {
+  if (!dateStr) return '';
+  try { return format(parseISO(dateStr), 'EEE', { locale: it }); } catch { return ''; }
+}
+export function formatDayNumber(dateStr) {
+  if (!dateStr) return '';
+  try { return format(parseISO(dateStr), 'd', { locale: it }); } catch { return ''; }
+}
+export function formatMonthShort(dateStr) {
+  if (!dateStr) return '';
+  try { return format(parseISO(dateStr), 'MMM', { locale: it }); } catch { return ''; }
+}
+export function formatDateLong(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const s = format(parseISO(dateStr), 'EEEE d MMMM yyyy', { locale: it });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  } catch { return dateStr; }
+}
