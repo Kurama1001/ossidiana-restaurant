@@ -10,6 +10,7 @@ import AdminChiSiamo from '@/components/admin/AdminChiSiamo';
 import AdminReport from '@/components/admin/AdminReport';
 import AdminComande from '@/components/admin/AdminComande';
 import AdminCucina from '@/components/admin/AdminCucina';
+import AdminEmailTest from '@/components/admin/AdminEmailTest';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info, BarChart2, GripVertical, ClipboardList, ChefHat } from 'lucide-react';
 
@@ -92,6 +93,7 @@ export default function Admin() {
             <h1 className="font-display text-4xl text-white tracking-widest">Area Admin</h1>
           </div>
           <div className="flex items-center gap-3">
+            <AdminEmailTest />
             <button
               onClick={() => setReordering(r => !r)}
               className={`flex items-center gap-2 text-sm font-body px-3 py-2 border rounded-sm transition-colors ${reordering ? 'border-[#C69C6D] text-[#C69C6D] bg-[#C69C6D]/10' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/40 hover:border-[#C69C6D]/40'}`}

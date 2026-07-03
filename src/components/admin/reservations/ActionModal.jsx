@@ -23,11 +23,17 @@ export default function ActionModal({ actionModal, onClose, onRejectSubmit }) {
   const [motivo, setMotivo] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [emailError, setEmailError] = useState(null);
+  const [emailResult, setEmailResult] = useState(actionModal.emailResult || null);
+  const [retrying, setRetrying] = useState(false);
 
   const isInputStep = type === 'rifiuto' && !text;
+
+  const ACTION_MAP = {
+    conferma: 'booking_confirmation',
+    rifiuto: 'booking_rejection',
+    aggiornamento: 'booking_update',
+    cancellazione: 'booking_cancellation',
+  };
 
   const handleReject = async () => {
     if (!motivo.trim()) return;
@@ -36,21 +42,19 @@ export default function ActionModal({ actionModal, onClose, onRejectSubmit }) {
     setSubmitting(false);
   };
 
-  const handleSendEmail = async () => {
-    setSendingEmail(true);
-    setEmailError(null);
+  const handleRetryEmail = async () => {
+    setRetrying(true);
     try {
-      const res = await base44.functions.invoke('sendReservationEmail', {
-        to: reservation.email,
-        subject: SUBJECTS[type],
-        body: text,
+      const res = await base44.functions.invoke('emailService', {
+        action: ACTION_MAP[type],
+        reservationId: reservation.id,
+        motivo: reservation.motivo_rifiuto || undefined,
       });
-      if (res.data?.error) throw new Error(res.data.error);
-      setEmailSent(true);
+      setEmailResult(res.data);
     } catch (e) {
-      setEmailError(e.message || 'Errore invio email');
+      setEmailResult({ success: false, error: e.message });
     }
-    setSendingEmail(false);
+    setRetrying(false);
   };
 
   const mailtoLink = reservation.email
@@ -120,15 +124,32 @@ export default function ActionModal({ actionModal, onClose, onRejectSubmit }) {
             </div>
 
             <div className="flex flex-col gap-2">
-              {reservation.email && (
-                <button onClick={handleSendEmail} disabled={sendingEmail || emailSent}
+              {reservation.email && emailResult?.success && (
+                <div className="flex items-center justify-center gap-2 py-3 bg-green-400/10 border border-green-400/30 text-green-400 rounded-sm font-body text-sm font-semibold">
+                  <Check size={14} /> Email inviata a {reservation.email}
+                </div>
+              )}
+              {reservation.email && emailResult && !emailResult.success && !emailResult.skipped && (
+                <>
+                  <p className="font-body text-xs text-red-400 text-center px-2">{emailResult.error || 'Errore invio email'}</p>
+                  <button onClick={handleRetryEmail} disabled={retrying}
+                    className="flex items-center justify-center gap-2 py-3 bg-[#C69C6D] hover:bg-[#D4AA7D] text-[#0A0A0B] rounded-sm font-body text-sm font-semibold transition-all disabled:opacity-50">
+                    {retrying ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+                    {retrying ? 'Invio in corso...' : 'Riprova invio email'}
+                  </button>
+                </>
+              )}
+              {reservation.email && !emailResult && (
+                <button onClick={handleRetryEmail} disabled={retrying}
                   className="flex items-center justify-center gap-2 py-3 bg-[#C69C6D] hover:bg-[#D4AA7D] text-[#0A0A0B] rounded-sm font-body text-sm font-semibold transition-all disabled:opacity-50">
-                  {sendingEmail ? <Loader2 size={14} className="animate-spin" /> : emailSent ? <Check size={14} /> : <Mail size={14} />}
-                  {emailSent ? 'Email inviata ✓' : sendingEmail ? 'Invio in corso...' : `Invia email a ${reservation.email}`}
+                  {retrying ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+                  {retrying ? 'Invio in corso...' : `Invia email a ${reservation.email}`}
                 </button>
               )}
-              {emailError && (
-                <p className="font-body text-xs text-red-400 text-center px-2">{emailError}</p>
+              {(!reservation.email || emailResult?.skipped) && (
+                <p className="font-body text-xs text-yellow-400/80 text-center px-2">
+                  Nessuna email disponibile — usa WhatsApp o copia il testo
+                </p>
               )}
               {whatsappLink && (
                 <a href={whatsappLink} target="_blank" rel="noopener noreferrer"

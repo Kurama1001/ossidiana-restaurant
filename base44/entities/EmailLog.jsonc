@@ -1,0 +1,75 @@
+{
+  "name": "EmailLog",
+  "type": "object",
+  "properties": {
+    "email_type": {
+      "type": "string",
+      "description": "Tipo email (test, booking_received_admin, booking_confirmation, booking_rejection, booking_update, booking_cancellation)"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "Destinatario"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Oggetto email"
+    },
+    "message_id": {
+      "type": "string",
+      "description": "ID messaggio Resend"
+    },
+    "delivery_status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "failed",
+        "skipped"
+      ],
+      "default": "sent",
+      "description": "Stato consegna"
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Ultimo errore"
+    },
+    "reservation_id": {
+      "type": "string",
+      "description": "ID prenotazione correlata"
+    },
+    "email_sent": {
+      "type": "boolean",
+      "default": true,
+      "description": "Email inviata"
+    },
+    "email_sent_at": {
+      "type": "string",
+      "description": "Timestamp invio"
+    }
+  },
+  "required": [
+    "email_type",
+    "recipient"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
