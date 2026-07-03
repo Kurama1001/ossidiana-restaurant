@@ -29,17 +29,58 @@
     },
     "notes": {
       "type": "string",
-      "description": "Note aggiuntive"
+      "description": "Note aggiuntive (bambini, allergie, ricorrenze, tavolo preferito, ordine anticipato)"
     },
     "status": {
       "type": "string",
       "enum": [
+        "nuova",
+        "in_attesa_conferma",
+        "confermata",
+        "rifiutata",
+        "modificata",
+        "cancellata",
+        "completata",
+        "no_show",
         "pending",
         "confirmed",
         "cancelled"
       ],
-      "default": "pending",
+      "default": "nuova",
       "description": "Stato prenotazione"
+    },
+    "fonte_prenotazione": {
+      "type": "string",
+      "enum": [
+        "sito",
+        "telefono",
+        "admin",
+        "altro"
+      ],
+      "default": "sito",
+      "description": "Fonte della prenotazione"
+    },
+    "notificata_admin": {
+      "type": "boolean",
+      "default": false,
+      "description": "Admin notificato"
+    },
+    "confermata_da_admin": {
+      "type": "boolean",
+      "default": false,
+      "description": "Confermata da admin"
+    },
+    "data_conferma": {
+      "type": "string",
+      "description": "Data/ora conferma"
+    },
+    "admin_conferma": {
+      "type": "string",
+      "description": "Nome admin che ha confermato"
+    },
+    "motivo_rifiuto": {
+      "type": "string",
+      "description": "Motivo rifiuto"
     }
   },
   "required": [

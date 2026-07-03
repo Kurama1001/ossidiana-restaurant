@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import AdminReservations from '@/components/admin/AdminReservations';
 import AdminOrders from '@/components/admin/AdminOrders';
@@ -57,7 +58,19 @@ export default function Admin() {
   const [tabs, setTabs] = useState(loadTabOrder);
   const [activeTab, setActiveTab] = useState('comande');
   const [reordering, setReordering] = useState(false);
+  const [newResCount, setNewResCount] = useState(0);
   const { logout } = useAuth();
+
+  useEffect(() => {
+    const fetchNewRes = () => {
+      base44.entities.Reservation.list('-created_date', 200).then(res => {
+        setNewResCount(res.filter(r => ['nuova', 'in_attesa_conferma', 'pending'].includes(r.status)).length);
+      }).catch(() => {});
+    };
+    fetchNewRes();
+    const interval = setInterval(fetchNewRes, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const TabContent = TAB_COMPONENTS[activeTab];
 
@@ -130,6 +143,11 @@ export default function Admin() {
                             {reordering && <GripVertical size={12} className="text-[#C69C6D]/50" />}
                             {Icon && <Icon size={14} />}
                             {tab.label}
+                            {tab.id === 'reservations' && newResCount > 0 && (
+                              <span className="ml-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                {newResCount}
+                              </span>
+                            )}
                           </button>
                         </div>
                       )}

@@ -87,9 +87,17 @@ export default function AdminDashboard() {
 }
 
 const resStatusMap = {
+  nuova: { label: 'Nuova', cls: 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20' },
+  in_attesa_conferma: { label: 'In attesa', cls: 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20' },
   pending: { label: 'In attesa', cls: 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20' },
+  confermata: { label: 'Confermata', cls: 'bg-green-400/10 text-green-400 border-green-400/20' },
   confirmed: { label: 'Confermata', cls: 'bg-green-400/10 text-green-400 border-green-400/20' },
-  cancelled: { label: 'Annullata', cls: 'bg-red-400/10 text-red-400 border-red-400/20' },
+  modificata: { label: 'Modificata', cls: 'bg-blue-400/10 text-blue-400 border-blue-400/20' },
+  rifiutata: { label: 'Rifiutata', cls: 'bg-red-400/10 text-red-400 border-red-400/20' },
+  cancellata: { label: 'Cancellata', cls: 'bg-gray-400/10 text-gray-400 border-gray-400/20' },
+  cancelled: { label: 'Cancellata', cls: 'bg-gray-400/10 text-gray-400 border-gray-400/20' },
+  completata: { label: 'Completata', cls: 'bg-[#E5E5E5]/10 text-[#E5E5E5]/50 border-[#E5E5E5]/10' },
+  no_show: { label: 'No Show', cls: 'bg-orange-400/10 text-orange-400 border-orange-400/20' },
 };
 
 export function StatusBadgeRes({ status }) {

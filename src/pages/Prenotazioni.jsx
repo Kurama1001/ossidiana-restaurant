@@ -17,7 +17,14 @@ export default function Prenotazioni() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    await base44.entities.Reservation.create({ ...form, guests: parseInt(form.guests), status: 'pending' });
+    await base44.entities.Reservation.create({
+      ...form,
+      guests: parseInt(form.guests),
+      status: 'nuova',
+      fonte_prenotazione: 'sito',
+      notificata_admin: false,
+      confermata_da_admin: false
+    });
     setSubmitting(false);
     setSuccess(true);
   };
