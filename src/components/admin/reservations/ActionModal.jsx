@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { base44 } from '@/api/base44Client';
 import { X, Check, Copy, Mail, MessageCircle, Loader2 } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 import { formatDateIt } from './utils';
@@ -22,6 +23,9 @@ export default function ActionModal({ actionModal, onClose, onRejectSubmit }) {
   const [motivo, setMotivo] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState(null);
 
   const isInputStep = type === 'rifiuto' && !text;
 
@@ -30,6 +34,23 @@ export default function ActionModal({ actionModal, onClose, onRejectSubmit }) {
     setSubmitting(true);
     await onRejectSubmit(motivo.trim());
     setSubmitting(false);
+  };
+
+  const handleSendEmail = async () => {
+    setSendingEmail(true);
+    setEmailError(null);
+    try {
+      const res = await base44.functions.invoke('sendReservationEmail', {
+        to: reservation.email,
+        subject: SUBJECTS[type],
+        body: text,
+      });
+      if (res.data?.error) throw new Error(res.data.error);
+      setEmailSent(true);
+    } catch (e) {
+      setEmailError(e.message || 'Errore invio email');
+    }
+    setSendingEmail(false);
   };
 
   const mailtoLink = reservation.email
@@ -99,16 +120,20 @@ export default function ActionModal({ actionModal, onClose, onRejectSubmit }) {
             </div>
 
             <div className="flex flex-col gap-2">
+              {reservation.email && (
+                <button onClick={handleSendEmail} disabled={sendingEmail || emailSent}
+                  className="flex items-center justify-center gap-2 py-3 bg-[#C69C6D] hover:bg-[#D4AA7D] text-[#0A0A0B] rounded-sm font-body text-sm font-semibold transition-all disabled:opacity-50">
+                  {sendingEmail ? <Loader2 size={14} className="animate-spin" /> : emailSent ? <Check size={14} /> : <Mail size={14} />}
+                  {emailSent ? 'Email inviata ✓' : sendingEmail ? 'Invio in corso...' : `Invia email a ${reservation.email}`}
+                </button>
+              )}
+              {emailError && (
+                <p className="font-body text-xs text-red-400 text-center px-2">{emailError}</p>
+              )}
               {whatsappLink && (
                 <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-500 text-white rounded-sm font-body text-sm font-semibold transition-all">
+                  className="flex items-center justify-center gap-2 py-3 border border-green-400/30 text-green-400 hover:bg-green-400/10 rounded-sm font-body text-sm transition-all">
                   <MessageCircle size={14} /> Invia su WhatsApp
-                </a>
-              )}
-              {mailtoLink && (
-                <a href={mailtoLink}
-                  className="flex items-center justify-center gap-2 py-3 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm font-body text-sm transition-all">
-                  <Mail size={14} /> Invia email a {reservation.email}
                 </a>
               )}
               <button onClick={handleCopy}
