@@ -11,6 +11,7 @@ import AdminReport from '@/components/admin/AdminReport';
 import AdminComande from '@/components/admin/AdminComande';
 import AdminCucina from '@/components/admin/AdminCucina';
 import AdminEmailTest from '@/components/admin/AdminEmailTest';
+import AdminPrinterTest from '@/components/admin/AdminPrinterTest';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info, BarChart2, GripVertical, ClipboardList, ChefHat } from 'lucide-react';
 
@@ -94,6 +95,7 @@ export default function Admin() {
           </div>
           <div className="flex items-center gap-3">
             <AdminEmailTest />
+            <AdminPrinterTest />
             <button
               onClick={() => setReordering(r => !r)}
               className={`flex items-center gap-2 text-sm font-body px-3 py-2 border rounded-sm transition-colors ${reordering ? 'border-[#C69C6D] text-[#C69C6D] bg-[#C69C6D]/10' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/40 hover:border-[#C69C6D]/40'}`}
