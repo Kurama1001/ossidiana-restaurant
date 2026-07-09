@@ -65,8 +65,7 @@ export default function AdminReservations() {
     });
     const updated = { ...r, status: 'confermata', confermata_da_admin: true, data_conferma: now, admin_conferma: adminName };
     setReservations(prev => prev.map(x => x.id === r.id ? updated : x));
-    const emailResult = await sendReservationEmailAction('booking_confirmation', updated);
-    setActionModal({ type: 'conferma', reservation: updated, text: buildConfirmMessage(updated), emailResult });
+    setActionModal({ type: 'conferma', reservation: updated, text: buildConfirmMessage(updated) });
   };
 
   const handleRejectSubmit = async (motivo) => {
@@ -77,8 +76,7 @@ export default function AdminReservations() {
     });
     const updated = { ...r, status: 'rifiutata', motivo_rifiuto: motivo };
     setReservations(prev => prev.map(x => x.id === r.id ? updated : x));
-    const emailResult = await sendReservationEmailAction('booking_rejection', updated, { motivo });
-    setActionModal({ type: 'rifiuto', reservation: updated, text: buildRejectMessage(updated, motivo), emailResult });
+    setActionModal({ type: 'rifiuto', reservation: updated, text: buildRejectMessage(updated, motivo) });
   };
 
   const handleCancel = async (r) => {
@@ -86,8 +84,7 @@ export default function AdminReservations() {
     await base44.entities.Reservation.update(r.id, { status: 'cancellata' });
     const updated = { ...r, status: 'cancellata' };
     setReservations(prev => prev.map(x => x.id === r.id ? updated : x));
-    const emailResult = await sendReservationEmailAction('booking_cancellation', updated);
-    setActionModal({ type: 'cancellazione', reservation: updated, text: buildCancelMessage(updated), emailResult });
+    setActionModal({ type: 'cancellazione', reservation: updated, text: buildCancelMessage(updated) });
   };
 
   const handleComplete = async (r) => {
@@ -116,8 +113,7 @@ export default function AdminReservations() {
       setShowForm(false);
       setEditing(null);
       if (status === 'modificata' && editing.status !== 'modificata') {
-        const emailResult = await sendReservationEmailAction('booking_update', updated);
-        setActionModal({ type: 'aggiornamento', reservation: updated, text: buildUpdateMessage(updated), emailResult });
+        setActionModal({ type: 'aggiornamento', reservation: updated, text: buildUpdateMessage(updated) });
       }
     } else {
       const createData = {
@@ -131,8 +127,7 @@ export default function AdminReservations() {
       setReservations(prev => [created, ...prev]);
       setShowForm(false);
       if (createData.status === 'confermata') {
-        const emailResult = await sendReservationEmailAction('booking_confirmation', created);
-        setActionModal({ type: 'conferma', reservation: created, text: buildConfirmMessage(created), emailResult });
+        setActionModal({ type: 'conferma', reservation: created, text: buildConfirmMessage(created) });
       }
     }
   };
