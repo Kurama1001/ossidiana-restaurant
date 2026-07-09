@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Users } from 'lucide-react';
-import { formatDayName, formatDayNumber, formatMonthShort, isPendingStatus, isCancelledStatus } from './utils';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatDayName, formatDayNumber, formatMonthShort, isPendingStatus, isCancelledStatus, getTurno } from './utils';
 
 export default function AgendaDayStrip({ reservations, selectedDate, onSelectDate, today }) {
   const scrollRef = useRef(null);
@@ -19,10 +19,13 @@ export default function AgendaDayStrip({ reservations, selectedDate, onSelectDat
     const stats = {};
     reservations.forEach(r => {
       if (!r.res_date) return;
-      if (!stats[r.res_date]) stats[r.res_date] = { count: 0, coperti: 0, pending: 0 };
+      if (!stats[r.res_date]) stats[r.res_date] = { count: 0, coperti: 0, pending: 0, pranzo: 0, cena: 0 };
       if (!isCancelledStatus(r.status)) {
         stats[r.res_date].count++;
         stats[r.res_date].coperti += r.guests || 0;
+        const turno = getTurno(r.res_time);
+        if (turno === 'pranzo') stats[r.res_date].pranzo += r.guests || 0;
+        else stats[r.res_date].cena += r.guests || 0;
       }
       if (isPendingStatus(r.status)) stats[r.res_date].pending++;
     });
@@ -46,7 +49,7 @@ export default function AgendaDayStrip({ reservations, selectedDate, onSelectDat
       </button>
       <div ref={scrollRef} className="flex-1 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
         {days.map(dateStr => {
-          const stats = dayStats[dateStr] || { count: 0, coperti: 0, pending: 0 };
+          const stats = dayStats[dateStr] || { count: 0, coperti: 0, pending: 0, pranzo: 0, cena: 0 };
           const isSelected = dateStr === selectedDate;
           const isToday = dateStr === today;
           return (
@@ -60,14 +63,21 @@ export default function AgendaDayStrip({ reservations, selectedDate, onSelectDat
               <span className="font-display text-xl leading-none">{formatDayNumber(dateStr)}</span>
               <span className="font-body text-[9px] uppercase">{formatMonthShort(dateStr)}</span>
               {stats.count > 0 ? (
-                <span className={`mt-1 flex items-center gap-0.5 text-[10px] font-body font-semibold ${isSelected ? 'text-[#0A0A0B]/80' : 'text-[#C69C6D]'}`}>
-                  <Users size={9} /> {stats.coperti}
-                </span>
+                <div className="mt-1 flex items-center gap-1.5">
+                  <span className={`flex items-center gap-0.5 text-[10px] font-body font-semibold ${isSelected ? 'text-[#0A0A0B]/70' : 'text-yellow-400'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-[#0A0A0B]/70' : 'bg-yellow-400'}`} />
+                    {stats.pranzo}
+                  </span>
+                  <span className={`flex items-center gap-0.5 text-[10px] font-body font-semibold ${isSelected ? 'text-[#0A0A0B]/70' : 'text-blue-400'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-[#0A0A0B]/70' : 'bg-blue-400'}`} />
+                    {stats.cena}
+                  </span>
+                </div>
               ) : (
                 <span className="mt-1 text-[10px] font-body opacity-25">·</span>
               )}
               {stats.pending > 0 && (
-                <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-[#0A0A0B]' : 'bg-yellow-400'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-[#0A0A0B]' : 'bg-yellow-400'}`} title="In attesa di conferma" />
               )}
             </button>
           );

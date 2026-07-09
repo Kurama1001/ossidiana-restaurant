@@ -8,6 +8,7 @@ import ReservationFormModal from '@/components/admin/reservations/ReservationFor
 import ActionModal from '@/components/admin/reservations/ActionModal';
 import ReservationStats from '@/components/admin/reservations/ReservationStats';
 import AgendaDayStrip from '@/components/admin/reservations/AgendaDayStrip';
+import ShiftCapacityBar from '@/components/admin/reservations/ShiftCapacityBar';
 import { buildConfirmMessage, buildRejectMessage, buildUpdateMessage, buildCancelMessage, FONTE_LABELS, isPendingStatus, isConfirmedStatus, isCancelledStatus, getTurno, formatDateLong } from '@/components/admin/reservations/utils';
 
 export default function AdminReservations() {
@@ -23,6 +24,7 @@ export default function AdminReservations() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [actionModal, setActionModal] = useState(null);
+  const [capacity, setCapacity] = useState(60);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -35,6 +37,11 @@ export default function AdminReservations() {
       if (nuove.length > 0) {
         Promise.all(nuove.map(r => base44.entities.Reservation.update(r.id, { notificata_admin: true }).catch(() => {})));
       }
+      try {
+        const tavoli = await base44.entities.Tavolo.list();
+        const tot = tavoli.reduce((s, t) => s + (t.coperti || 0), 0);
+        if (tot > 0) setCapacity(tot);
+      } catch { /* keep default */ }
     } catch (e) {
       console.error('Error loading reservations:', e);
     }
@@ -184,6 +191,14 @@ export default function AdminReservations() {
   const dayCount = dayActive.length;
   const dayPending = dayActive.filter(r => isPendingStatus(r.status)).length;
 
+  // Per-shift breakdown
+  const dayPranzo = dayActive.filter(r => getTurno(r.res_time) === 'pranzo');
+  const dayCena = dayActive.filter(r => getTurno(r.res_time) === 'cena');
+  const pranzoConf = dayPranzo.filter(r => isConfirmedStatus(r.status)).reduce((s, r) => s + (r.guests || 0), 0);
+  const pranzoPend = dayPranzo.filter(r => isPendingStatus(r.status)).reduce((s, r) => s + (r.guests || 0), 0);
+  const cenaConf = dayCena.filter(r => isConfirmedStatus(r.status)).reduce((s, r) => s + (r.guests || 0), 0);
+  const cenaPend = dayCena.filter(r => isPendingStatus(r.status)).reduce((s, r) => s + (r.guests || 0), 0);
+
   const shiftDate = (delta) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + delta);
@@ -269,7 +284,10 @@ export default function AdminReservations() {
             </button>
           )}
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center gap-5">
+          <ShiftCapacityBar label="Pranzo" confirmed={pranzoConf} pending={pranzoPend} capacity={capacity} color="#facc15" Icon={Sun} />
+          <ShiftCapacityBar label="Cena" confirmed={cenaConf} pending={cenaPend} capacity={capacity} color="#60a5fa" Icon={Moon} />
+          <div className="w-px h-10 bg-[#C69C6D]/10 hidden sm:block" />
           <div className="text-right">
             <p className="font-display text-3xl text-[#C69C6D] leading-none">{dayCount}</p>
             <p className="font-body text-[10px] text-[#E5E5E5]/40 uppercase tracking-widest mt-1">Prenotazioni</p>
