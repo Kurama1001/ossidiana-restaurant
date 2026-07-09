@@ -52,7 +52,7 @@ export function buildPrintHtml(tavolo, coperti, ora, fasiHtml) {
  * @param {number} coperti
  * @param {string} repartoFilter - 'cucina' per solo cucina, null per tutto
  */
-export function stampaComandaCucina(righe, numeroTavolo, coperti, repartoFilter = 'cucina') {
+export function stampaComandaCucina(righe, numeroTavolo, coperti, repartoFilter = 'cucina', preOpenedWindow = null) {
   const righeStampa = repartoFilter ? righe.filter(r => r.reparto === repartoFilter) : righe;
   if (righeStampa.length === 0) return;
 
@@ -73,32 +73,28 @@ export function stampaComandaCucina(righe, numeroTavolo, coperti, repartoFilter 
     `).join('')}
   `).join('');
 
-  const html = buildPrintHtml(numeroTavolo, coperti, ora, fasiHtml);
+  // Aggiunge script auto-print: funziona su PC, iOS (AirPrint) e Android
+  const html = buildPrintHtml(numeroTavolo, coperti, ora, fasiHtml)
+    .replace('</body>', '<script>window.onload=function(){setTimeout(function(){window.print();},500);};<\/script></body>');
 
-  // Usa iframe nascosto: non viene bloccato dai popup blocker dopo chiamate async
-  let iframe = document.getElementById('kitchen-print-iframe');
-  if (!iframe) {
-    iframe = document.createElement('iframe');
-    iframe.id = 'kitchen-print-iframe';
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.style.opacity = '0';
-    iframe.style.pointerEvents = 'none';
-    document.body.appendChild(iframe);
+  // Usa la finestra pre-aperta (se fornita) o ne apre una nuova
+  const win = preOpenedWindow && !preOpenedWindow.closed ? preOpenedWindow : window.open('', '_blank');
+
+  if (win) {
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  } else {
+    // Fallback per popup blocker: blob URL con anchor click (mobile)
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
-
-  const doc = iframe.contentWindow.document;
-  doc.open();
-  doc.write(html);
-  doc.close();
-
-  // Attende il rendering del contenuto prima di stampare
-  iframe.onload = () => {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-  };
 }

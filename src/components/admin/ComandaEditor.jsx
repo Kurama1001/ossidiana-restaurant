@@ -105,6 +105,10 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
     if (righe.length === 0 || !tavoloSelezionato) return;
     setSending(true);
 
+    // Pre-apre la finestra di stampa sincronamente per evitare popup blocker su mobile
+    const righeCucina = righe.filter(r => r.reparto === 'cucina');
+    const printWin = righeCucina.length > 0 ? window.open('', '_blank') : null;
+
     const now = new Date().toISOString();
     let ordineId, tavoloId, numeroTavolo;
 
@@ -157,9 +161,8 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
     }
 
     // Stampa automatica righe cucina sulla stampante termica
-    const righeCucina = righe.filter(r => r.reparto === 'cucina');
     if (righeCucina.length > 0) {
-      stampaComandaCucina(righeCucina, numeroTavolo, coperti, null);
+      stampaComandaCucina(righeCucina, numeroTavolo, coperti, null, printWin);
     }
 
     setSending(false);
