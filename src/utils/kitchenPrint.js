@@ -73,10 +73,32 @@ export function stampaComandaCucina(righe, numeroTavolo, coperti, repartoFilter 
     `).join('')}
   `).join('');
 
-  const win = window.open('', '_blank', 'width=400,height=600');
-  if (!win) return;
-  win.document.write(buildPrintHtml(numeroTavolo, coperti, ora, fasiHtml));
-  win.document.close();
-  win.focus();
-  setTimeout(() => { win.print(); win.close(); }, 400);
+  const html = buildPrintHtml(numeroTavolo, coperti, ora, fasiHtml);
+
+  // Usa iframe nascosto: non viene bloccato dai popup blocker dopo chiamate async
+  let iframe = document.getElementById('kitchen-print-iframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'kitchen-print-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
+    document.body.appendChild(iframe);
+  }
+
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  // Attende il rendering del contenuto prima di stampare
+  iframe.onload = () => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  };
 }
