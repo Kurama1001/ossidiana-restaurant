@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Minus, Trash2, Send, Search, AlertCircle, Users, Receipt, StickyNote, CheckCircle2, Layers, Printer } from 'lucide-react';
+import { Plus, Minus, Trash2, Search, AlertCircle, Users, Receipt, StickyNote, CheckCircle2, Layers, Printer } from 'lucide-react';
 import { stampaComandaCucina } from '@/utils/kitchenPrint';
 
 const CAT_LABELS = {
@@ -399,26 +399,14 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
               <span className="font-body text-xs text-[#E5E5E5]/40">Totale bozza</span>
               <span className="font-display text-2xl text-[#C69C6D]">€{totale.toFixed(2)}</span>
             </div>
-            <div className="flex gap-2">
-              {righe.some(r => r.reparto === 'cucina') && (
-                <button
-                  onClick={() => stampaComandaCucina(righe, tavoloSelezionato.numero, coperti, 'cucina')}
-                  disabled={righe.length === 0 || !tavoloSelezionato}
-                  className="px-4 py-3 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 font-body font-bold text-sm rounded-sm transition-all disabled:opacity-40 flex items-center justify-center gap-2"
-                  title="Stampa comanda cucina"
-                >
-                  <Printer size={15} />
-                </button>
-              )}
-              <button
-                onClick={inviaComanda}
-                disabled={sending || righe.length === 0 || !tavoloSelezionato}
-                className="flex-1 py-3 bg-[#C69C6D] hover:bg-[#D4AA7D] text-[#0A0A0B] font-body font-bold text-sm tracking-widest uppercase rounded-sm transition-all disabled:opacity-40 flex items-center justify-center gap-2"
-              >
-                <Send size={15} />
-                {sending ? 'Invio...' : `Invia (${righe.length})`}
-              </button>
-            </div>
+            <button
+              onClick={inviaComanda}
+              disabled={sending || righe.length === 0 || !tavoloSelezionato}
+              className="w-full py-3 bg-[#C69C6D] hover:bg-[#D4AA7D] text-[#0A0A0B] font-body font-bold text-sm tracking-widest uppercase rounded-sm transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+            >
+              <Printer size={15} />
+              {sending ? 'Invio...' : `Invia e Stampa (${righe.length})`}
+            </button>
           </div>
         </div>
       </div>
