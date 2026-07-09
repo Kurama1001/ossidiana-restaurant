@@ -204,7 +204,7 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
                 else setTavoloSelezionato(null);
               }}
               placeholder="es. 5"
-              className="w-24 bg-[#161618] border border-[#E5E5E5]/20 text-white text-center font-display text-2xl px-3 py-2 rounded-sm outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20"
+              className="w-24 h-9 bg-[#161618] border border-[#E5E5E5]/20 text-white text-center font-display text-lg px-3 rounded-sm outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20"
             />
           </div>
           <div>
