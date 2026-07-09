@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { Plus, RefreshCw, Search, CalendarDays, Users, Sun, Moon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, RefreshCw, Search, CalendarDays, Users, Sun, Moon, ChevronLeft, ChevronRight, LayoutGrid, Map } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 import ReservationCard from '@/components/admin/reservations/ReservationCard';
 import ReservationFormModal from '@/components/admin/reservations/ReservationFormModal';
@@ -9,6 +9,7 @@ import ActionModal from '@/components/admin/reservations/ActionModal';
 import ReservationStats from '@/components/admin/reservations/ReservationStats';
 import AgendaDayStrip from '@/components/admin/reservations/AgendaDayStrip';
 import ShiftCapacityBar from '@/components/admin/reservations/ShiftCapacityBar';
+import FloorPlanView from '@/components/admin/reservations/FloorPlanView';
 import { buildConfirmMessage, buildRejectMessage, buildUpdateMessage, buildCancelMessage, FONTE_LABELS, isPendingStatus, isConfirmedStatus, isCancelledStatus, getTurno, formatDateLong } from '@/components/admin/reservations/utils';
 
 export default function AdminReservations() {
@@ -25,6 +26,8 @@ export default function AdminReservations() {
   const [editing, setEditing] = useState(null);
   const [actionModal, setActionModal] = useState(null);
   const [capacity, setCapacity] = useState(60);
+  const [tavoli, setTavoli] = useState([]);
+  const [viewMode, setViewMode] = useState('agenda');
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -38,8 +41,9 @@ export default function AdminReservations() {
         Promise.all(nuove.map(r => base44.entities.Reservation.update(r.id, { notificata_admin: true }).catch(() => {})));
       }
       try {
-        const tavoli = await base44.entities.Tavolo.list();
-        const tot = tavoli.reduce((s, t) => s + (t.coperti || 0), 0);
+        const tlist = await base44.entities.Tavolo.list();
+        setTavoli(tlist);
+        const tot = tlist.reduce((s, t) => s + (t.coperti || 0), 0);
         if (tot > 0) setCapacity(tot);
       } catch { /* keep default */ }
     } catch (e) {
@@ -243,6 +247,21 @@ export default function AdminReservations() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <h2 className="font-display text-2xl text-white tracking-widest">Agenda Prenotazioni</h2>
         <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex gap-1 border border-[#C69C6D]/20 rounded-sm overflow-hidden">
+            <button onClick={() => setViewMode('agenda')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-body transition-all min-h-[40px] ${
+                viewMode === 'agenda' ? 'bg-[#C69C6D] text-[#0A0A0B] font-bold' : 'text-[#E5E5E5]/50 hover:text-[#C69C6D]'
+              }`}>
+              <LayoutGrid size={14} /> Agenda
+            </button>
+            <button onClick={() => setViewMode('sala')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-body transition-all min-h-[40px] ${
+                viewMode === 'sala' ? 'bg-[#C69C6D] text-[#0A0A0B] font-bold' : 'text-[#E5E5E5]/50 hover:text-[#C69C6D]'
+              }`}>
+              <Map size={14} /> Sala
+            </button>
+          </div>
           <button onClick={load} className="p-2 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all">
             <RefreshCw size={16} />
           </button>
@@ -309,6 +328,7 @@ export default function AdminReservations() {
         </div>
       </div>
 
+      {viewMode === 'agenda' && (<>
       {/* Filter bar */}
       <div className="flex flex-wrap gap-2 items-center mb-4">
         <div className="relative flex-1 min-w-[180px]">
@@ -373,6 +393,16 @@ export default function AdminReservations() {
           {renderTurnoSection('Pranzo', Sun, pranzoRes)}
           {renderTurnoSection('Cena', Moon, cenaRes)}
         </div>
+      )}
+      </>)}
+
+      {viewMode === 'sala' && (
+        <FloorPlanView
+          tavoli={tavoli}
+          dayReservations={dayReservations}
+          selectedDate={selectedDate}
+          onRefresh={load}
+        />
       )}
 
       {showForm && (

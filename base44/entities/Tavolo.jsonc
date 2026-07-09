@@ -33,6 +33,14 @@
     "note": {
       "type": "string",
       "description": "Note sul tavolo"
+    },
+    "pos_x": {
+      "type": "number",
+      "description": "Posizione X nella mappa sala (px)"
+    },
+    "pos_y": {
+      "type": "number",
+      "description": "Posizione Y nella mappa sala (px)"
     }
   },
   "required": [

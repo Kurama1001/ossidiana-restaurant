@@ -81,6 +81,10 @@
     "motivo_rifiuto": {
       "type": "string",
       "description": "Motivo rifiuto"
+    },
+    "tavolo_id": {
+      "type": "string",
+      "description": "ID tavolo assegnato alla prenotazione"
     }
   },
   "required": [
