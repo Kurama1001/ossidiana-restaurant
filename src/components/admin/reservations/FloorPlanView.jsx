@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Users, Clock, Pencil, Check, Move, Table2, X, MapPin } from 'lucide-react';
+import { Users, Clock, Pencil, Check, Move, Table2, X, MapPin, Plus, Trash2 } from 'lucide-react';
 import { isCancelledStatus, isConfirmedStatus, isPendingStatus, getTurno, formatDateLong } from './utils';
 
 const TABLE_W = 104;
@@ -15,6 +15,9 @@ export default function FloorPlanView({ tavoli, dayReservations, selectedDate, o
   const [selectedTable, setSelectedTable] = useState(null);
   const [editingNum, setEditingNum] = useState(null);
   const [numValue, setNumValue] = useState('');
+  const [editingCoperti, setEditingCoperti] = useState(null);
+  const [copertiValue, setCopertiValue] = useState('');
+  const [addingTable, setAddingTable] = useState(false);
   const containerRef = useRef(null);
 
   // Map of tavolo_id -> reservation (active only)
@@ -100,6 +103,56 @@ export default function FloorPlanView({ tavoli, dayReservations, selectedDate, o
     setNumValue('');
   };
 
+  // ── Add / delete table ──
+  const handleAddTable = async () => {
+    setAddingTable(true);
+    const maxNum = tavoli.reduce((max, t) => Math.max(max, t.numero || 0), 0);
+    const nextNum = maxNum + 1;
+    // Place at a free-ish spot (bottom-right area)
+    const containerW = containerRef.current?.clientWidth || 400;
+    const containerH = containerRef.current?.clientHeight || 600;
+    const px = Math.max(20, containerW - TABLE_W - 30);
+    const py = Math.max(20, containerH - TABLE_H - 30);
+    try {
+      await base44.entities.Tavolo.create({
+        numero: nextNum,
+        coperti: 4,
+        stato: 'libero',
+        pos_x: px,
+        pos_y: py,
+      });
+      onRefresh();
+    } catch (e) {
+      console.error('Errore creazione tavolo:', e);
+    }
+    setAddingTable(false);
+  };
+
+  const handleDeleteTable = async (e, table) => {
+    e.stopPropagation();
+    if (!window.confirm(`Eliminare il Tavolo ${table.numero}?`)) return;
+    await base44.entities.Tavolo.delete(table.id).catch(() => {});
+    setSelectedTable(null);
+    onRefresh();
+  };
+
+  // ── Inline coperti editing ──
+  const startEditCoperti = (e, table) => {
+    e.stopPropagation();
+    setEditingCoperti(table.id);
+    setCopertiValue(String(table.coperti || ''));
+  };
+
+  const saveCoperti = async (tableId) => {
+    const n = parseInt(copertiValue);
+    if (!isNaN(n)) {
+      await base44.entities.Tavolo.update(tableId, { coperti: n }).catch(() => {});
+      onRefresh();
+    }
+    setEditingCoperti(null);
+    setCopertiValue('');
+  };
+
   // ── Table assignment ──
   const assignTable = async (tableId, reservationId) => {
     const existing = dayReservations.find(r => r.tavolo_id === tableId && !isCancelledStatus(r.status));
@@ -146,6 +199,15 @@ export default function FloorPlanView({ tavoli, dayReservations, selectedDate, o
               <span className="font-body text-[10px] text-[#E5E5E5]/40 uppercase tracking-wider">Cena</span>
             </div>
           </div>
+          {editMode && (
+            <button
+              onClick={handleAddTable}
+              disabled={addingTable}
+              className="flex items-center gap-2 px-4 py-2 border border-green-400/40 text-green-400 hover:bg-green-400/10 rounded-sm font-body text-xs uppercase tracking-widest transition-all disabled:opacity-50"
+            >
+              {addingTable ? <div className="w-3.5 h-3.5 border border-green-400/40 border-t-green-400 rounded-full animate-spin" /> : <Plus size={14} />} Aggiungi Tavolo
+            </button>
+          )}
           <button
             onClick={() => setEditMode(!editMode)}
             className={`flex items-center gap-2 px-4 py-2 rounded-sm font-body text-xs uppercase tracking-widest transition-all ${
@@ -161,7 +223,7 @@ export default function FloorPlanView({ tavoli, dayReservations, selectedDate, o
 
       {editMode && (
         <p className="font-body text-xs text-[#C69C6D]/60 mb-3 flex items-center gap-1">
-          <MapPin size={12} /> Trascina i tavoli per riposizionarli · Click sul numero per modificarlo
+          <MapPin size={12} /> Trascina per spostare · Click sul numero o sui coperti per modificarli · Usa la X per eliminare
         </p>
       )}
 
@@ -183,7 +245,17 @@ export default function FloorPlanView({ tavoli, dayReservations, selectedDate, o
           <div className="absolute inset-0 flex flex-col items-center justify-center text-[#E5E5E5]/20">
             <Table2 size={40} className="mb-3 opacity-30" />
             <p className="font-body text-sm">Nessun tavolo configurato</p>
-            <p className="font-body text-xs mt-1">Vai in Tavoli per crearne di nuovi</p>
+            {editMode ? (
+              <button
+                onClick={handleAddTable}
+                disabled={addingTable}
+                className="mt-3 flex items-center gap-2 px-4 py-2 border border-green-400/40 text-green-400 hover:bg-green-400/10 rounded-sm font-body text-xs uppercase tracking-widest transition-all disabled:opacity-50"
+              >
+                {addingTable ? <div className="w-3.5 h-3.5 border border-green-400/40 border-t-green-400 rounded-full animate-spin" /> : <Plus size={14} />} Aggiungi Tavolo
+              </button>
+            ) : (
+              <p className="font-body text-xs mt-1">Attiva "Modifica disposizione" per crearne</p>
+            )}
           </div>
         ) : (
           positionedTavoli.map(t => {
@@ -213,6 +285,18 @@ export default function FloorPlanView({ tavoli, dayReservations, selectedDate, o
                       : 'bg-[#1a1a1c] border-[#C69C6D]/25 hover:border-[#C69C6D]/50'
                   }`}
                 >
+                  {/* Delete button (edit mode) */}
+                  {editMode && (
+                    <button
+                      onClick={(e) => handleDeleteTable(e, t)}
+                      onPointerDown={e => e.stopPropagation()}
+                      className="absolute -top-2 -right-2 z-20 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                      title="Elimina tavolo"
+                    >
+                      <X size={11} />
+                    </button>
+                  )}
+
                   {/* Table number */}
                   {editingNum === t.id ? (
                     <input
@@ -241,9 +325,29 @@ export default function FloorPlanView({ tavoli, dayReservations, selectedDate, o
                   {/* Capacity */}
                   <div className="flex items-center gap-0.5 mt-0.5">
                     <Users size={10} className={reserved ? 'text-white/60' : 'text-[#E5E5E5]/25'} />
-                    <span className={`font-body text-[10px] ${reserved ? 'text-white/60' : 'text-[#E5E5E5]/30'}`}>
-                      {t.coperti || '—'}
-                    </span>
+                    {editingCoperti === t.id ? (
+                      <input
+                        type="number"
+                        value={copertiValue}
+                        onChange={e => setCopertiValue(e.target.value)}
+                        onBlur={() => saveCoperti(t.id)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveCoperti(t.id); if (e.key === 'Escape') setEditingCoperti(null); }}
+                        autoFocus
+                        onClick={e => e.stopPropagation()}
+                        onPointerDown={e => e.stopPropagation()}
+                        className="w-10 text-center bg-[#0A0A0B] border border-[#C69C6D] text-white font-body text-[10px] rounded-sm outline-none px-0.5"
+                      />
+                    ) : (
+                      <div
+                        className="flex items-center gap-0.5"
+                        onClick={editMode ? (e) => startEditCoperti(e, t) : undefined}
+                      >
+                        {editMode && <Pencil size={8} className="text-[#E5E5E5]/25" />}
+                        <span className={`font-body text-[10px] ${reserved ? 'text-white/60' : 'text-[#E5E5E5]/30'}`}>
+                          {t.coperti || '—'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Reservation info */}
