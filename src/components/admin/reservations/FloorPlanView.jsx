@@ -52,7 +52,7 @@ export default function FloorPlanView({ tavoli, dayReservations, selectedDate, o
 
   // ── Drag handlers (pointer events: mouse + touch) ──
   const handlePointerDown = (e, table) => {
-    if (!editMode || editingNum === table.id) return;
+    if (!editMode || editingNum === table.id || editingCoperti === table.id) return;
     const containerRect = containerRef.current.getBoundingClientRect();
     const tableRect = e.currentTarget.getBoundingClientRect();
     setDragging({
@@ -339,8 +339,9 @@ export default function FloorPlanView({ tavoli, dayReservations, selectedDate, o
                       />
                     ) : (
                       <div
-                        className="flex items-center gap-0.5"
+                        className="flex items-center gap-0.5 cursor-text"
                         onClick={editMode ? (e) => startEditCoperti(e, t) : undefined}
+                        onPointerDown={editMode ? (e) => e.stopPropagation() : undefined}
                       >
                         {editMode && <Pencil size={8} className="text-[#E5E5E5]/25" />}
                         <span className={`font-body text-[10px] ${reserved ? 'text-white/60' : 'text-[#E5E5E5]/30'}`}>
