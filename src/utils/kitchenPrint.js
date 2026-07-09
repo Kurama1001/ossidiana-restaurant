@@ -73,9 +73,7 @@ export function stampaComandaCucina(righe, numeroTavolo, coperti, repartoFilter 
     `).join('')}
   `).join('');
 
-  // Aggiunge script auto-print: funziona su PC, iOS (AirPrint) e Android
-  const html = buildPrintHtml(numeroTavolo, coperti, ora, fasiHtml)
-    .replace('</body>', '<script>window.onload=function(){setTimeout(function(){window.print();},500);};<\/script></body>');
+  const html = buildPrintHtml(numeroTavolo, coperti, ora, fasiHtml);
 
   // Usa la finestra pre-aperta (se fornita) o ne apre una nuova
   const win = preOpenedWindow && !preOpenedWindow.closed ? preOpenedWindow : window.open('', '_blank');
@@ -84,17 +82,30 @@ export function stampaComandaCucina(righe, numeroTavolo, coperti, repartoFilter 
     win.document.open();
     win.document.write(html);
     win.document.close();
+    // Chiama print direttamente dall'esterno (window.onload non è affidabile su iOS con document.write)
+    setTimeout(() => {
+      try {
+        win.focus();
+        win.print();
+      } catch (e) {
+        console.error('Errore stampa:', e);
+      }
+    }, 600);
   } else {
-    // Fallback per popup blocker: blob URL con anchor click (mobile)
+    // Fallback per popup blocker su mobile: blob URL con window.open
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const newWin = window.open(url, '_blank');
+    if (!newWin) {
+      // Ultimo fallback: anchor click
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 }

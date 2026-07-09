@@ -81,10 +81,18 @@ function PrintPopup({ righe, coperti, onClose }) {
 
     const tavolo = righe[0]?.numero_tavolo || '?';
     const printHtml = buildPrintHtml(tavolo, coperti, ora, fasi);
+    win.document.open();
     win.document.write(printHtml);
     win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 400);
+    // Non chiudere subito la finestra: su iOS il dialog AirPrint verrebbe cancellato
+    setTimeout(() => {
+      try {
+        win.focus();
+        win.print();
+      } catch (e) {
+        console.error('Errore stampa:', e);
+      }
+    }, 600);
     onClose();
   };
 
