@@ -12,6 +12,7 @@ const WINE_LABELS = {
 export default function WineSection() {
   const [wines, setWines] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [regionFilter, setRegionFilter] = useState({});
 
   useEffect(() => {
     base44.entities.MenuItem.filter({ category: 'vino', active: true }, 'sortOrder', 500)
@@ -53,7 +54,8 @@ export default function WineSection() {
       </div>
 
       {/* Intestazione prezzi */}
-      <div className="flex justify-end gap-8 mb-1 px-1">
+      <div className="flex justify-end gap-4 mb-1 px-1">
+        <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-28 text-right">Regione</span>
         <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-16 text-right">Calice</span>
         <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-20 text-right">Bottiglia</span>
       </div>
@@ -78,7 +80,18 @@ export default function WineSection() {
               <div className="flex-1 h-px bg-[#C69C6D]/10" />
             </div>
 
-            {regioni.map(regione => (
+            {regioni.length > 1 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {regioni.map(r => (
+                  <button key={r} onClick={() => setRegionFilter(prev => ({ ...prev, [wt]: prev[wt] === r ? null : r }))}
+                    className={`px-2.5 py-1 rounded-sm text-[11px] font-body border transition-all ${regionFilter[wt] === r ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+                    {r}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {(regionFilter[wt] ? regioni.filter(r => r === regionFilter[wt]) : regioni).map(regione => (
               <div key={regione} className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="font-body text-xs text-[#E5E5E5]/40 uppercase tracking-widest">{regione}</span>
@@ -93,6 +106,9 @@ export default function WineSection() {
                           <span className="font-body text-[#E5E5E5]/35 text-xs block">{wine.description}</span>
                         )}
                       </div>
+                      <span className="font-body text-[#E5E5E5]/40 text-xs w-28 text-right shrink-0">
+                        {wine.regione || '—'}
+                      </span>
                       <span className="font-body text-[#E5E5E5]/60 text-sm w-16 text-right shrink-0">
                         {wine.prezzo_calice != null ? `€${Number(wine.prezzo_calice).toFixed(0)}` : '—'}
                       </span>

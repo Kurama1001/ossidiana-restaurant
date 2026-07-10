@@ -25,6 +25,7 @@ export default function AdminWines() {
   const [form, setForm] = useState(emptyWine);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [regionFilter, setRegionFilter] = useState({});
 
   const load = () => {
     base44.entities.MenuItem.filter({ category: 'vino' }, 'sortOrder', 500)
@@ -126,6 +127,7 @@ export default function AdminWines() {
           {/* Price column headers */}
           <div className="flex items-center gap-3 px-1">
             <span className="flex-1" />
+            <span className="font-body text-xs text-[#E5E5E5]/30 uppercase tracking-widest w-24 text-right">Regione</span>
             <span className="font-body text-xs text-[#E5E5E5]/30 uppercase tracking-widest w-16 text-right">Calice</span>
             <span className="font-body text-xs text-[#E5E5E5]/30 uppercase tracking-widest w-20 text-right">Bottiglia</span>
             <span className="w-[96px] shrink-0" />
@@ -135,9 +137,14 @@ export default function AdminWines() {
             const items = grouped[wt];
             if (!items) return null;
 
+            const allRegioni = [...new Set(items.map(w => w.regione || 'Altro'))];
+            const filteredItems = regionFilter[wt] && regionFilter[wt] !== 'all'
+              ? items.filter(w => (w.regione || 'Altro') === regionFilter[wt])
+              : items;
+
             const regioni = [];
             const regioniMap = {};
-            for (const w of items) {
+            for (const w of filteredItems) {
               const r = w.regione || 'Altro';
               if (!regioniMap[r]) { regioniMap[r] = []; regioni.push(r); }
               regioniMap[r].push(w);
@@ -149,7 +156,7 @@ export default function AdminWines() {
                 <div className="flex items-center gap-3 mb-3">
                   <Wine size={16} className="text-[#C69C6D]" />
                   <h3 className="font-display text-xl text-[#C69C6D] tracking-widest">{WINE_LABELS[wt]}</h3>
-                  <span className="font-body text-xs text-[#E5E5E5]/30">({items.length})</span>
+                  <span className="font-body text-xs text-[#E5E5E5]/30">({filteredItems.length})</span>
                   <div className="flex-1 h-px bg-[#C69C6D]/15" />
                   <button onClick={() => openCreate(wt)}
                     className="flex items-center gap-1 px-2.5 py-1 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm font-body text-xs transition-all">
@@ -157,48 +164,71 @@ export default function AdminWines() {
                   </button>
                 </div>
 
-                {regioni.map(regione => (
-                  <div key={regione} className="mb-4">
-                    {/* Region sub-header */}
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-body text-xs text-[#808080] uppercase tracking-widest">{regione}</span>
-                      <div className="flex-1 h-px bg-[#333333]" />
-                    </div>
-
-                    {/* Wine rows */}
-                    <div>
-                      {regioniMap[regione].map(w => (
-                        <div key={w.id}
-                          className={`flex items-center gap-3 py-3 border-b border-[#333333] last:border-0 transition-all ${w.active ? '' : 'opacity-40'}`}>
-                          <div className="flex-1 min-w-0">
-                            <span className="font-body text-white text-sm block truncate">{w.name}</span>
-                            {w.description && <span className="font-body text-[#E5E5E5]/30 text-xs block truncate">{w.description}</span>}
-                          </div>
-                          <span className="font-body text-[#A0A0A0] text-sm w-16 text-right shrink-0">
-                            {w.prezzo_calice != null ? `€${Number(w.prezzo_calice).toFixed(0)}` : '—'}
-                          </span>
-                          <span className="font-body text-[#D9986D] font-semibold text-sm w-20 text-right shrink-0">
-                            {w.prezzo_bottiglia != null ? `€${Number(w.prezzo_bottiglia).toFixed(0)}` : '—'}
-                          </span>
-                          <div className="flex items-center gap-1 shrink-0 w-[96px] justify-end">
-                            <button onClick={() => toggleActive(w)} title={w.active ? 'Disattiva' : 'Attiva'}
-                              className={`p-1.5 border rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center ${w.active ? 'border-green-400/30 text-green-400 hover:bg-green-400/10' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/30'}`}>
-                              {w.active ? <Eye size={12} /> : <EyeOff size={12} />}
-                            </button>
-                            <button onClick={() => openEdit(w)} title="Modifica"
-                              className="p-1.5 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center">
-                              <Pencil size={12} />
-                            </button>
-                            <button onClick={() => deleteWine(w.id, w.name)} title="Elimina"
-                              className="p-1.5 border border-red-400/20 text-red-400/50 hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center">
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                {/* Quick region filters */}
+                {allRegioni.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    <button onClick={() => setRegionFilter(prev => ({ ...prev, [wt]: 'all' }))}
+                      className={`px-2.5 py-1 rounded-sm text-[11px] font-body border transition-all ${(!regionFilter[wt] || regionFilter[wt] === 'all') ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+                      Tutte
+                    </button>
+                    {allRegioni.map(r => (
+                      <button key={r} onClick={() => setRegionFilter(prev => ({ ...prev, [wt]: r }))}
+                        className={`px-2.5 py-1 rounded-sm text-[11px] font-body border transition-all ${regionFilter[wt] === r ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+                        {r}
+                      </button>
+                    ))}
                   </div>
-                ))}
+                )}
+
+                {regioni.length === 0 ? (
+                  <p className="text-[#E5E5E5]/20 font-body text-sm py-4 text-center">Nessun vino in questa regione.</p>
+                ) : (
+                  regioni.map(regione => (
+                    <div key={regione} className="mb-4">
+                      {/* Region sub-header */}
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-body text-xs text-[#808080] uppercase tracking-widest">{regione}</span>
+                        <div className="flex-1 h-px bg-[#333333]" />
+                      </div>
+
+                      {/* Wine rows */}
+                      <div>
+                        {regioniMap[regione].map(w => (
+                          <div key={w.id}
+                            className={`flex items-center gap-3 py-3 border-b border-[#333333] last:border-0 transition-all ${w.active ? '' : 'opacity-40'}`}>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-body text-white text-sm block truncate">{w.name}</span>
+                              {w.description && <span className="font-body text-[#E5E5E5]/30 text-xs block truncate">{w.description}</span>}
+                            </div>
+                            <span className="font-body text-[#E5E5E5]/50 text-xs w-24 text-right shrink-0">
+                              {w.regione || '—'}
+                            </span>
+                            <span className="font-body text-[#A0A0A0] text-sm w-16 text-right shrink-0">
+                              {w.prezzo_calice != null ? `€${Number(w.prezzo_calice).toFixed(0)}` : '—'}
+                            </span>
+                            <span className="font-body text-[#D9986D] font-semibold text-sm w-20 text-right shrink-0">
+                              {w.prezzo_bottiglia != null ? `€${Number(w.prezzo_bottiglia).toFixed(0)}` : '—'}
+                            </span>
+                            <div className="flex items-center gap-1 shrink-0 w-[96px] justify-end">
+                              <button onClick={() => toggleActive(w)} title={w.active ? 'Disattiva' : 'Attiva'}
+                                className={`p-1.5 border rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center ${w.active ? 'border-green-400/30 text-green-400 hover:bg-green-400/10' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/30'}`}>
+                                {w.active ? <Eye size={12} /> : <EyeOff size={12} />}
+                              </button>
+                              <button onClick={() => openEdit(w)} title="Modifica"
+                                className="p-1.5 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center">
+                                <Pencil size={12} />
+                              </button>
+                              <button onClick={() => deleteWine(w.id, w.name)} title="Elimina"
+                                className="p-1.5 border border-red-400/20 text-red-400/50 hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center">
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             );
           })}
