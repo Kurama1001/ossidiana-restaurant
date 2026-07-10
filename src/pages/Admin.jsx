@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import AdminReservations from '@/components/admin/AdminReservations';
 import AdminOrders from '@/components/admin/AdminOrders';
 import AdminMenu from '@/components/admin/AdminMenu';
+import AdminWines from '@/components/admin/AdminWines';
 import AdminUsers from '@/components/admin/AdminUsers';
 import AdminGallery from '@/components/admin/AdminGallery';
 import AdminChiSiamo from '@/components/admin/AdminChiSiamo';
@@ -13,7 +14,7 @@ import AdminCucina from '@/components/admin/AdminCucina';
 import AdminEmailTest from '@/components/admin/AdminEmailTest';
 import AdminPrinterTest from '@/components/admin/AdminPrinterTest';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info, BarChart2, GripVertical, ClipboardList, ChefHat } from 'lucide-react';
+import { CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info, BarChart2, GripVertical, ClipboardList, ChefHat, Wine } from 'lucide-react';
 
 const DEFAULT_TABS = [
   { id: 'comande',      label: 'Comande',       icon: 'ClipboardList' },
@@ -22,12 +23,13 @@ const DEFAULT_TABS = [
   { id: 'reservations', label: 'Prenotazioni',   icon: 'CalendarDays' },
   { id: 'orders',       label: 'Asporto',        icon: 'ShoppingBag' },
   { id: 'menu',         label: 'Menu',           icon: 'UtensilsCrossed' },
+  { id: 'wines',        label: 'Vini',           icon: 'Wine' },
   { id: 'gallery',      label: 'Galleria',       icon: 'Images' },
   { id: 'chi_siamo',    label: 'Chi Siamo',      icon: 'Info' },
   { id: 'users',        label: 'Utenti',         icon: 'Users' },
 ];
 
-const ICONS = { CalendarDays, ShoppingBag, UtensilsCrossed, Users, Images, Info, BarChart2, ClipboardList, ChefHat };
+const ICONS = { CalendarDays, ShoppingBag, UtensilsCrossed, Users, Images, Info, BarChart2, ClipboardList, ChefHat, Wine };
 
 const TAB_COMPONENTS = {
   comande:      AdminComande,
@@ -35,6 +37,7 @@ const TAB_COMPONENTS = {
   reservations: AdminReservations,
   orders:       AdminOrders,
   menu:         AdminMenu,
+  wines:        AdminWines,
   report:       AdminReport,
   gallery:      AdminGallery,
   chi_siamo:    AdminChiSiamo,
