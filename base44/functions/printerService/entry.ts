@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const PRINTER_IP = Deno.env.get("PRINTER_IP") || "192.168.1.51";
+const PRINTER_IP = Deno.env.get("PRINTER_IP") || "192.168.1.54";
 const PRINTER_PORT = parseInt(Deno.env.get("PRINTER_PORT") || "9100");
 const SOCKET_TIMEOUT_MS = 5000;
 
