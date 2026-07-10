@@ -6,9 +6,9 @@ import { BronzeButton } from '@/components/ui/BronzeButton';
 const WINE_ORDER = ['bollicine', 'bianchi', 'rossi', 'dolci'];
 const WINE_LABELS = {
   bollicine: 'Bollicine',
-  bianchi: 'Bianchi',
-  rossi: 'Rossi',
-  dolci: 'Dolci',
+  bianchi: 'Vini Bianchi',
+  rossi: 'Vini Rossi',
+  dolci: 'Vini Dolci',
 };
 
 const REGIONS = [
@@ -18,8 +18,8 @@ const REGIONS = [
 
 const emptyWine = {
   name: '', wine_type: 'bianchi', regione: '', cantina: '',
-  prezzo_bottiglia: '', prezzo_calice: '',
-  description: '', active: true, sortOrder: '',
+  prezzo_bottiglia: '', prezzo_calice: '', description: '',
+  active: true, sortOrder: '',
 };
 
 export default function AdminWines() {
@@ -30,8 +30,7 @@ export default function AdminWines() {
   const [form, setForm] = useState(emptyWine);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [regionFilter, setRegionFilter] = useState('all');
+  const [regionFilter, setRegionFilter] = useState({});
   const [inlineEdit, setInlineEdit] = useState(null);
   const [inlineValue, setInlineValue] = useState('');
 
@@ -103,6 +102,7 @@ export default function AdminWines() {
     setWines(prev => prev.map(x => x.id === w.id ? { ...x, active: !x.active } : x));
   };
 
+  // Inline editing
   const startInline = (id, field, currentVal) => {
     setInlineEdit({ id, field });
     setInlineValue(currentVal?.toString() ?? '');
@@ -142,224 +142,210 @@ export default function AdminWines() {
     setInlineEdit(null);
   };
 
-  const filtered = wines
-    .filter(w => (!search || w.name.toLowerCase().includes(search.toLowerCase()) || (w.cantina || '').toLowerCase().includes(search.toLowerCase())))
-    .filter(w => typeFilter === 'all' || w.wine_type === typeFilter)
-    .filter(w => regionFilter === 'all' || (w.regione || '') === regionFilter)
-    .sort((a, b) => {
-      const ta = WINE_ORDER.indexOf(a.wine_type);
-      const tb = WINE_ORDER.indexOf(b.wine_type);
-      if (ta !== tb) return ta - tb;
-      return (a.sortOrder || 0) - (b.sortOrder || 0);
-    });
-
-  const availableRegions = [...new Set(wines.map(w => w.regione).filter(Boolean))].sort();
-
   const isEditing = (id, field) => inlineEdit?.id === id && inlineEdit?.field === field;
 
+  // Group wines exactly like the customer view
+  const grouped = WINE_ORDER.reduce((acc, wt) => {
+    const items = wines
+      .filter(w => w.wine_type === wt)
+      .filter(w => !search || w.name.toLowerCase().includes(search.toLowerCase()) || (w.cantina || '').toLowerCase().includes(search.toLowerCase()))
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    if (items.length > 0) acc[wt] = items;
+    return acc;
+  }, {});
+
   return (
-    <div>
-      <div className="flex flex-wrap gap-3 items-center justify-between mb-5">
-        <h2 className="font-display text-2xl text-white tracking-widest">Carta dei Vini</h2>
-        <BronzeButton onClick={openCreate} variant="solid">
-          <Plus size={14} /> Nuovo Vino
+    <div className="mb-14">
+      {/* Header bar */}
+      <div className="flex items-center gap-5 mb-2">
+        <h2 className="font-display text-3xl md:text-4xl text-white tracking-widest whitespace-nowrap">Carta dei Vini</h2>
+        <div className="flex-1 h-px bg-[#C69C6D]/15" />
+        <BronzeButton onClick={openCreate} variant="solid" className="shrink-0">
+          <Plus size={14} /> Nuovo
         </BronzeButton>
       </div>
 
-      {/* Quick filters */}
-      <div className="bg-[#161618] border border-[#C69C6D]/10 rounded-sm p-4 mb-4 space-y-3">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E5E5E5]/30" />
-            <input
-              value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca vino o cantina..."
-              className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-8 pr-4 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none w-56"
-            />
-          </div>
-          <span className="text-[#E5E5E5]/30 font-body text-sm">({filtered.length} vini)</span>
+      {/* Search */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E5E5E5]/30" />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca vino o cantina..."
+            className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-8 pr-4 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none w-56"
+          />
         </div>
-
-        {/* Type pills */}
-        <div className="flex flex-wrap gap-1.5 items-center">
-          <span className="font-body text-[10px] text-[#C69C6D]/50 uppercase tracking-widest mr-1">Tipo:</span>
-          <button onClick={() => { setTypeFilter('all'); setRegionFilter('all'); }}
-            className={`px-3 py-1.5 rounded-sm text-xs font-body border transition-all ${typeFilter === 'all' ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
-            Tutti
-          </button>
-          {WINE_ORDER.map(wt => {
-            const count = wines.filter(w => w.wine_type === wt).length;
-            return (
-              <button key={wt} onClick={() => { setTypeFilter(wt); setRegionFilter('all'); }}
-                className={`px-3 py-1.5 rounded-sm text-xs font-body border transition-all ${typeFilter === wt ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
-                {WINE_LABELS[wt]} <span className="opacity-50">({count})</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Region pills — shown when a type is selected or when regions exist */}
-        {(() => {
-          const typeWines = typeFilter === 'all' ? wines : wines.filter(w => w.wine_type === typeFilter);
-          const regionsInType = [...new Set(typeWines.map(w => w.regione).filter(Boolean))].sort();
-          if (regionsInType.length === 0) return null;
-          return (
-            <div className="flex flex-wrap gap-1.5 items-center pt-1 border-t border-[#C69C6D]/5">
-              <span className="font-body text-[10px] text-[#C69C6D]/50 uppercase tracking-widest mr-1 mt-1">Regione:</span>
-              <button onClick={() => setRegionFilter('all')}
-                className={`px-2.5 py-1 rounded-sm text-[11px] font-body border transition-all ${regionFilter === 'all' ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
-                Tutte
-              </button>
-              {regionsInType.map(r => {
-                const count = typeWines.filter(w => w.regione === r).length;
-                return (
-                  <button key={r} onClick={() => setRegionFilter(regionFilter === r ? 'all' : r)}
-                    className={`px-2.5 py-1 rounded-sm text-[11px] font-body border transition-all ${regionFilter === r ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40 hover:text-[#C69C6D]'}`}>
-                    {r} <span className="opacity-50">({count})</span>
-                  </button>
-                );
-              })}
-            </div>
-          );
-        })()}
+        <span className="text-[#E5E5E5]/30 font-body text-sm">({Object.values(grouped).flat().length} vini)</span>
       </div>
 
       {loading ? (
         <div className="space-y-3">{[1,2,3,4,5].map(i => <div key={i} className="h-14 bg-[#161618] animate-pulse rounded-sm" />)}</div>
-      ) : filtered.length === 0 ? (
+      ) : Object.keys(grouped).length === 0 ? (
         <p className="text-[#E5E5E5]/20 font-body text-sm py-8 text-center">Nessun vino trovato.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#C69C6D]/20">
-                <th className="text-left font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 min-w-[180px]">Nome</th>
-                <th className="text-left font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 min-w-[140px]">Cantina</th>
-                <th className="text-left font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 min-w-[120px]">Tipo</th>
-                <th className="text-left font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 min-w-[120px]">Regione</th>
-                <th className="text-right font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 min-w-[90px]">Calice</th>
-                <th className="text-right font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 min-w-[90px]">Bottiglia</th>
-                <th className="text-center font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 w-[100px]">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(w => (
-                <tr key={w.id} className={`border-b border-[#222] hover:bg-[#111] transition-colors ${w.active ? '' : 'opacity-40'}`}>
-                  {/* Nome */}
-                  <td className="py-3 px-2">
-                    {isEditing(w.id, 'name') ? (
-                      <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} autoFocus />
-                    ) : (
-                      <button onClick={() => startInline(w.id, 'name', w.name)} className="text-left">
-                        <span className="font-body text-white text-sm hover:text-[#C69C6D] transition-colors">{w.name}</span>
-                      </button>
-                    )}
-                  </td>
+        <>
+          {/* Column headers */}
+          <div className="flex justify-end gap-4 mb-1 px-1">
+            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-28 text-right">Cantina</span>
+            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-28 text-right">Regione</span>
+            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-16 text-right">Calice</span>
+            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-20 text-right">Bottiglia</span>
+            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-[72px] text-center">Azioni</span>
+          </div>
 
-                  {/* Cantina */}
-                  <td className="py-3 px-2">
-                    {isEditing(w.id, 'cantina') ? (
-                      <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} autoFocus />
-                    ) : (
-                      <button onClick={() => startInline(w.id, 'cantina', w.cantina)} className="text-left">
-                        <span className={`font-body text-sm hover:text-[#C69C6D] transition-colors ${w.cantina ? 'text-[#E5E5E5]/70' : 'text-[#E5E5E5]/20 italic'}`}>
-                          {w.cantina || '—'}
-                        </span>
-                      </button>
-                    )}
-                  </td>
+          {Object.entries(grouped).map(([wt, items]) => {
+            // Raggruppa per regione
+            const regioni = [];
+            const regioniMap = {};
+            for (const w of items) {
+              const r = w.regione || 'Altro';
+              if (!regioniMap[r]) {
+                regioniMap[r] = [];
+                regioni.push(r);
+              }
+              regioniMap[r].push(w);
+            }
 
-                  {/* Tipo */}
-                  <td className="py-3 px-2">
-                    {isEditing(w.id, 'wine_type') ? (
-                      <select
-                        value={inlineValue}
-                        onChange={e => { commitSelectInline(w.id, 'wine_type', e.target.value); }}
-                        onBlur={() => setInlineEdit(null)}
-                        autoFocus
-                        className="bg-[#0A0A0B] border border-[#C69C6D] text-[#E5E5E5] px-2 py-1 rounded-sm text-xs font-body outline-none w-full"
-                      >
-                        {WINE_ORDER.map(wt => <option key={wt} value={wt}>{WINE_LABELS[wt]}</option>)}
-                      </select>
-                    ) : (
-                      <button onClick={() => { setInlineEdit({ id: w.id, field: 'wine_type' }); setInlineValue(w.wine_type); }} className="text-left">
-                        <span className="font-body text-[#C69C6D] text-xs hover:underline">{WINE_LABELS[w.wine_type] || '—'}</span>
-                      </button>
-                    )}
-                  </td>
+            return (
+              <div key={wt} className="mb-8">
+                {/* Tipo heading */}
+                <div className="flex items-center gap-3 mb-3 mt-4">
+                  <h3 className="font-display text-xl text-[#C69C6D] tracking-widest">{WINE_LABELS[wt]}</h3>
+                  <div className="flex-1 h-px bg-[#C69C6D]/10" />
+                </div>
 
-                  {/* Regione */}
-                  <td className="py-3 px-2">
-                    {isEditing(w.id, 'regione') ? (
-                      <select
-                        value={inlineValue}
-                        onChange={e => { commitSelectInline(w.id, 'regione', e.target.value); }}
-                        onBlur={() => setInlineEdit(null)}
-                        autoFocus
-                        className="bg-[#0A0A0B] border border-[#C69C6D] text-[#E5E5E5] px-2 py-1 rounded-sm text-xs font-body outline-none w-full"
-                      >
-                        <option value="">—</option>
-                        {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                    ) : (
-                      <button onClick={() => { setInlineEdit({ id: w.id, field: 'regione' }); setInlineValue(w.regione || ''); }} className="text-left">
-                        <span className={`font-body text-xs hover:text-[#C69C6D] transition-colors ${w.regione ? 'text-[#E5E5E5]/50' : 'text-[#E5E5E5]/20 italic'}`}>
-                          {w.regione || '—'}
-                        </span>
+                {/* Region filter pills */}
+                {regioni.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {regioni.map(r => (
+                      <button key={r} onClick={() => setRegionFilter(prev => ({ ...prev, [wt]: prev[wt] === r ? null : r }))}
+                        className={`px-2.5 py-1 rounded-sm text-[11px] font-body border transition-all ${regionFilter[wt] === r ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#706A66] hover:border-[#C69C6D]/40 hover:text-[#C69C6D]'}`}>
+                        {r}
                       </button>
-                    )}
-                  </td>
+                    ))}
+                  </div>
+                )}
 
-                  {/* Calice */}
-                  <td className="py-3 px-2 text-right">
-                    {isEditing(w.id, 'prezzo_calice') ? (
-                      <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} type="number" autoFocus align="right" />
-                    ) : (
-                      <button onClick={() => startInline(w.id, 'prezzo_calice', w.prezzo_calice)} className="w-full text-right">
-                        <span className="font-body text-[#A0A0A0] text-sm hover:text-[#C69C6D] transition-colors">
-                          {w.prezzo_calice != null ? `€${Number(w.prezzo_calice).toFixed(0)}` : '—'}
-                        </span>
-                      </button>
-                    )}
-                  </td>
-
-                  {/* Bottiglia */}
-                  <td className="py-3 px-2 text-right">
-                    {isEditing(w.id, 'prezzo_bottiglia') ? (
-                      <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} type="number" autoFocus align="right" />
-                    ) : (
-                      <button onClick={() => startInline(w.id, 'prezzo_bottiglia', w.prezzo_bottiglia)} className="w-full text-right">
-                        <span className="font-body text-[#D9986D] font-semibold text-sm hover:text-[#C69C6D] transition-colors">
-                          {w.prezzo_bottiglia != null ? `€${Number(w.prezzo_bottiglia).toFixed(0)}` : '—'}
-                        </span>
-                      </button>
-                    )}
-                  </td>
-
-                  {/* Azioni */}
-                  <td className="py-3 px-2">
-                    <div className="flex items-center gap-1 justify-center">
-                      <button onClick={() => toggleActive(w)} title={w.active ? 'Disattiva' : 'Attiva'}
-                        className={`p-1.5 border rounded-sm transition-all ${w.active ? 'border-green-400/30 text-green-400 hover:bg-green-400/10' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/30'}`}>
-                        {w.active ? <Eye size={12} /> : <EyeOff size={12} />}
-                      </button>
-                      <button onClick={() => openEdit(w)} title="Modifica completo"
-                        className="p-1.5 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all">
-                        <Wine size={12} />
-                      </button>
-                      <button onClick={() => deleteWine(w.id, w.name)} title="Elimina"
-                        className="p-1.5 border border-red-400/20 text-red-400/50 hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 rounded-sm transition-all">
-                        <Trash2 size={12} />
-                      </button>
+                {/* Render per region */}
+                {(regionFilter[wt] ? regioni.filter(r => r === regionFilter[wt]) : regioni).map(regione => (
+                  <div key={regione} className="mb-4">
+                    {/* Region sub-heading */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-body text-xs text-[#706A66] uppercase tracking-widest">{regione}</span>
+                      <div className="flex-1 h-px bg-[#E5E5E5]/5" />
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+
+                    {/* Wine rows */}
+                    <div>
+                      {regioniMap[regione].map(wine => (
+                        <div key={wine.id} className={`flex items-center gap-4 py-3 border-b border-[#E5E5E5]/5 last:border-0 group ${wine.active ? '' : 'opacity-40'}`}>
+                          {/* Name + description */}
+                          <div className="flex-1 min-w-0">
+                            {isEditing(wine.id, 'name') ? (
+                              <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} autoFocus />
+                            ) : (
+                              <button onClick={() => startInline(wine.id, 'name', wine.name)} className="text-left">
+                                <span className="font-body text-white text-sm md:text-base leading-snug block hover:text-[#C69C6D] transition-colors">{wine.name}</span>
+                              </button>
+                            )}
+                            {isEditing(wine.id, 'description') ? (
+                              <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} autoFocus />
+                            ) : (
+                              wine.description && (
+                                <button onClick={() => startInline(wine.id, 'description', wine.description)} className="text-left">
+                                  <span className="font-body text-[#E5E5E5]/35 text-xs block hover:text-[#C69C6D] transition-colors">{wine.description}</span>
+                                </button>
+                              )
+                            )}
+                          </div>
+
+                          {/* Cantina */}
+                          <div className="w-28 shrink-0 text-right">
+                            {isEditing(wine.id, 'cantina') ? (
+                              <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} autoFocus />
+                            ) : (
+                              <button onClick={() => startInline(wine.id, 'cantina', wine.cantina)} className="w-full text-right">
+                                <span className={`font-body text-xs hover:text-[#C69C6D] transition-colors ${wine.cantina ? 'text-[#706A66]' : 'text-[#E5E5E5]/20 italic'}`}>
+                                  {wine.cantina || '—'}
+                                </span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Regione */}
+                          <div className="w-28 shrink-0 text-right">
+                            {isEditing(wine.id, 'regione') ? (
+                              <select
+                                value={inlineValue}
+                                onChange={e => { commitSelectInline(wine.id, 'regione', e.target.value); }}
+                                onBlur={() => setInlineEdit(null)}
+                                autoFocus
+                                className="bg-[#0A0A0B] border border-[#C69C6D] text-[#E5E5E5] px-2 py-1 rounded-sm text-xs font-body outline-none w-full text-right"
+                              >
+                                <option value="">—</option>
+                                {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                              </select>
+                            ) : (
+                              <button onClick={() => { setInlineEdit({ id: wine.id, field: 'regione' }); setInlineValue(wine.regione || ''); }} className="w-full text-right">
+                                <span className={`font-body text-xs hover:text-[#C69C6D] transition-colors ${wine.regione ? 'text-[#706A66]' : 'text-[#E5E5E5]/20 italic'}`}>
+                                  {wine.regione || '—'}
+                                </span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Calice */}
+                          <div className="w-16 shrink-0 text-right">
+                            {isEditing(wine.id, 'prezzo_calice') ? (
+                              <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} type="number" autoFocus align="right" />
+                            ) : (
+                              <button onClick={() => startInline(wine.id, 'prezzo_calice', wine.prezzo_calice)} className="w-full text-right">
+                                <span className="font-body text-[#706A66] text-sm hover:text-[#C69C6D] transition-colors">
+                                  {wine.prezzo_calice != null ? `€${Number(wine.prezzo_calice).toFixed(0)}` : '—'}
+                                </span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Bottiglia */}
+                          <div className="w-20 shrink-0 text-right">
+                            {isEditing(wine.id, 'prezzo_bottiglia') ? (
+                              <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} type="number" autoFocus align="right" />
+                            ) : (
+                              <button onClick={() => startInline(wine.id, 'prezzo_bottiglia', wine.prezzo_bottiglia)} className="w-full text-right">
+                                <span className="font-body text-[#D69E6B] font-semibold text-sm hover:text-[#C69C6D] transition-colors">
+                                  {wine.prezzo_bottiglia != null ? `€${Number(wine.prezzo_bottiglia).toFixed(0)}` : '—'}
+                                </span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="w-[72px] shrink-0 flex items-center gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => toggleActive(wine)} title={wine.active ? 'Nascondi' : 'Mostra'}
+                              className={`p-1.5 border rounded-sm transition-all ${wine.active ? 'border-green-400/30 text-green-400 hover:bg-green-400/10' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/30'}`}>
+                              {wine.active ? <Eye size={11} /> : <EyeOff size={11} />}
+                            </button>
+                            <button onClick={() => openEdit(wine)} title="Modifica completo"
+                              className="p-1.5 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all">
+                              <Wine size={11} />
+                            </button>
+                            <button onClick={() => deleteWine(wine.id, wine.name)} title="Elimina"
+                              className="p-1.5 border border-red-400/20 text-red-400/50 hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 rounded-sm transition-all">
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </>
       )}
 
-      {/* Modal form per creazione/modifica completa */}
+      {/* Modal form */}
       {showForm && (
         <div className="fixed inset-0 bg-[#0A0A0B]/95 z-50 flex items-center justify-center p-4">
           <div className="bg-[#161618] border border-[#C69C6D]/20 rounded-sm w-full max-w-lg max-h-[92vh] overflow-y-auto p-6">
@@ -396,7 +382,7 @@ export default function AdminWines() {
 
               <div>
                 <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Cantina di produzione</label>
-                <input type="text" placeholder="Es. Tenuta San Guido" value={form.cantina || ''}
+                <input type="text" placeholder="Es. Marco Carpineti" value={form.cantina || ''}
                   onChange={e => set('cantina', e.target.value)}
                   className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20" />
               </div>
@@ -448,19 +434,17 @@ export default function AdminWines() {
 
 function InlineInput({ value, onChange, onCommit, onCancel, type = 'text', autoFocus, align = 'left' }) {
   return (
-    <div className="flex items-center gap-1">
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        onKeyDown={e => {
-          if (e.key === 'Enter') onCommit();
-          if (e.key === 'Escape') onCancel();
-        }}
-        autoFocus={autoFocus}
-        onBlur={onCommit}
-        className={`bg-[#0A0A0B] border border-[#C69C6D] text-[#E5E5E5] px-2 py-1 rounded-sm text-xs font-body outline-none w-full ${align === 'right' ? 'text-right' : ''}`}
-      />
-    </div>
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      onKeyDown={e => {
+        if (e.key === 'Enter') onCommit();
+        if (e.key === 'Escape') onCancel();
+      }}
+      autoFocus={autoFocus}
+      onBlur={onCommit}
+      className={`bg-[#0A0A0B] border border-[#C69C6D] text-[#E5E5E5] px-2 py-1 rounded-sm text-xs font-body outline-none w-full ${align === 'right' ? 'text-right' : ''}`}
+    />
   );
 }
