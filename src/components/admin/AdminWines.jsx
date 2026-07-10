@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Trash2, Pencil, X, Check, Loader2, Wine, Search } from 'lucide-react';
+import { Plus, Trash2, Pencil, X, Check, Loader2, Wine, Eye, EyeOff, Search } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 
 const WINE_ORDER = ['bollicine', 'bianchi', 'rossi', 'dolci'];
@@ -93,7 +93,6 @@ export default function AdminWines() {
     setWines(prev => prev.map(x => x.id === w.id ? { ...x, active: !x.active } : x));
   };
 
-  // Group: wine_type -> regione -> wines
   const grouped = WINE_ORDER.reduce((acc, wt) => {
     const items = wines
       .filter(w => w.wine_type === wt && (!search || w.name.toLowerCase().includes(search.toLowerCase())))
@@ -121,14 +120,21 @@ export default function AdminWines() {
       </div>
 
       {loading ? (
-        <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 bg-[#161618] animate-pulse rounded-sm" />)}</div>
+        <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-12 bg-[#161618] animate-pulse rounded-sm" />)}</div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-8">
+          {/* Price column headers */}
+          <div className="flex items-center gap-3 px-1">
+            <span className="flex-1" />
+            <span className="font-body text-xs text-[#E5E5E5]/30 uppercase tracking-widest w-16 text-right">Calice</span>
+            <span className="font-body text-xs text-[#E5E5E5]/30 uppercase tracking-widest w-20 text-right">Bottiglia</span>
+            <span className="w-[96px] shrink-0" />
+          </div>
+
           {WINE_ORDER.map(wt => {
             const items = grouped[wt];
             if (!items) return null;
 
-            // Sub-group by regione
             const regioni = [];
             const regioniMap = {};
             for (const w of items) {
@@ -139,50 +145,45 @@ export default function AdminWines() {
 
             return (
               <div key={wt}>
-                {/* Wine type header */}
+                {/* Category header */}
                 <div className="flex items-center gap-3 mb-3">
                   <Wine size={16} className="text-[#C69C6D]" />
                   <h3 className="font-display text-xl text-[#C69C6D] tracking-widest">{WINE_LABELS[wt]}</h3>
                   <span className="font-body text-xs text-[#E5E5E5]/30">({items.length})</span>
-                  <div className="flex-1 h-px bg-[#C69C6D]/10" />
+                  <div className="flex-1 h-px bg-[#C69C6D]/15" />
                   <button onClick={() => openCreate(wt)}
                     className="flex items-center gap-1 px-2.5 py-1 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm font-body text-xs transition-all">
                     <Plus size={11} /> Aggiungi
                   </button>
                 </div>
 
-                {/* Regioni */}
                 {regioni.map(regione => (
-                  <div key={regione} className="mb-3">
-                    <div className="flex items-center gap-2 mb-1.5 ml-4">
-                      <span className="font-body text-xs text-[#E5E5E5]/40 uppercase tracking-widest">{regione}</span>
-                      <div className="flex-1 h-px bg-[#E5E5E5]/5" />
+                  <div key={regione} className="mb-4">
+                    {/* Region sub-header */}
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-body text-xs text-[#808080] uppercase tracking-widest">{regione}</span>
+                      <div className="flex-1 h-px bg-[#333333]" />
                     </div>
-                    <div className="ml-4 border border-[#C69C6D]/10 rounded-sm overflow-hidden">
-                      {/* Column headers */}
-                      <div className="flex items-center gap-3 px-4 py-1.5 bg-[#0d0d0f] border-b border-[#C69C6D]/5">
-                        <span className="flex-1 font-body text-[10px] text-[#E5E5E5]/25 uppercase tracking-widest">Vino</span>
-                        <span className="font-body text-[10px] text-[#E5E5E5]/25 uppercase tracking-widest w-16 text-right">Calice</span>
-                        <span className="font-body text-[10px] text-[#E5E5E5]/25 uppercase tracking-widest w-20 text-right">Bottiglia</span>
-                        <span className="w-[108px] shrink-0" />
-                      </div>
+
+                    {/* Wine rows */}
+                    <div>
                       {regioniMap[regione].map(w => (
                         <div key={w.id}
-                          className={`flex items-center gap-3 px-4 py-2.5 border-b border-[#E5E5E5]/5 last:border-0 transition-all ${w.active ? 'bg-[#161618]' : 'bg-[#161618]/50 opacity-50'}`}>
+                          className={`flex items-center gap-3 py-3 border-b border-[#333333] last:border-0 transition-all ${w.active ? '' : 'opacity-40'}`}>
                           <div className="flex-1 min-w-0">
                             <span className="font-body text-white text-sm block truncate">{w.name}</span>
                             {w.description && <span className="font-body text-[#E5E5E5]/30 text-xs block truncate">{w.description}</span>}
                           </div>
-                          <span className="font-body text-[#E5E5E5]/60 text-sm w-16 text-right shrink-0">
+                          <span className="font-body text-[#A0A0A0] text-sm w-16 text-right shrink-0">
                             {w.prezzo_calice != null ? `€${Number(w.prezzo_calice).toFixed(0)}` : '—'}
                           </span>
-                          <span className="font-body text-[#C69C6D] font-semibold text-sm w-20 text-right shrink-0">
+                          <span className="font-body text-[#D9986D] font-semibold text-sm w-20 text-right shrink-0">
                             {w.prezzo_bottiglia != null ? `€${Number(w.prezzo_bottiglia).toFixed(0)}` : '—'}
                           </span>
-                          <div className="flex items-center gap-1 shrink-0 w-[108px] justify-end">
+                          <div className="flex items-center gap-1 shrink-0 w-[96px] justify-end">
                             <button onClick={() => toggleActive(w)} title={w.active ? 'Disattiva' : 'Attiva'}
                               className={`p-1.5 border rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center ${w.active ? 'border-green-400/30 text-green-400 hover:bg-green-400/10' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/30'}`}>
-                              {w.active ? '👁' : '🚫'}
+                              {w.active ? <Eye size={12} /> : <EyeOff size={12} />}
                             </button>
                             <button onClick={() => openEdit(w)} title="Modifica"
                               className="p-1.5 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center">
