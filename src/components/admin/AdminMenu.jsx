@@ -71,7 +71,17 @@ export default function AdminMenu() {
       sortOrder: form.sortOrder ? parseInt(form.sortOrder) : undefined,
     };
     if (editing) {
-      await base44.entities.MenuItem.update(editing.id, data);
+      try {
+        await base44.entities.MenuItem.update(editing.id, data);
+      } catch (e) {
+        if (e.message?.includes('not found')) {
+          delete data.id;
+          await base44.entities.MenuItem.create(data);
+        } else {
+          setSaving(false);
+          throw e;
+        }
+      }
     } else {
       await base44.entities.MenuItem.create(data);
     }
