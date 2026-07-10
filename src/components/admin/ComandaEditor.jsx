@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Minus, Trash2, Search, AlertCircle, Users, Receipt, StickyNote, CheckCircle2, Layers, Printer } from 'lucide-react';
-import { stampaComandaCucina } from '@/utils/kitchenPrint';
+import { buildPrintPayload, createKitchenPrintJob } from '@/utils/printJobHelper';
 
 const CAT_LABELS = {
   antipasti:'Antipasti', primi:'Primi', romanissimi:'Romanissimi', secondi:'Secondi',
@@ -33,6 +33,7 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
+  const [printError, setPrintError] = useState(false);
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -105,10 +106,7 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
     if (righe.length === 0 || !tavoloSelezionato) return;
     setSending(true);
 
-    // Pre-apre la finestra di stampa sincronamente per evitare popup blocker su mobile
     const righeCucina = righe.filter(r => r.reparto === 'cucina');
-    const printWin = righeCucina.length > 0 ? window.open('', '_blank') : null;
-
     const now = new Date().toISOString();
     let ordineId, tavoloId, numeroTavolo;
 
@@ -132,23 +130,26 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
       numeroTavolo = tavoloSelezionato.numero;
     }
 
-    await Promise.all(righe.map(r => base44.entities.RigaOrdine.create({
-      ordine_id: ordineId,
-      tavolo_id: tavoloId,
-      numero_tavolo: numeroTavolo,
-      menu_item_id: r.menu_item_id,
-      nome_item: r.nome_item,
-      categoria: r.categoria,
-      reparto: r.reparto,
-      fase: r.fase || 1,
-      quantita: r.quantita,
-      prezzo_unitario: r.prezzo_unitario,
-      prezzo_totale: r.prezzo_totale,
-      note: noteRiga[r._tmp] || '',
-      stato: 'inviato',
-      priorita: r.priorita,
-      sent_at: now,
-    })));
+    const createdRighe = await Promise.all(righe.map(r => {
+      const notaRiga = noteRiga[r._tmp] || '';
+      return base44.entities.RigaOrdine.create({
+        ordine_id: ordineId,
+        tavolo_id: tavoloId,
+        numero_tavolo: numeroTavolo,
+        menu_item_id: r.menu_item_id,
+        nome_item: r.nome_item,
+        categoria: r.categoria,
+        reparto: r.reparto,
+        fase: r.fase || 1,
+        quantita: r.quantita,
+        prezzo_unitario: r.prezzo_unitario,
+        prezzo_totale: r.prezzo_totale,
+        note: notaRiga,
+        stato: 'inviato',
+        priorita: r.priorita,
+        sent_at: now,
+      }).then(created => ({ ...r, id: created.id, note: notaRiga, stato: 'inviato' }));
+    }));
 
     if (ordineEsistente) {
       const prevTotale = ordineEsistente.totale || 0;
@@ -160,14 +161,35 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
       });
     }
 
-    // Stampa automatica righe cucina sulla stampante termica
+    // Crea PrintJob per la stampante cucina (sostituisce window.print())
+    let printJobOk = true;
     if (righeCucina.length > 0) {
-      stampaComandaCucina(righeCucina, numeroTavolo, coperti, null, printWin);
+      const righeCucinaWithIds = createdRighe.filter(r => r.reparto === 'cucina');
+      const payload = buildPrintPayload({
+        ordineId,
+        numeroTavolo,
+        coperti,
+        noteGenerali,
+        user,
+        righe: righeCucinaWithIds,
+        createdAt: now,
+        repartoFilter: null,
+      });
+      try {
+        await createKitchenPrintJob(payload, ordineId, user);
+      } catch (e) {
+        console.error('Errore creazione PrintJob:', e);
+        printJobOk = false;
+      }
     }
 
     setSending(false);
-    setSuccess(true);
-    setTimeout(() => { setSuccess(false); onSuccess(); }, 1500);
+    if (printJobOk) {
+      setSuccess(true);
+      setTimeout(() => { setSuccess(false); onSuccess(); }, 1500);
+    } else {
+      setPrintError(true);
+    }
   };
 
   const categories = [...new Set(menuItems.map(i => i.category))];
@@ -188,7 +210,15 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
   if (success) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <CheckCircle2 size={48} className="text-green-400" />
-      <p className="font-display text-2xl text-white tracking-widest">Comanda Inviata!</p>
+      <p className="font-display text-2xl text-white tracking-widest">Comanda inviata alla stampante</p>
+    </div>
+  );
+
+  if (printError) return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <AlertCircle size={48} className="text-red-400" />
+      <p className="font-display text-xl text-white tracking-widest text-center px-6">Errore: comanda creata ma non inviata alla stampante</p>
+      <button onClick={onSuccess} className="mt-2 text-[#C69C6D] hover:underline font-body text-sm">Torna alla sala</button>
     </div>
   );
 

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
+import { buildPrintPayload, createKitchenPrintJob } from '@/utils/printJobHelper';
 import { RefreshCw, Clock, AlertCircle, CheckCircle2, Loader2, Trash2, X, Users } from 'lucide-react';
 
 function buildPrintHtml(tavolo, coperti, ora, fasiHtml) {
@@ -59,40 +61,25 @@ function statoOrdine(righe) {
   return 'nuovo';
 }
 
-function PrintPopup({ righe, coperti, onClose }) {
-  const handlePrint = () => {
-    const win = window.open('', '_blank', 'width=400,height=600');
-    const ora = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-    const fasiUsate = [...new Set(righe.map(r => r.fase || 1))].sort((a, b) => a - b);
-    const righePerFase = fasiUsate.reduce((acc, f) => {
-      acc[f] = righe.filter(r => (r.fase || 1) === f);
-      return acc;
-    }, {});
-
-    const fasi = fasiUsate.map(f => `
-      <div class="fase-header">— Fase ${f} —</div>
-      ${righePerFase[f].map(r => `
-        <div class="item">
-          <span class="item-name ${r.priorita === 'urgente' ? 'urgent' : ''}">${r.quantita}× ${r.nome_item}${r.priorita === 'urgente' ? ' ⚡' : ''}</span>
-        </div>
-        ${r.note ? `<div class="item-note">📝 ${r.note}</div>` : ''}
-      `).join('')}
-    `).join('');
-
+function PrintPopup({ righe, coperti, user, onClose }) {
+  const handlePrint = async () => {
     const tavolo = righe[0]?.numero_tavolo || '?';
-    const printHtml = buildPrintHtml(tavolo, coperti, ora, fasi);
-    win.document.open();
-    win.document.write(printHtml);
-    win.document.close();
-    // Non chiudere subito la finestra: su iOS il dialog AirPrint verrebbe cancellato
-    setTimeout(() => {
-      try {
-        win.focus();
-        win.print();
-      } catch (e) {
-        console.error('Errore stampa:', e);
-      }
-    }, 600);
+    const ordineId = righe[0]?.ordine_id || '';
+    const payload = buildPrintPayload({
+      ordineId,
+      numeroTavolo: tavolo,
+      coperti,
+      noteGenerali: '',
+      user,
+      righe,
+      createdAt: new Date().toISOString(),
+      repartoFilter: null,
+    });
+    try {
+      await createKitchenPrintJob(payload, ordineId, user);
+    } catch (e) {
+      console.error('Errore creazione PrintJob:', e);
+    }
     onClose();
   };
 
@@ -148,6 +135,7 @@ function PrintPopup({ righe, coperti, onClose }) {
 }
 
 export default function Cucina() {
+  const { user } = useAuth();
   const [ordini, setOrdini] = useState({});
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
@@ -239,30 +227,22 @@ export default function Cucina() {
     };
   }, []);
 
-  const stampaComanda = (ord) => {
-    const win = window.open('', '_blank', 'width=400,height=700');
-    const ora = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-    const data = new Date().toLocaleDateString('it-IT');
-    const fasiUsate = [...new Set(ord.righe.map(r => r.fase || 1))].sort((a, b) => a - b);
-    const righePerFase = fasiUsate.reduce((acc, f) => {
-      acc[f] = ord.righe.filter(r => (r.fase || 1) === f);
-      return acc;
-    }, {});
-
-    const fasiHtml = fasiUsate.map(f => `
-      <div class="fase-header">— Fase ${f} —</div>
-      ${righePerFase[f].map(r => `
-        <div class="item">
-          <span class="item-name ${r.priorita === 'urgente' ? 'urgent' : ''}">${r.quantita}× ${r.nome_item}${r.priorita === 'urgente' ? ' ⚡' : ''}</span>
-        </div>
-        ${r.note ? `<div class="item-note">📝 ${r.note}</div>` : ''}
-      `).join('')}
-    `).join('');
-
-    win.document.write(buildPrintHtml(ord.numero, ord.coperti, ora, fasiHtml));
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 400);
+  const stampaComanda = async (ord) => {
+    const payload = buildPrintPayload({
+      ordineId: ord.ordineId,
+      numeroTavolo: ord.numero,
+      coperti: ord.coperti,
+      noteGenerali: '',
+      user,
+      righe: ord.righe,
+      createdAt: new Date().toISOString(),
+      repartoFilter: null,
+    });
+    try {
+      await createKitchenPrintJob(payload, ord.ordineId, user);
+    } catch (e) {
+      console.error('Errore creazione PrintJob:', e);
+    }
   };
 
   const prendiInCarico = async (ordineId) => {
@@ -282,7 +262,7 @@ export default function Cucina() {
       }
     }));
     setUpdating(null);
-    stampaComanda(ord);
+    await stampaComanda(ord);
   };
 
   const segnaArticoloPronto = async (ordineId, rigaId) => {
@@ -339,7 +319,7 @@ export default function Cucina() {
   return (
     <div className="min-h-screen bg-[#080808] p-4 pt-20">
       {printQueue && (
-        <PrintPopup righe={printQueue.righe} coperti={printQueue.coperti} onClose={() => setPrintQueue(null)} />
+        <PrintPopup righe={printQueue.righe} coperti={printQueue.coperti} user={user} onClose={() => setPrintQueue(null)} />
       )}
       {/* Header pagina */}
       <div className="flex items-center justify-between mb-6">

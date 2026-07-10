@@ -1,0 +1,68 @@
+{
+  "name": "PrintJob",
+  "type": "object",
+  "properties": {
+    "job_type": {
+      "type": "string",
+      "description": "Tipo di job di stampa (es. kitchen_order)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processing",
+        "completed",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "Stato del job di stampa"
+    },
+    "target_printer": {
+      "type": "string",
+      "default": "kitchen",
+      "description": "Stampante di destinazione"
+    },
+    "order_id": {
+      "type": "string",
+      "description": "ID ordine collegato"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Snapshot JSON completo della comanda al momento della stampa"
+    },
+    "attempts": {
+      "type": "number",
+      "default": 0,
+      "description": "Numero di tentativi di stampa"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Messaggio di errore ultimo tentativo"
+    },
+    "claimed_at": {
+      "type": "string",
+      "description": "Timestamp presa in carico da parte del relay"
+    },
+    "completed_at": {
+      "type": "string",
+      "description": "Timestamp completamento stampa"
+    },
+    "created_by_user_id": {
+      "type": "string",
+      "description": "ID utente che ha creato il job"
+    }
+  },
+  "required": [
+    "job_type"
+  ],
+  "rls": {
+    "create": {},
+    "read": {},
+    "update": {},
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
