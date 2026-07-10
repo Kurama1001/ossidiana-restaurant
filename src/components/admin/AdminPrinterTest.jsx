@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { createTestPrintJob } from '@/utils/printJobHelper';
 import { Printer, Loader2, Check, AlertCircle } from 'lucide-react';
 
 export default function AdminPrinterTest() {
@@ -10,8 +11,9 @@ export default function AdminPrinterTest() {
     setSending(true);
     setResult(null);
     try {
-      const res = await base44.functions.invoke('printerService', { action: 'test' });
-      setResult(res.data);
+      const me = await base44.auth.me().catch(() => null);
+      await createTestPrintJob(me);
+      setResult({ success: true, message: 'Test inviato alla coda di stampa' });
     } catch (e) {
       setResult({ success: false, error: e.message });
     }

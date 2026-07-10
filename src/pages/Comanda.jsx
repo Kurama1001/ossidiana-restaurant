@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { buildPrintPayload, createKitchenPrintJob } from '@/utils/printJobHelper';
 import {
   Plus, Minus, Trash2, Send, ChevronLeft, Search, StickyNote,
   AlertCircle, Users, Receipt, Clock, CheckCircle2
@@ -30,6 +31,8 @@ export default function Comanda() {
   const [noteRiga, setNoteRiga] = useState({});
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState('menu'); // 'menu' | 'comanda'
+  const [success, setSuccess] = useState(false);
+  const [printError, setPrintError] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -113,17 +116,58 @@ export default function Comanda() {
       priorita: r.priorita,
       sent_at: now,
     })));
+
+    // Merge created records with original righe data for print payload
+    const createdRighe = righe.map((r, i) => ({
+      ...r,
+      id: nuove[i].id,
+      note: noteRiga[r._tmp] || '',
+      stato: 'inviato',
+    }));
+
     await base44.entities.Ordine.update(ordine.id, {
       stato: 'inviato',
       note_generali: noteGenerali,
       coperti,
       totale,
     });
+
+    // Crea PrintJob per la stampante cucina (solo righe cucina, solo nuovi articoli)
+    const righeCucina = createdRighe.filter(r => r.reparto === 'cucina');
+    let printJobOk = true;
+    if (righeCucina.length > 0) {
+      const payload = buildPrintPayload({
+        ordineId: ordine.id,
+        numeroTavolo: ordine.numero_tavolo,
+        coperti,
+        noteGenerali,
+        user,
+        righe: righeCucina,
+        createdAt: now,
+        repartoFilter: null,
+        isAddition: true,
+      });
+      try {
+        await createKitchenPrintJob(payload, ordine.id, user, 'kitchen_order_addition');
+      } catch (e) {
+        console.error('Errore creazione PrintJob:', e);
+        printJobOk = false;
+      }
+    }
+
     setOrdine(prev => ({ ...prev, stato: 'inviato', totale }));
     setRigheInviate(prev => [...prev, ...nuove]);
     setRighe([]);
     setNoteRiga({});
     setSending(false);
+
+    if (printJobOk) {
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 2500);
+    } else {
+      setPrintError(true);
+      setTimeout(() => setPrintError(false), 3500);
+    }
     setTab('comanda'); // Mostra la comanda dopo invio
   };
 
@@ -161,6 +205,17 @@ export default function Comanda() {
 
   return (
     <div className="min-h-screen bg-[#0A0A0B] flex flex-col">
+      {/* Toast successo/errore stampa */}
+      {success && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-6 py-3 rounded-sm font-body text-sm font-semibold shadow-lg flex items-center gap-2">
+          <CheckCircle2 size={16} /> Articoli aggiunti e inviati alla stampante
+        </div>
+      )}
+      {printError && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-sm font-body text-sm font-semibold shadow-lg flex items-center gap-2">
+          <AlertCircle size={16} /> Errore: articoli inviati ma stampa non riuscita
+        </div>
+      )}
       {/* Header fisso */}
       <div className="sticky top-0 z-30 bg-[#0A0A0B] border-b border-[#C69C6D]/15 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">

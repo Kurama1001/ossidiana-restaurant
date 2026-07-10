@@ -24,9 +24,11 @@ function computeDeliveryStatus(stati) {
  * @param {Array}  params.righe - righe della comanda
  * @param {string} params.createdAt - timestamp ISO
  * @param {string} params.repartoFilter - 'cucina' per filtrare, null per tutto
+ * @param {boolean} params.isAddition - true per aggiunta a comanda esistente
+ * @param {boolean} params.isReprint - true per ristampa manuale
  * @returns {Object} payload JSON
  */
-export function buildPrintPayload({ ordineId, numeroTavolo, coperti, noteGenerali, user, righe, createdAt, repartoFilter = 'cucina' }) {
+export function buildPrintPayload({ ordineId, numeroTavolo, coperti, noteGenerali, user, righe, createdAt, repartoFilter = 'cucina', isAddition = false, isReprint = false }) {
   const righeStampa = repartoFilter ? righe.filter(r => r.reparto === repartoFilter) : righe;
 
   const fasiUsate = [...new Set(righeStampa.map(r => r.fase || 1))].sort((a, b) => a - b);
@@ -49,7 +51,7 @@ export function buildPrintPayload({ ordineId, numeroTavolo, coperti, noteGeneral
     };
   });
 
-  return {
+  const result = {
     order_id: ordineId || null,
     order_number: null,
     table: numeroTavolo != null ? String(numeroTavolo) : null,
@@ -59,23 +61,56 @@ export function buildPrintPayload({ ordineId, numeroTavolo, coperti, noteGeneral
     coperti: coperti || 0,
     phases,
   };
+  if (isAddition) {
+    result.is_addition = true;
+    result.addition_label = 'AGGIUNTA ALLA COMANDA';
+  }
+  if (isReprint) {
+    result.is_reprint = true;
+    result.reprint_label = 'RISTAMPA COMANDA';
+  }
+  return result;
 }
 
 /**
  * Crea un record PrintJob in coda per la stampante cucina.
- * Sostituisce window.print() / popup browser.
+ * Sostituisce window.print() / popup browser / connessioni TCP.
  *
  * @param {Object} payload - snapshot JSON della comanda
  * @param {string} orderId - ID dell'Ordine
  * @param {Object} user - utente corrente
+ * @param {string} jobType - 'kitchen_order' | 'kitchen_order_addition' | 'kitchen_order_reprint'
  * @returns {Promise<Object>} il PrintJob creato
  */
-export async function createKitchenPrintJob(payload, orderId, user) {
+export async function createKitchenPrintJob(payload, orderId, user, jobType = 'kitchen_order') {
   return await base44.entities.PrintJob.create({
-    job_type: 'kitchen_order',
+    job_type: jobType,
     status: 'pending',
     target_printer: 'kitchen',
     order_id: orderId || '',
+    payload,
+    attempts: 0,
+    created_by_user_id: user?.id || '',
+  });
+}
+
+/**
+ * Crea un PrintJob di test per verificare la connettivita del Print Bridge.
+ *
+ * @param {Object} user - utente corrente
+ * @returns {Promise<Object>} il PrintJob creato
+ */
+export async function createTestPrintJob(user) {
+  const payload = {
+    title: 'OSSIDIANA',
+    message: 'Test stampa da Base44',
+    created_at: new Date().toISOString(),
+  };
+  return await base44.entities.PrintJob.create({
+    job_type: 'test',
+    status: 'pending',
+    target_printer: 'kitchen',
+    order_id: '',
     payload,
     attempts: 0,
     created_by_user_id: user?.id || '',

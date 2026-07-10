@@ -162,6 +162,7 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
     }
 
     // Crea PrintJob per la stampante cucina (sostituisce window.print())
+    const isAddition = !!ordineEsistente;
     let printJobOk = true;
     if (righeCucina.length > 0) {
       const righeCucinaWithIds = createdRighe.filter(r => r.reparto === 'cucina');
@@ -174,9 +175,10 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
         righe: righeCucinaWithIds,
         createdAt: now,
         repartoFilter: null,
+        isAddition,
       });
       try {
-        await createKitchenPrintJob(payload, ordineId, user);
+        await createKitchenPrintJob(payload, ordineId, user, isAddition ? 'kitchen_order_addition' : 'kitchen_order');
       } catch (e) {
         console.error('Errore creazione PrintJob:', e);
         printJobOk = false;
@@ -210,7 +212,7 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
   if (success) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <CheckCircle2 size={48} className="text-green-400" />
-      <p className="font-display text-2xl text-white tracking-widest">Comanda inviata alla stampante</p>
+      <p className="font-display text-2xl text-white tracking-widest">{ordineEsistente ? 'Articoli aggiunti e inviati alla stampante' : 'Comanda inviata alla stampante'}</p>
     </div>
   );
 
