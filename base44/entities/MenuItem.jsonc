@@ -71,6 +71,10 @@
       "type": "string",
       "description": "Regione di provenienza (vini)"
     },
+    "cantina": {
+      "type": "string",
+      "description": "Cantina di produzione (vini)"
+    },
     "imageUrl": {
       "type": "string",
       "description": "URL immagine del piatto"

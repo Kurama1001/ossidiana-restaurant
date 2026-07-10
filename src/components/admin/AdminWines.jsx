@@ -17,7 +17,7 @@ const REGIONS = [
 ];
 
 const emptyWine = {
-  name: '', wine_type: 'bianchi', regione: '',
+  name: '', wine_type: 'bianchi', regione: '', cantina: '',
   prezzo_bottiglia: '', prezzo_calice: '',
   description: '', active: true, sortOrder: '',
 };
@@ -72,6 +72,7 @@ export default function AdminWines() {
       reparto: 'bar',
       wine_type: form.wine_type,
       regione: form.regione || '',
+      cantina: form.cantina || '',
       price: parseFloat(form.prezzo_bottiglia) || 0,
       prezzo_bottiglia: parseFloat(form.prezzo_bottiglia) || undefined,
       prezzo_calice: parseFloat(form.prezzo_calice) || undefined,
@@ -156,6 +157,7 @@ export default function AdminWines() {
           {/* Column headers */}
           <div className="flex items-center gap-3 px-1 pb-2 border-b border-[#C69C6D]/15">
             <span className="flex-1 font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest">Nome</span>
+            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-24 text-center">Cantina</span>
             <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-20 text-center">Tipo</span>
             <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-24 text-center">Regione</span>
             <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-16 text-right">Calice</span>
@@ -171,6 +173,9 @@ export default function AdminWines() {
                 <span className="font-body text-white text-sm block truncate">{w.name}</span>
                 {w.description && <span className="font-body text-[#E5E5E5]/30 text-xs block truncate">{w.description}</span>}
               </div>
+              <span className="font-body text-[#E5E5E5]/50 text-xs w-24 text-center shrink-0 truncate">
+                {w.cantina || '—'}
+              </span>
               <span className="font-body text-[#C69C6D] text-xs w-20 text-center shrink-0">
                 {WINE_LABELS[w.wine_type] || '—'}
               </span>
@@ -235,6 +240,13 @@ export default function AdminWines() {
                     {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Cantina di produzione</label>
+                <input type="text" placeholder="Es. Tenuta San Guido" value={form.cantina || ''}
+                  onChange={e => set('cantina', e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

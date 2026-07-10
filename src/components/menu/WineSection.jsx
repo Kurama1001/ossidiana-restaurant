@@ -55,6 +55,7 @@ export default function WineSection() {
 
       {/* Intestazione prezzi */}
       <div className="flex justify-end gap-4 mb-1 px-1">
+        <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-28 text-right">Cantina</span>
         <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-28 text-right">Regione</span>
         <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-16 text-right">Calice</span>
         <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-20 text-right">Bottiglia</span>
@@ -106,6 +107,9 @@ export default function WineSection() {
                           <span className="font-body text-[#E5E5E5]/35 text-xs block">{wine.description}</span>
                         )}
                       </div>
+                      <span className="font-body text-[#E5E5E5]/40 text-xs w-28 text-right shrink-0 truncate">
+                        {wine.cantina || '—'}
+                      </span>
                       <span className="font-body text-[#E5E5E5]/40 text-xs w-28 text-right shrink-0">
                         {wine.regione || '—'}
                       </span>
