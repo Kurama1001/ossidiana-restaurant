@@ -49,6 +49,24 @@
       "type": "number",
       "description": "Prezzo in euro"
     },
+    "prezzo_bottiglia": {
+      "type": "number",
+      "description": "Prezzo bottiglia in euro (solo vini)"
+    },
+    "prezzo_calice": {
+      "type": "number",
+      "description": "Prezzo calice in euro (solo vini)"
+    },
+    "wine_type": {
+      "type": "string",
+      "enum": [
+        "bollicine",
+        "bianchi",
+        "rossi",
+        "dolci"
+      ],
+      "description": "Sotto-categoria vini"
+    },
     "imageUrl": {
       "type": "string",
       "description": "URL immagine del piatto"

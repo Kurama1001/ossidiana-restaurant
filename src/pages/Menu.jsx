@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import MenuItemCard from '@/components/menu/MenuItemCard';
+import WineSection from '@/components/menu/WineSection';
 
 const CATEGORY_ORDER = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci'];
 const CATEGORY_LABELS = {
@@ -76,6 +77,7 @@ export default function Menu() {
             </div>
           ))
         )}
+        <WineSection />
       </div>
     </div>
   );
