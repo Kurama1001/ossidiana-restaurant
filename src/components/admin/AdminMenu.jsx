@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Copy, Wand2, Loader2, Search, Upload, FileDown } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
+import AdminWines from '@/components/admin/AdminWines';
 
 const CATEGORIES = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci', 'acqua', 'vino', 'birra', 'cocktail', 'caffe_amari', 'bevande'];
 const CATEGORY_LABELS = { antipasti: 'Antipasti', primi: 'Primi', romanissimi: 'Romanissimi', secondi: 'Secondi', contorni: 'Contorni', dolci: 'Dolci', acqua: 'Acqua', vino: 'Vino', birra: 'Birra', cocktail: 'Cocktail', caffe_amari: 'Caffè & Amari', bevande: 'Bevande' };
@@ -249,12 +250,17 @@ export default function AdminMenu() {
 
       <p className="text-xs font-body text-[#E5E5E5]/30 mb-3">{filtered.length} piatti</p>
 
+      {/* Wine view — dedicated column layout */}
+      {filterCat === 'vino' && !loading && (
+        <AdminWines />
+      )}
+
       {/* List */}
-      {loading ? (
+      {filterCat !== 'vino' && loading ? (
         <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-16 bg-[#161618] animate-pulse rounded-sm" />)}</div>
-      ) : filtered.length === 0 ? (
+      ) : filterCat !== 'vino' && filtered.length === 0 ? (
         <p className="text-[#E5E5E5]/30 font-body text-sm py-8 text-center">Nessun piatto trovato.</p>
-      ) : (
+      ) : filterCat !== 'vino' ? (
         <div className="space-y-2">
           {filtered.map(item => (
             <div key={item.id} className={`bg-[#161618] border rounded-sm px-4 py-3 flex flex-wrap gap-3 items-center justify-between transition-all ${item.active ? 'border-[#C69C6D]/10' : 'border-[#E5E5E5]/5 opacity-50'}`}>
@@ -293,7 +299,7 @@ export default function AdminMenu() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
       {/* Lightbox */}
       {lightboxUrl && (
