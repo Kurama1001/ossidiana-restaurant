@@ -150,9 +150,6 @@ export default function AdminWines() {
       const ta = WINE_ORDER.indexOf(a.wine_type);
       const tb = WINE_ORDER.indexOf(b.wine_type);
       if (ta !== tb) return ta - tb;
-      const ra = a.regione || 'ZZZ';
-      const rb = b.regione || 'ZZZ';
-      if (ra !== rb) return ra.localeCompare(rb);
       return (a.sortOrder || 0) - (b.sortOrder || 0);
     });
 

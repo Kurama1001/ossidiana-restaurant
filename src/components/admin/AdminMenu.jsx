@@ -14,7 +14,20 @@ const emptyForm = {
   name: '', description: '', category: 'antipasti', reparto: 'cucina',
   price: '', imageUrl: '', imagePrompt: '', allergens: '',
   dietaryTags: [], active: true, featured: false, sortOrder: '',
+  wine_type: '', regione: '', cantina: '', prezzo_bottiglia: '', prezzo_calice: '',
 };
+
+const WINE_TYPES = [
+  { value: 'bollicine', label: 'Bollicine' },
+  { value: 'bianchi', label: 'Bianchi' },
+  { value: 'rossi', label: 'Rossi' },
+  { value: 'dolci', label: 'Dolci' },
+];
+
+const WINE_REGIONS = [
+  'Abruzzo', 'Francia', 'Friuli', 'Lazio', 'Lombardia', 'Piemonte',
+  'Sardegna', 'Sicilia', 'Toscana', 'Trentino', 'Umbria', 'Veneto',
+];
 
 export default function AdminMenu() {
   const [items, setItems] = useState([]);
@@ -56,6 +69,11 @@ export default function AdminMenu() {
       sortOrder: item.sortOrder?.toString() || '',
       dietaryTags: item.dietaryTags || [],
       reparto: item.reparto || (BEVANDE_CATS.includes(item.category) ? 'bar' : 'cucina'),
+      wine_type: item.wine_type || '',
+      regione: item.regione || '',
+      cantina: item.cantina || '',
+      prezzo_bottiglia: item.prezzo_bottiglia?.toString() || '',
+      prezzo_calice: item.prezzo_calice?.toString() || '',
     });
     setShowForm(true);
   };
@@ -69,6 +87,11 @@ export default function AdminMenu() {
       ...form,
       price: parseFloat(form.price),
       sortOrder: form.sortOrder ? parseInt(form.sortOrder) : undefined,
+      wine_type: form.category === 'vino' ? form.wine_type : undefined,
+      regione: form.category === 'vino' ? (form.regione || '') : undefined,
+      cantina: form.category === 'vino' ? (form.cantina || '') : undefined,
+      prezzo_bottiglia: form.category === 'vino' && form.prezzo_bottiglia ? parseFloat(form.prezzo_bottiglia) : undefined,
+      prezzo_calice: form.category === 'vino' && form.prezzo_calice ? parseFloat(form.prezzo_calice) : undefined,
     };
     if (editing) {
       try {
@@ -338,6 +361,46 @@ export default function AdminMenu() {
                   onChange={e => set('sortOrder', e.target.value)}
                   className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm" />
               </div>
+
+              {/* Wine-specific fields */}
+              {form.category === 'vino' && (
+                <>
+                  <div>
+                    <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Tipo Vino</label>
+                    <select value={form.wine_type || ''} onChange={e => set('wine_type', e.target.value)}
+                      className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm">
+                      <option value="">— Seleziona —</option>
+                      {WINE_TYPES.map(wt => <option key={wt.value} value={wt.value}>{wt.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Regione</label>
+                    <select value={form.regione || ''} onChange={e => set('regione', e.target.value)}
+                      className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm">
+                      <option value="">— Seleziona —</option>
+                      {WINE_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Cantina di produzione</label>
+                    <input type="text" placeholder="Es. Tenuta San Guido" value={form.cantina || ''}
+                      onChange={e => set('cantina', e.target.value)}
+                      className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Prezzo Bottiglia (€)</label>
+                    <input type="number" min="0" step="0.50" placeholder="28" value={form.prezzo_bottiglia || ''}
+                      onChange={e => set('prezzo_bottiglia', e.target.value)}
+                      className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Prezzo Calice (€)</label>
+                    <input type="number" min="0" step="0.50" placeholder="6" value={form.prezzo_calice || ''}
+                      onChange={e => set('prezzo_calice', e.target.value)}
+                      className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm" />
+                  </div>
+                </>
+              )}
 
               {/* Description */}
               <div className="md:col-span-2">
