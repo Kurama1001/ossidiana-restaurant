@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Trash2, Pencil, X, Check, Loader2, Wine, Eye, EyeOff, Search } from 'lucide-react';
+import { Plus, Trash2, Check, Loader2, Wine, Eye, EyeOff, Search, X } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 
 const WINE_ORDER = ['bollicine', 'bianchi', 'rossi', 'dolci'];
@@ -32,6 +32,8 @@ export default function AdminWines() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState('all');
+  const [inlineEdit, setInlineEdit] = useState(null);
+  const [inlineValue, setInlineValue] = useState('');
 
   const load = () => {
     base44.entities.MenuItem.filter({ category: 'vino' }, 'sortOrder', 500)
@@ -101,8 +103,47 @@ export default function AdminWines() {
     setWines(prev => prev.map(x => x.id === w.id ? { ...x, active: !x.active } : x));
   };
 
+  const startInline = (id, field, currentVal) => {
+    setInlineEdit({ id, field });
+    setInlineValue(currentVal?.toString() ?? '');
+  };
+
+  const cancelInline = () => {
+    setInlineEdit(null);
+    setInlineValue('');
+  };
+
+  const commitInline = async () => {
+    if (!inlineEdit) return;
+    const { id, field } = inlineEdit;
+    let val = inlineValue;
+    if (field === 'prezzo_bottiglia' || field === 'prezzo_calice') {
+      val = parseFloat(inlineValue) || 0;
+      if (field === 'prezzo_bottiglia') {
+        await base44.entities.MenuItem.update(id, { [field]: val, price: val });
+      } else {
+        await base44.entities.MenuItem.update(id, { [field]: val });
+      }
+    } else {
+      val = val.trim();
+      await base44.entities.MenuItem.update(id, { [field]: val });
+    }
+    setWines(prev => prev.map(w => w.id === id ? {
+      ...w,
+      [field]: val,
+      ...(field === 'prezzo_bottiglia' ? { price: val } : {}),
+    } : w));
+    cancelInline();
+  };
+
+  const commitSelectInline = async (id, field, val) => {
+    await base44.entities.MenuItem.update(id, { [field]: val });
+    setWines(prev => prev.map(w => w.id === id ? { ...w, [field]: val } : w));
+    setInlineEdit(null);
+  };
+
   const filtered = wines
-    .filter(w => (!search || w.name.toLowerCase().includes(search.toLowerCase())))
+    .filter(w => (!search || w.name.toLowerCase().includes(search.toLowerCase()) || (w.cantina || '').toLowerCase().includes(search.toLowerCase())))
     .filter(w => typeFilter === 'all' || w.wine_type === typeFilter)
     .filter(w => regionFilter === 'all' || (w.regione || '') === regionFilter)
     .sort((a, b) => {
@@ -116,6 +157,8 @@ export default function AdminWines() {
     });
 
   const availableRegions = [...new Set(wines.map(w => w.regione).filter(Boolean))].sort();
+
+  const isEditing = (id, field) => inlineEdit?.id === id && inlineEdit?.field === field;
 
   return (
     <div>
@@ -131,7 +174,7 @@ export default function AdminWines() {
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E5E5E5]/30" />
           <input
-            value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca vino..."
+            value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca vino o cantina..."
             className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-8 pr-4 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none w-56"
           />
         </div>
@@ -149,65 +192,142 @@ export default function AdminWines() {
       </div>
 
       {loading ? (
-        <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-12 bg-[#161618] animate-pulse rounded-sm" />)}</div>
+        <div className="space-y-3">{[1,2,3,4,5].map(i => <div key={i} className="h-14 bg-[#161618] animate-pulse rounded-sm" />)}</div>
       ) : filtered.length === 0 ? (
         <p className="text-[#E5E5E5]/20 font-body text-sm py-8 text-center">Nessun vino trovato.</p>
       ) : (
-        <div>
-          {/* Column headers */}
-          <div className="flex items-center gap-3 px-1 pb-2 border-b border-[#C69C6D]/15">
-            <span className="flex-1 font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest">Nome</span>
-            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-24 text-center">Cantina</span>
-            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-20 text-center">Tipo</span>
-            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-24 text-center">Regione</span>
-            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-16 text-right">Calice</span>
-            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-20 text-right">Bottiglia</span>
-            <span className="w-[96px] shrink-0" />
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-[#C69C6D]/20">
+                <th className="text-left font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 min-w-[180px]">Nome</th>
+                <th className="text-left font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 min-w-[140px]">Cantina</th>
+                <th className="text-left font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 min-w-[120px]">Tipo</th>
+                <th className="text-left font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 min-w-[120px]">Regione</th>
+                <th className="text-right font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 min-w-[90px]">Calice</th>
+                <th className="text-right font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 min-w-[90px]">Bottiglia</th>
+                <th className="text-center font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest pb-2 px-2 w-[100px]">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(w => (
+                <tr key={w.id} className={`border-b border-[#222] hover:bg-[#111] transition-colors ${w.active ? '' : 'opacity-40'}`}>
+                  {/* Nome */}
+                  <td className="py-3 px-2">
+                    {isEditing(w.id, 'name') ? (
+                      <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} autoFocus />
+                    ) : (
+                      <button onClick={() => startInline(w.id, 'name', w.name)} className="text-left">
+                        <span className="font-body text-white text-sm hover:text-[#C69C6D] transition-colors">{w.name}</span>
+                      </button>
+                    )}
+                  </td>
 
-          {/* Wine rows */}
-          {filtered.map(w => (
-            <div key={w.id}
-              className={`flex items-center gap-3 py-3 border-b border-[#333333] transition-all ${w.active ? '' : 'opacity-40'}`}>
-              <div className="flex-1 min-w-0">
-                <span className="font-body text-white text-sm block truncate">{w.name}</span>
-                {w.description && <span className="font-body text-[#E5E5E5]/30 text-xs block truncate">{w.description}</span>}
-              </div>
-              <span className="font-body text-[#E5E5E5]/50 text-xs w-24 text-center shrink-0 truncate">
-                {w.cantina || '—'}
-              </span>
-              <span className="font-body text-[#C69C6D] text-xs w-20 text-center shrink-0">
-                {WINE_LABELS[w.wine_type] || '—'}
-              </span>
-              <span className="font-body text-[#E5E5E5]/50 text-xs w-24 text-center shrink-0">
-                {w.regione || '—'}
-              </span>
-              <span className="font-body text-[#A0A0A0] text-sm w-16 text-right shrink-0">
-                {w.prezzo_calice != null ? `€${Number(w.prezzo_calice).toFixed(0)}` : '—'}
-              </span>
-              <span className="font-body text-[#D9986D] font-semibold text-sm w-20 text-right shrink-0">
-                {w.prezzo_bottiglia != null ? `€${Number(w.prezzo_bottiglia).toFixed(0)}` : '—'}
-              </span>
-              <div className="flex items-center gap-1 shrink-0 w-[96px] justify-end">
-                <button onClick={() => toggleActive(w)} title={w.active ? 'Disattiva' : 'Attiva'}
-                  className={`p-1.5 border rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center ${w.active ? 'border-green-400/30 text-green-400 hover:bg-green-400/10' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/30'}`}>
-                  {w.active ? <Eye size={12} /> : <EyeOff size={12} />}
-                </button>
-                <button onClick={() => openEdit(w)} title="Modifica"
-                  className="p-1.5 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center">
-                  <Pencil size={12} />
-                </button>
-                <button onClick={() => deleteWine(w.id, w.name)} title="Elimina"
-                  className="p-1.5 border border-red-400/20 text-red-400/50 hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center">
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            </div>
-          ))}
+                  {/* Cantina */}
+                  <td className="py-3 px-2">
+                    {isEditing(w.id, 'cantina') ? (
+                      <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} autoFocus />
+                    ) : (
+                      <button onClick={() => startInline(w.id, 'cantina', w.cantina)} className="text-left">
+                        <span className={`font-body text-sm hover:text-[#C69C6D] transition-colors ${w.cantina ? 'text-[#E5E5E5]/70' : 'text-[#E5E5E5]/20 italic'}`}>
+                          {w.cantina || '—'}
+                        </span>
+                      </button>
+                    )}
+                  </td>
+
+                  {/* Tipo */}
+                  <td className="py-3 px-2">
+                    {isEditing(w.id, 'wine_type') ? (
+                      <select
+                        value={inlineValue}
+                        onChange={e => { commitSelectInline(w.id, 'wine_type', e.target.value); }}
+                        onBlur={() => setInlineEdit(null)}
+                        autoFocus
+                        className="bg-[#0A0A0B] border border-[#C69C6D] text-[#E5E5E5] px-2 py-1 rounded-sm text-xs font-body outline-none w-full"
+                      >
+                        {WINE_ORDER.map(wt => <option key={wt} value={wt}>{WINE_LABELS[wt]}</option>)}
+                      </select>
+                    ) : (
+                      <button onClick={() => { setInlineEdit({ id: w.id, field: 'wine_type' }); setInlineValue(w.wine_type); }} className="text-left">
+                        <span className="font-body text-[#C69C6D] text-xs hover:underline">{WINE_LABELS[w.wine_type] || '—'}</span>
+                      </button>
+                    )}
+                  </td>
+
+                  {/* Regione */}
+                  <td className="py-3 px-2">
+                    {isEditing(w.id, 'regione') ? (
+                      <select
+                        value={inlineValue}
+                        onChange={e => { commitSelectInline(w.id, 'regione', e.target.value); }}
+                        onBlur={() => setInlineEdit(null)}
+                        autoFocus
+                        className="bg-[#0A0A0B] border border-[#C69C6D] text-[#E5E5E5] px-2 py-1 rounded-sm text-xs font-body outline-none w-full"
+                      >
+                        <option value="">—</option>
+                        {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    ) : (
+                      <button onClick={() => { setInlineEdit({ id: w.id, field: 'regione' }); setInlineValue(w.regione || ''); }} className="text-left">
+                        <span className={`font-body text-xs hover:text-[#C69C6D] transition-colors ${w.regione ? 'text-[#E5E5E5]/50' : 'text-[#E5E5E5]/20 italic'}`}>
+                          {w.regione || '—'}
+                        </span>
+                      </button>
+                    )}
+                  </td>
+
+                  {/* Calice */}
+                  <td className="py-3 px-2 text-right">
+                    {isEditing(w.id, 'prezzo_calice') ? (
+                      <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} type="number" autoFocus align="right" />
+                    ) : (
+                      <button onClick={() => startInline(w.id, 'prezzo_calice', w.prezzo_calice)} className="w-full text-right">
+                        <span className="font-body text-[#A0A0A0] text-sm hover:text-[#C69C6D] transition-colors">
+                          {w.prezzo_calice != null ? `€${Number(w.prezzo_calice).toFixed(0)}` : '—'}
+                        </span>
+                      </button>
+                    )}
+                  </td>
+
+                  {/* Bottiglia */}
+                  <td className="py-3 px-2 text-right">
+                    {isEditing(w.id, 'prezzo_bottiglia') ? (
+                      <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} type="number" autoFocus align="right" />
+                    ) : (
+                      <button onClick={() => startInline(w.id, 'prezzo_bottiglia', w.prezzo_bottiglia)} className="w-full text-right">
+                        <span className="font-body text-[#D9986D] font-semibold text-sm hover:text-[#C69C6D] transition-colors">
+                          {w.prezzo_bottiglia != null ? `€${Number(w.prezzo_bottiglia).toFixed(0)}` : '—'}
+                        </span>
+                      </button>
+                    )}
+                  </td>
+
+                  {/* Azioni */}
+                  <td className="py-3 px-2">
+                    <div className="flex items-center gap-1 justify-center">
+                      <button onClick={() => toggleActive(w)} title={w.active ? 'Disattiva' : 'Attiva'}
+                        className={`p-1.5 border rounded-sm transition-all ${w.active ? 'border-green-400/30 text-green-400 hover:bg-green-400/10' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/30'}`}>
+                        {w.active ? <Eye size={12} /> : <EyeOff size={12} />}
+                      </button>
+                      <button onClick={() => openEdit(w)} title="Modifica completo"
+                        className="p-1.5 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all">
+                        <Wine size={12} />
+                      </button>
+                      <button onClick={() => deleteWine(w.id, w.name)} title="Elimina"
+                        className="p-1.5 border border-red-400/20 text-red-400/50 hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 rounded-sm transition-all">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* Modal form */}
+      {/* Modal form per creazione/modifica completa */}
       {showForm && (
         <div className="fixed inset-0 bg-[#0A0A0B]/95 z-50 flex items-center justify-center p-4">
           <div className="bg-[#161618] border border-[#C69C6D]/20 rounded-sm w-full max-w-lg max-h-[92vh] overflow-y-auto p-6">
@@ -290,6 +410,25 @@ export default function AdminWines() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function InlineInput({ value, onChange, onCommit, onCancel, type = 'text', autoFocus, align = 'left' }) {
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') onCommit();
+          if (e.key === 'Escape') onCancel();
+        }}
+        autoFocus={autoFocus}
+        onBlur={onCommit}
+        className={`bg-[#0A0A0B] border border-[#C69C6D] text-[#E5E5E5] px-2 py-1 rounded-sm text-xs font-body outline-none w-full ${align === 'right' ? 'text-right' : ''}`}
+      />
     </div>
   );
 }
