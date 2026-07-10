@@ -1,8 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const RELAY_URL = Deno.env.get("RELAY_URL");
-const RELAY_AUTH_TOKEN = Deno.env.get("RELAY_AUTH_TOKEN");
-const HTTP_TIMEOUT_MS = 8000;
+const PRINTER_IP = Deno.env.get("PRINTER_IP") || "192.168.1.51";
+const PRINTER_PORT = parseInt(Deno.env.get("PRINTER_PORT") || "9100");
+const SOCKET_TIMEOUT_MS = 5000;
 
 // ── ESC/POS command constants ──
 const ESC = 0x1B;
@@ -30,40 +30,29 @@ function concat(...arrays) {
   return result;
 }
 
-// ── Send ESC/POS bytes to local relay via HTTP ──
-// Il relay (su dispositivo in rete locale) apre il TCP verso la stampante
+// ── TCP socket send with timeout + error handling ──
 async function sendToPrinter(data) {
-  if (!RELAY_URL || !RELAY_AUTH_TOKEN) {
-    return { success: false, error: 'RELAY_URL o RELAY_AUTH_TOKEN non configurati. Vedi relay/README.md' };
-  }
-
-  const b64 = btoa(String.fromCharCode(...data));
-
+  let conn = null;
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), HTTP_TIMEOUT_MS);
+    conn = await Promise.race([
+      Deno.connect({ hostname: PRINTER_IP, port: PRINTER_PORT }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout connessione a ${PRINTER_IP}:${PRINTER_PORT}`)), SOCKET_TIMEOUT_MS)
+      ),
+    ]);
 
-    const resp = await fetch(RELAY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RELAY_AUTH_TOKEN}`,
-      },
-      body: JSON.stringify({ data: b64 }),
-      signal: controller.signal,
-    });
+    await Promise.race([
+      conn.write(data),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout invio dati alla stampante')), SOCKET_TIMEOUT_MS)
+      ),
+    ]);
 
-    clearTimeout(timeout);
-
-    const result = await resp.json();
-    if (!resp.ok || !result.success) {
-      return { success: false, error: result.error || `Relay HTTP ${resp.status}` };
-    }
-
-    return { success: true, message: `Stampa inviata via relay (${data.length} byte)` };
+    conn.close();
+    return { success: true, message: `Stampa inviata a ${PRINTER_IP}:${PRINTER_PORT} (${data.length} byte)` };
   } catch (error) {
-    if (error.name === 'AbortError') {
-      return { success: false, error: 'Timeout: il relay non risponde. Verifica che sia attivo e che cloudflared sia in esecuzione.' };
+    if (conn) {
+      try { conn.close(); } catch {}
     }
     return { success: false, error: error.message };
   }
@@ -80,9 +69,9 @@ function buildTestCommands() {
     boldOff(),
     text("Test stampante riuscito"),
     lineFeed(),
-    text("IP: 192.168.1.51"),
+    text(`IP: ${PRINTER_IP}`),
     lineFeed(),
-    text("Porta: 9100"),
+    text(`Porta: ${PRINTER_PORT}`),
     lineFeed(3),
     cutPaper(),
   );
