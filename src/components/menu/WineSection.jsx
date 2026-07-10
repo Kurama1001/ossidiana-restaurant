@@ -58,32 +58,55 @@ export default function WineSection() {
         <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-20 text-right">Bottiglia</span>
       </div>
 
-      {Object.entries(grouped).map(([wt, items]) => (
-        <div key={wt} className="mb-8">
-          <div className="flex items-center gap-3 mb-3 mt-4">
-            <h3 className="font-display text-xl text-[#C69C6D] tracking-widest">{WINE_LABELS[wt]}</h3>
-            <div className="flex-1 h-px bg-[#C69C6D]/10" />
-          </div>
-          <div>
-            {items.map(wine => (
-              <div key={wine.id} className="flex items-center gap-3 py-3 border-b border-[#E5E5E5]/5 last:border-0">
-                <div className="flex-1 min-w-0">
-                  <span className="font-body text-white text-sm md:text-base leading-snug block">{wine.name}</span>
-                  {wine.description && (
-                    <span className="font-body text-[#E5E5E5]/35 text-xs block">{wine.description}</span>
-                  )}
+      {Object.entries(grouped).map(([wt, items]) => {
+        // Raggruppa per regione mantenendo l'ordine di apparizione
+        const regioni = [];
+        const regioniMap = {};
+        for (const w of items) {
+          const r = w.regione || 'Altro';
+          if (!regioniMap[r]) {
+            regioniMap[r] = [];
+            regioni.push(r);
+          }
+          regioniMap[r].push(w);
+        }
+
+        return (
+          <div key={wt} className="mb-8">
+            <div className="flex items-center gap-3 mb-3 mt-4">
+              <h3 className="font-display text-xl text-[#C69C6D] tracking-widest">{WINE_LABELS[wt]}</h3>
+              <div className="flex-1 h-px bg-[#C69C6D]/10" />
+            </div>
+
+            {regioni.map(regione => (
+              <div key={regione} className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-body text-xs text-[#E5E5E5]/40 uppercase tracking-widest">{regione}</span>
+                  <div className="flex-1 h-px bg-[#E5E5E5]/5" />
                 </div>
-                <span className="font-body text-[#E5E5E5]/60 text-sm w-16 text-right shrink-0">
-                  {wine.prezzo_calice != null ? `€${Number(wine.prezzo_calice).toFixed(0)}` : '—'}
-                </span>
-                <span className="font-body text-[#C69C6D] font-semibold text-sm w-20 text-right shrink-0">
-                  {wine.prezzo_bottiglia != null ? `€${Number(wine.prezzo_bottiglia).toFixed(0)}` : '—'}
-                </span>
+                <div>
+                  {regioniMap[regione].map(wine => (
+                    <div key={wine.id} className="flex items-center gap-3 py-3 border-b border-[#E5E5E5]/5 last:border-0">
+                      <div className="flex-1 min-w-0">
+                        <span className="font-body text-white text-sm md:text-base leading-snug block">{wine.name}</span>
+                        {wine.description && (
+                          <span className="font-body text-[#E5E5E5]/35 text-xs block">{wine.description}</span>
+                        )}
+                      </div>
+                      <span className="font-body text-[#E5E5E5]/60 text-sm w-16 text-right shrink-0">
+                        {wine.prezzo_calice != null ? `€${Number(wine.prezzo_calice).toFixed(0)}` : '—'}
+                      </span>
+                      <span className="font-body text-[#C69C6D] font-semibold text-sm w-20 text-right shrink-0">
+                        {wine.prezzo_bottiglia != null ? `€${Number(wine.prezzo_bottiglia).toFixed(0)}` : '—'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

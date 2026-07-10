@@ -67,6 +67,10 @@
       ],
       "description": "Sotto-categoria vini"
     },
+    "regione": {
+      "type": "string",
+      "description": "Regione di provenienza (vini)"
+    },
     "imageUrl": {
       "type": "string",
       "description": "URL immagine del piatto"
