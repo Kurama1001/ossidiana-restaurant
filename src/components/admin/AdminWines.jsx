@@ -166,26 +166,61 @@ export default function AdminWines() {
         </BronzeButton>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E5E5E5]/30" />
-          <input
-            value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca vino o cantina..."
-            className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-8 pr-4 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none w-56"
-          />
+      {/* Quick filters */}
+      <div className="bg-[#161618] border border-[#C69C6D]/10 rounded-sm p-4 mb-4 space-y-3">
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E5E5E5]/30" />
+            <input
+              value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca vino o cantina..."
+              className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-8 pr-4 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none w-56"
+            />
+          </div>
+          <span className="text-[#E5E5E5]/30 font-body text-sm">({filtered.length} vini)</span>
         </div>
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-          className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none">
-          <option value="all">Tutti i tipi</option>
-          {WINE_ORDER.map(wt => <option key={wt} value={wt}>{WINE_LABELS[wt]}</option>)}
-        </select>
-        <select value={regionFilter} onChange={e => setRegionFilter(e.target.value)}
-          className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none">
-          <option value="all">Tutte le regioni</option>
-          {(availableRegions.length ? availableRegions : REGIONS).map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-        <span className="text-[#E5E5E5]/30 font-body text-sm self-center">({filtered.length} vini)</span>
+
+        {/* Type pills */}
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <span className="font-body text-[10px] text-[#C69C6D]/50 uppercase tracking-widest mr-1">Tipo:</span>
+          <button onClick={() => { setTypeFilter('all'); setRegionFilter('all'); }}
+            className={`px-3 py-1.5 rounded-sm text-xs font-body border transition-all ${typeFilter === 'all' ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+            Tutti
+          </button>
+          {WINE_ORDER.map(wt => {
+            const count = wines.filter(w => w.wine_type === wt).length;
+            return (
+              <button key={wt} onClick={() => { setTypeFilter(wt); setRegionFilter('all'); }}
+                className={`px-3 py-1.5 rounded-sm text-xs font-body border transition-all ${typeFilter === wt ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+                {WINE_LABELS[wt]} <span className="opacity-50">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Region pills — shown when a type is selected or when regions exist */}
+        {(() => {
+          const typeWines = typeFilter === 'all' ? wines : wines.filter(w => w.wine_type === typeFilter);
+          const regionsInType = [...new Set(typeWines.map(w => w.regione).filter(Boolean))].sort();
+          if (regionsInType.length === 0) return null;
+          return (
+            <div className="flex flex-wrap gap-1.5 items-center pt-1 border-t border-[#C69C6D]/5">
+              <span className="font-body text-[10px] text-[#C69C6D]/50 uppercase tracking-widest mr-1 mt-1">Regione:</span>
+              <button onClick={() => setRegionFilter('all')}
+                className={`px-2.5 py-1 rounded-sm text-[11px] font-body border transition-all ${regionFilter === 'all' ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+                Tutte
+              </button>
+              {regionsInType.map(r => {
+                const count = typeWines.filter(w => w.regione === r).length;
+                return (
+                  <button key={r} onClick={() => setRegionFilter(regionFilter === r ? 'all' : r)}
+                    className={`px-2.5 py-1 rounded-sm text-[11px] font-body border transition-all ${regionFilter === r ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40 hover:text-[#C69C6D]'}`}>
+                    {r} <span className="opacity-50">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {loading ? (
