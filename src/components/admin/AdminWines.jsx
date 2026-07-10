@@ -19,7 +19,7 @@ const REGIONS = [
 const emptyWine = {
   name: '', wine_type: 'bianchi', regione: '', cantina: '',
   prezzo_bottiglia: '', prezzo_calice: '', description: '',
-  active: true, sortOrder: '',
+  reparto: 'bar', active: true, sortOrder: '',
 };
 
 export default function AdminWines() {
@@ -70,7 +70,7 @@ export default function AdminWines() {
     const data = {
       name: form.name,
       category: 'vino',
-      reparto: 'bar',
+      reparto: form.reparto || 'bar',
       wine_type: form.wine_type,
       regione: form.regione || '',
       cantina: form.cantina || '',
@@ -378,6 +378,15 @@ export default function AdminWines() {
                     {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Reparto</label>
+                <select value={form.reparto || 'bar'} onChange={e => set('reparto', e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm">
+                  <option value="bar">🍹 Bar</option>
+                  <option value="cucina">🍽 Cucina</option>
+                </select>
               </div>
 
               <div>
