@@ -6,10 +6,15 @@ import { BronzeButton } from '@/components/ui/BronzeButton';
 const WINE_ORDER = ['bollicine', 'bianchi', 'rossi', 'dolci'];
 const WINE_LABELS = {
   bollicine: 'Bollicine',
-  bianchi: 'Vini Bianchi',
-  rossi: 'Vini Rossi',
-  dolci: 'Vini Dolci',
+  bianchi: 'Bianchi',
+  rossi: 'Rossi',
+  dolci: 'Dolci',
 };
+
+const REGIONS = [
+  'Abruzzo', 'Francia', 'Friuli', 'Lazio', 'Lombardia', 'Piemonte',
+  'Sardegna', 'Sicilia', 'Toscana', 'Trentino', 'Umbria', 'Veneto',
+];
 
 const emptyWine = {
   name: '', wine_type: 'bianchi', regione: '',
@@ -25,7 +30,8 @@ export default function AdminWines() {
   const [form, setForm] = useState(emptyWine);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
-  const [regionFilter, setRegionFilter] = useState({});
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [regionFilter, setRegionFilter] = useState('all');
 
   const load = () => {
     base44.entities.MenuItem.filter({ category: 'vino' }, 'sortOrder', 500)
@@ -37,9 +43,9 @@ export default function AdminWines() {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const openCreate = (presetType) => {
+  const openCreate = () => {
     setEditing(null);
-    setForm({ ...emptyWine, wine_type: presetType || 'bianchi' });
+    setForm({ ...emptyWine });
     setShowForm(true);
   };
 
@@ -94,144 +100,105 @@ export default function AdminWines() {
     setWines(prev => prev.map(x => x.id === w.id ? { ...x, active: !x.active } : x));
   };
 
-  const grouped = WINE_ORDER.reduce((acc, wt) => {
-    const items = wines
-      .filter(w => w.wine_type === wt && (!search || w.name.toLowerCase().includes(search.toLowerCase())))
-      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-    if (items.length > 0) acc[wt] = items;
-    return acc;
-  }, {});
+  const filtered = wines
+    .filter(w => (!search || w.name.toLowerCase().includes(search.toLowerCase())))
+    .filter(w => typeFilter === 'all' || w.wine_type === typeFilter)
+    .filter(w => regionFilter === 'all' || (w.regione || '') === regionFilter)
+    .sort((a, b) => {
+      const ta = WINE_ORDER.indexOf(a.wine_type);
+      const tb = WINE_ORDER.indexOf(b.wine_type);
+      if (ta !== tb) return ta - tb;
+      const ra = a.regione || 'ZZZ';
+      const rb = b.regione || 'ZZZ';
+      if (ra !== rb) return ra.localeCompare(rb);
+      return (a.sortOrder || 0) - (b.sortOrder || 0);
+    });
+
+  const availableRegions = [...new Set(wines.map(w => w.regione).filter(Boolean))].sort();
 
   return (
     <div>
       <div className="flex flex-wrap gap-3 items-center justify-between mb-5">
         <h2 className="font-display text-2xl text-white tracking-widest">Carta dei Vini</h2>
-        <BronzeButton onClick={() => openCreate('bianchi')} variant="solid">
+        <BronzeButton onClick={openCreate} variant="solid">
           <Plus size={14} /> Nuovo Vino
         </BronzeButton>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E5E5E5]/30" />
-        <input
-          value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca vino..."
-          className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-8 pr-4 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none w-64"
-        />
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#E5E5E5]/30" />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca vino..."
+            className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] pl-8 pr-4 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none w-56"
+          />
+        </div>
+        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+          className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none">
+          <option value="all">Tutti i tipi</option>
+          {WINE_ORDER.map(wt => <option key={wt} value={wt}>{WINE_LABELS[wt]}</option>)}
+        </select>
+        <select value={regionFilter} onChange={e => setRegionFilter(e.target.value)}
+          className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm text-sm font-body focus:border-[#C69C6D] outline-none">
+          <option value="all">Tutte le regioni</option>
+          {(availableRegions.length ? availableRegions : REGIONS).map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+        <span className="text-[#E5E5E5]/30 font-body text-sm self-center">({filtered.length} vini)</span>
       </div>
 
       {loading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-12 bg-[#161618] animate-pulse rounded-sm" />)}</div>
+      ) : filtered.length === 0 ? (
+        <p className="text-[#E5E5E5]/20 font-body text-sm py-8 text-center">Nessun vino trovato.</p>
       ) : (
-        <div className="space-y-8">
-          {/* Price column headers */}
-          <div className="flex items-center gap-3 px-1">
-            <span className="flex-1" />
-            <span className="font-body text-xs text-[#E5E5E5]/30 uppercase tracking-widest w-24 text-right">Regione</span>
-            <span className="font-body text-xs text-[#E5E5E5]/30 uppercase tracking-widest w-16 text-right">Calice</span>
-            <span className="font-body text-xs text-[#E5E5E5]/30 uppercase tracking-widest w-20 text-right">Bottiglia</span>
+        <div>
+          {/* Column headers */}
+          <div className="flex items-center gap-3 px-1 pb-2 border-b border-[#C69C6D]/15">
+            <span className="flex-1 font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest">Nome</span>
+            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-20 text-center">Tipo</span>
+            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-24 text-center">Regione</span>
+            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-16 text-right">Calice</span>
+            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-20 text-right">Bottiglia</span>
             <span className="w-[96px] shrink-0" />
           </div>
 
-          {WINE_ORDER.map(wt => {
-            const items = grouped[wt];
-            if (!items) return null;
-
-            const allRegioni = [...new Set(items.map(w => w.regione || 'Altro'))];
-            const filteredItems = regionFilter[wt] && regionFilter[wt] !== 'all'
-              ? items.filter(w => (w.regione || 'Altro') === regionFilter[wt])
-              : items;
-
-            const regioni = [];
-            const regioniMap = {};
-            for (const w of filteredItems) {
-              const r = w.regione || 'Altro';
-              if (!regioniMap[r]) { regioniMap[r] = []; regioni.push(r); }
-              regioniMap[r].push(w);
-            }
-
-            return (
-              <div key={wt}>
-                {/* Category header */}
-                <div className="flex items-center gap-3 mb-3">
-                  <Wine size={16} className="text-[#C69C6D]" />
-                  <h3 className="font-display text-xl text-[#C69C6D] tracking-widest">{WINE_LABELS[wt]}</h3>
-                  <span className="font-body text-xs text-[#E5E5E5]/30">({filteredItems.length})</span>
-                  <div className="flex-1 h-px bg-[#C69C6D]/15" />
-                  <button onClick={() => openCreate(wt)}
-                    className="flex items-center gap-1 px-2.5 py-1 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm font-body text-xs transition-all">
-                    <Plus size={11} /> Aggiungi
-                  </button>
-                </div>
-
-                {/* Quick region filters */}
-                {allRegioni.length > 1 && (
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    <button onClick={() => setRegionFilter(prev => ({ ...prev, [wt]: 'all' }))}
-                      className={`px-2.5 py-1 rounded-sm text-[11px] font-body border transition-all ${(!regionFilter[wt] || regionFilter[wt] === 'all') ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
-                      Tutte
-                    </button>
-                    {allRegioni.map(r => (
-                      <button key={r} onClick={() => setRegionFilter(prev => ({ ...prev, [wt]: r }))}
-                        className={`px-2.5 py-1 rounded-sm text-[11px] font-body border transition-all ${regionFilter[wt] === r ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/15 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
-                        {r}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {regioni.length === 0 ? (
-                  <p className="text-[#E5E5E5]/20 font-body text-sm py-4 text-center">Nessun vino in questa regione.</p>
-                ) : (
-                  regioni.map(regione => (
-                    <div key={regione} className="mb-4">
-                      {/* Region sub-header */}
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-body text-xs text-[#808080] uppercase tracking-widest">{regione}</span>
-                        <div className="flex-1 h-px bg-[#333333]" />
-                      </div>
-
-                      {/* Wine rows */}
-                      <div>
-                        {regioniMap[regione].map(w => (
-                          <div key={w.id}
-                            className={`flex items-center gap-3 py-3 border-b border-[#333333] last:border-0 transition-all ${w.active ? '' : 'opacity-40'}`}>
-                            <div className="flex-1 min-w-0">
-                              <span className="font-body text-white text-sm block truncate">{w.name}</span>
-                              {w.description && <span className="font-body text-[#E5E5E5]/30 text-xs block truncate">{w.description}</span>}
-                            </div>
-                            <span className="font-body text-[#E5E5E5]/50 text-xs w-24 text-right shrink-0">
-                              {w.regione || '—'}
-                            </span>
-                            <span className="font-body text-[#A0A0A0] text-sm w-16 text-right shrink-0">
-                              {w.prezzo_calice != null ? `€${Number(w.prezzo_calice).toFixed(0)}` : '—'}
-                            </span>
-                            <span className="font-body text-[#D9986D] font-semibold text-sm w-20 text-right shrink-0">
-                              {w.prezzo_bottiglia != null ? `€${Number(w.prezzo_bottiglia).toFixed(0)}` : '—'}
-                            </span>
-                            <div className="flex items-center gap-1 shrink-0 w-[96px] justify-end">
-                              <button onClick={() => toggleActive(w)} title={w.active ? 'Disattiva' : 'Attiva'}
-                                className={`p-1.5 border rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center ${w.active ? 'border-green-400/30 text-green-400 hover:bg-green-400/10' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/30'}`}>
-                                {w.active ? <Eye size={12} /> : <EyeOff size={12} />}
-                              </button>
-                              <button onClick={() => openEdit(w)} title="Modifica"
-                                className="p-1.5 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center">
-                                <Pencil size={12} />
-                              </button>
-                              <button onClick={() => deleteWine(w.id, w.name)} title="Elimina"
-                                className="p-1.5 border border-red-400/20 text-red-400/50 hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center">
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )}
+          {/* Wine rows */}
+          {filtered.map(w => (
+            <div key={w.id}
+              className={`flex items-center gap-3 py-3 border-b border-[#333333] transition-all ${w.active ? '' : 'opacity-40'}`}>
+              <div className="flex-1 min-w-0">
+                <span className="font-body text-white text-sm block truncate">{w.name}</span>
+                {w.description && <span className="font-body text-[#E5E5E5]/30 text-xs block truncate">{w.description}</span>}
               </div>
-            );
-          })}
+              <span className="font-body text-[#C69C6D] text-xs w-20 text-center shrink-0">
+                {WINE_LABELS[w.wine_type] || '—'}
+              </span>
+              <span className="font-body text-[#E5E5E5]/50 text-xs w-24 text-center shrink-0">
+                {w.regione || '—'}
+              </span>
+              <span className="font-body text-[#A0A0A0] text-sm w-16 text-right shrink-0">
+                {w.prezzo_calice != null ? `€${Number(w.prezzo_calice).toFixed(0)}` : '—'}
+              </span>
+              <span className="font-body text-[#D9986D] font-semibold text-sm w-20 text-right shrink-0">
+                {w.prezzo_bottiglia != null ? `€${Number(w.prezzo_bottiglia).toFixed(0)}` : '—'}
+              </span>
+              <div className="flex items-center gap-1 shrink-0 w-[96px] justify-end">
+                <button onClick={() => toggleActive(w)} title={w.active ? 'Disattiva' : 'Attiva'}
+                  className={`p-1.5 border rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center ${w.active ? 'border-green-400/30 text-green-400 hover:bg-green-400/10' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/30'}`}>
+                  {w.active ? <Eye size={12} /> : <EyeOff size={12} />}
+                </button>
+                <button onClick={() => openEdit(w)} title="Modifica"
+                  className="p-1.5 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center">
+                  <Pencil size={12} />
+                </button>
+                <button onClick={() => deleteWine(w.id, w.name)} title="Elimina"
+                  className="p-1.5 border border-red-400/20 text-red-400/50 hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 rounded-sm transition-all min-w-[28px] min-h-[28px] flex items-center justify-center">
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -262,9 +229,11 @@ export default function AdminWines() {
                 </div>
                 <div>
                   <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Regione</label>
-                  <input type="text" placeholder="Es. Toscana" value={form.regione}
-                    onChange={e => set('regione', e.target.value)}
-                    className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20" />
+                  <select value={form.regione} onChange={e => set('regione', e.target.value)}
+                    className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm">
+                    <option value="">— Seleziona —</option>
+                    {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
                 </div>
               </div>
 
