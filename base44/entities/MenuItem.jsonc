@@ -8,7 +8,11 @@
     },
     "description": {
       "type": "string",
-      "description": "Descrizione del piatto"
+      "description": "Descrizione del piatto (italiano)"
+    },
+    "description_en": {
+      "type": "string",
+      "description": "Descrizione del piatto (inglese)"
     },
     "menuType": {
       "type": "string",
@@ -17,7 +21,17 @@
         "cena_autunno_inverno",
         "pranzo_ufficio"
       ],
-      "description": "Tipo di menu"
+      "description": "Tipo di menu stagionale"
+    },
+    "servizio": {
+      "type": "string",
+      "enum": [
+        "pranzo",
+        "cena",
+        "pranzo_cena"
+      ],
+      "default": "pranzo_cena",
+      "description": "Servizio: pranzo, cena o entrambi"
     },
     "category": {
       "type": "string",

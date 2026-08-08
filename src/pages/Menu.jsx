@@ -16,15 +16,22 @@ const CATEGORY_LABELS = {
 export default function Menu() {
   const [allItems, setAllItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [turno, setTurno] = useState(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setTurno(params.get('turno'));
     base44.entities.MenuItem.filter({ active: true }, 'sortOrder', 500)
       .then(setAllItems)
       .finally(() => setLoading(false));
   }, []);
 
+  const itemsFiltrati = turno
+    ? allItems.filter(i => !i.servizio || i.servizio === 'pranzo_cena' || i.servizio === turno)
+    : allItems;
+
   const grouped = CATEGORY_ORDER.reduce((acc, cat) => {
-    const catItems = allItems
+    const catItems = itemsFiltrati
       .filter(i => i.category === cat)
       .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
     if (catItems.length > 0) acc[cat] = catItems;
@@ -42,7 +49,7 @@ export default function Menu() {
         <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0B]/60 via-transparent to-[#0A0A0B]" />
         <div className="relative z-10">
           <p className="font-body text-[#C69C6D] tracking-[0.4em] uppercase text-xs mb-3">La nostra cucina</p>
-          <h1 className="font-display text-6xl md:text-7xl text-white tracking-widest">Menu</h1>
+          <h1 className="font-display text-6xl md:text-7xl text-white tracking-widest">{turno === 'pranzo' ? 'Menu Pranzo' : turno === 'cena' ? 'Menu Cena' : 'Menu'}</h1>
           <div className="w-16 h-px bg-[#C69C6D] mx-auto mt-5 mb-4" />
           <p className="font-body text-[#E5E5E5]/50 text-sm max-w-lg mx-auto">
             Ingredienti selezionati, ricette contemporanee, tradizione romana.

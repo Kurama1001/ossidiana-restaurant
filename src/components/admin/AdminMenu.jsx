@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Copy, Wand2, Loader2, Search, Upload, FileDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Copy, Wand2, Loader2, Search, Upload, FileDown, QrCode, FileText } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 import AdminWines from '@/components/admin/AdminWines';
+import QRCodeModal from '@/components/admin/QRCodeModal';
+import { generateMenuWordDocument } from '@/utils/menuPrintUtils';
 
 const CATEGORIES = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci', 'acqua', 'vino', 'birra', 'cocktail', 'caffe_amari', 'bevande'];
 const CATEGORY_LABELS = { antipasti: 'Antipasti', primi: 'Primi', romanissimi: 'Romanissimi', secondi: 'Secondi', contorni: 'Contorni', dolci: 'Dolci', acqua: 'Acqua', vino: 'Vino', birra: 'Birra', cocktail: 'Cocktail', caffe_amari: 'Caffè & Amari', bevande: 'Bevande' };
@@ -12,7 +14,7 @@ const DIETARY_LABELS = { vegetariano: 'Vegetariano', pesce: 'Pesce', carne: 'Car
 const BEVANDE_CATS = ['acqua', 'vino', 'birra', 'cocktail', 'caffe_amari', 'bevande'];
 
 const emptyForm = {
-  name: '', description: '', category: 'antipasti', reparto: 'cucina',
+  name: '', description: '', description_en: '', category: 'antipasti', reparto: 'cucina', servizio: 'pranzo_cena',
   price: '', imageUrl: '', imagePrompt: '', allergens: '',
   dietaryTags: [], active: true, featured: false, sortOrder: '',
   wine_type: '', regione: '', cantina: '', prezzo_bottiglia: '', prezzo_calice: '',
@@ -44,6 +46,8 @@ export default function AdminMenu() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState(null);
+  const [showQR, setShowQR] = useState(false);
+  const [showPrintMenu, setShowPrintMenu] = useState(false);
 
   const load = () => {
     base44.entities.MenuItem.list('sortOrder', 500).then((menuItems) => {
@@ -70,6 +74,8 @@ export default function AdminMenu() {
       sortOrder: item.sortOrder?.toString() || '',
       dietaryTags: item.dietaryTags || [],
       reparto: item.reparto || (BEVANDE_CATS.includes(item.category) ? 'bar' : 'cucina'),
+      servizio: item.servizio || 'pranzo_cena',
+      description_en: item.description_en || '',
       wine_type: item.wine_type || '',
       regione: item.regione || '',
       cantina: item.cantina || '',
@@ -87,6 +93,8 @@ export default function AdminMenu() {
     const data = {
       ...form,
       price: parseFloat(form.price),
+      servizio: form.servizio || 'pranzo_cena',
+      description_en: form.description_en || '',
       sortOrder: form.sortOrder ? parseInt(form.sortOrder) : undefined,
       wine_type: form.category === 'vino' ? form.wine_type : undefined,
       regione: form.category === 'vino' ? (form.regione || '') : undefined,
@@ -203,9 +211,19 @@ export default function AdminMenu() {
     <div>
       <div className="flex flex-wrap gap-3 items-center justify-between mb-5">
         <h2 className="font-display text-2xl text-white tracking-widest">Gestione Menu</h2>
-        <BronzeButton onClick={openCreate} variant="solid">
-          <Plus size={14} /> Nuovo Piatto
-        </BronzeButton>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => setShowQR(true)}
+            className="flex items-center gap-1.5 px-3 py-2.5 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm font-body text-xs transition-all">
+            <QrCode size={14} /> QR Code
+          </button>
+          <button onClick={() => setShowPrintMenu(true)}
+            className="flex items-center gap-1.5 px-3 py-2.5 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm font-body text-xs transition-all">
+            <FileText size={14} /> Stampa Menù
+          </button>
+          <BronzeButton onClick={openCreate} variant="solid">
+            <Plus size={14} /> Nuovo Piatto
+          </BronzeButton>
+        </div>
       </div>
 
       {/* Filters */}
@@ -301,6 +319,32 @@ export default function AdminMenu() {
         </div>
       ) : null}
 
+      {/* QR Modal */}
+      {showQR && <QRCodeModal onClose={() => setShowQR(false)} />}
+
+      {/* Print Menu Modal */}
+      {showPrintMenu && (
+        <div className="fixed inset-0 bg-[#0A0A0B]/95 z-50 flex items-center justify-center p-4" onClick={() => setShowPrintMenu(false)}>
+          <div className="bg-[#161618] border border-[#C69C6D]/20 rounded-sm w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-display text-2xl text-white">Stampa Menù</h3>
+              <button onClick={() => setShowPrintMenu(false)} className="text-[#E5E5E5]/40 hover:text-white transition-colors"><X size={20} /></button>
+            </div>
+            <p className="font-body text-sm text-[#E5E5E5]/40 mb-4">Genera un file Word stampabile:</p>
+            <div className="flex flex-col gap-3">
+              <button onClick={() => { generateMenuWordDocument(items, 'pranzo'); setShowPrintMenu(false); }}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-[#C69C6D] hover:bg-[#D4AA7D] text-[#0A0A0B] rounded-sm font-body text-sm font-bold transition-all">
+                <FileText size={15} /> Menu del Pranzo
+              </button>
+              <button onClick={() => { generateMenuWordDocument(items, 'cena'); setShowPrintMenu(false); }}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-[#C69C6D] hover:bg-[#D4AA7D] text-[#0A0A0B] rounded-sm font-body text-sm font-bold transition-all">
+                <FileText size={15} /> Menu della Cena
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Lightbox */}
       {lightboxUrl && (
         <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4" onClick={() => setLightboxUrl(null)}>
@@ -349,6 +393,17 @@ export default function AdminMenu() {
                   className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm">
                   <option value="cucina">🍽 Cucina</option>
                   <option value="bar">🍹 Bar</option>
+                </select>
+              </div>
+
+              {/* Servizio */}
+              <div>
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Servizio</label>
+                <select value={form.servizio || 'pranzo_cena'} onChange={e => set('servizio', e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm">
+                  <option value="pranzo_cena">☀🌙 Pranzo + Cena</option>
+                  <option value="pranzo">☀ Pranzo</option>
+                  <option value="cena">🌙 Cena</option>
                 </select>
               </div>
 
@@ -422,6 +477,14 @@ export default function AdminMenu() {
                     {generatingDescription ? 'Generazione...' : 'Genera'}
                   </button>
                 </div>
+              </div>
+
+              {/* Description EN */}
+              <div className="md:col-span-2">
+                <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Descrizione (EN)</label>
+                <textarea placeholder="English description..." value={form.description_en || ''}
+                  onChange={e => set('description_en', e.target.value)} rows={2}
+                  className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20 resize-none" />
               </div>
 
               {/* Allergens */}
