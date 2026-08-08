@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Trash2, Check, Loader2, Wine, Eye, EyeOff, Search, X } from 'lucide-react';
+import { Plus, Trash2, Check, Loader2, Wine, Eye, EyeOff, Search, X, FileText } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
+import { generateWineListWordDocument } from '@/utils/menuPrintUtils';
 
 const WINE_ORDER = ['bollicine', 'bianchi', 'rossi', 'dolci'];
 const WINE_LABELS = {
@@ -160,6 +161,10 @@ export default function AdminWines() {
       <div className="flex items-center gap-5 mb-2">
         <h2 className="font-display text-3xl md:text-4xl text-white tracking-widest whitespace-nowrap">Carta dei Vini</h2>
         <div className="flex-1 h-px bg-[#C69C6D]/15" />
+        <button onClick={() => generateWineListWordDocument(wines)}
+          className="flex items-center gap-1.5 px-3 py-2.5 border border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm font-body text-xs transition-all shrink-0">
+          <FileText size={14} /> Stampa Carta dei Vini
+        </button>
         <BronzeButton onClick={openCreate} variant="solid" className="shrink-0">
           <Plus size={14} /> Nuovo
         </BronzeButton>
