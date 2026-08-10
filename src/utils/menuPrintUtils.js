@@ -46,14 +46,16 @@ export function generateMenuWordDocument(items, turno) {
       const price = Number(item.price || 0).toFixed(2).replace('.', ',');
 
       return `
-        <table class="dish-table" width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            <td class="dish-name">${name}</td>
-            <td class="dish-price" align="right" valign="bottom">€ ${price}</td>
-          </tr>
-        </table>
-        ${descIt ? `<p class="dish-desc-it">${descIt}</p>` : ''}
-        ${descEn ? `<p class="dish-desc-en">${descEn}</p>` : ''}`;
+        <div class="dish">
+          <table class="dish-table" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td class="dish-name">${name}</td>
+              <td class="dish-price" align="right" valign="bottom">€ ${price}</td>
+            </tr>
+          </table>
+          ${descIt ? `<p class="dish-desc-it">${descIt}</p>` : ''}
+          ${descEn ? `<p class="dish-desc-en">${descEn}</p>` : ''}
+        </div>`;
     }).join('');
 
     return `
@@ -93,6 +95,9 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-heig
 .cat-title { font-size: 15pt; font-weight: bold; color: #1a1a1a; letter-spacing: 2pt; margin: 0; }
 .cat-subtitle { font-size: 8pt; letter-spacing: 2pt; color: #aaa; text-transform: uppercase; margin: 2px 0 6px 0; }
 .cat-line { border-bottom: 0.75pt solid #C69C6D; margin-bottom: 10px; }
+.cat-title, .cat-subtitle, .cat-line { page-break-after: avoid; }
+.category { page-break-inside: auto; }
+.dish { page-break-inside: avoid; }
 .dish-table { margin-bottom: 2px; }
 .dish-name { font-size: 11.5pt; font-weight: bold; color: #1a1a1a; padding: 0; }
 .dish-price { font-size: 11pt; font-weight: bold; color: #C69C6D; white-space: nowrap; padding: 0; }
