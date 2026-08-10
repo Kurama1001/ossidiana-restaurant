@@ -5,6 +5,7 @@ import { BronzeButton } from '@/components/ui/BronzeButton';
 import AdminWines from '@/components/admin/AdminWines';
 import QRCodeModal from '@/components/admin/QRCodeModal';
 import { generateMenuWordDocument } from '@/utils/menuPrintUtils';
+import { compressImage } from '@/utils/imageCompress';
 
 const CATEGORIES = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci', 'acqua', 'vino', 'birra', 'cocktail', 'caffe_amari', 'bevande'];
 const CATEGORY_LABELS = { antipasti: 'Antipasti', primi: 'Primi', romanissimi: 'Romanissimi', secondi: 'Secondi', contorni: 'Contorni', dolci: 'Dolci', acqua: 'Acqua', vino: 'Vino', birra: 'Birra', cocktail: 'Cocktail', caffe_amari: 'Caffè & Amari', bevande: 'Bevande' };
@@ -143,7 +144,8 @@ export default function AdminMenu() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingImage(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const compressed = await compressImage(file, { maxDim: 1000, quality: 0.82 });
+    const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
     set('imageUrl', file_url);
     setUploadingImage(false);
   };

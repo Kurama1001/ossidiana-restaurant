@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Trash2, Upload, Loader2, Eye, EyeOff, Image, Film, Star } from 'lucide-react';
+import { compressImage } from '@/utils/imageCompress';
 
 const FOCAL_OPTIONS = [
   { value: 'top', label: 'Alto' },
@@ -28,7 +29,8 @@ export default function AdminGallery() {
     setUploading(true);
     for (const file of files) {
       const isVideo = file.type.startsWith('video/');
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const fileToUpload = isVideo ? file : await compressImage(file, { maxDim: 1600, quality: 0.82 });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: fileToUpload });
       await base44.entities.GalleryItem.create({
         url: file_url,
         type: isVideo ? 'video' : 'image',
