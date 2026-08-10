@@ -6,6 +6,7 @@ import AdminWines from '@/components/admin/AdminWines';
 import QRCodeModal from '@/components/admin/QRCodeModal';
 import { generateMenuWordDocument } from '@/utils/menuPrintUtils';
 import { compressImage } from '@/utils/imageCompress';
+import CompressedImage from '@/components/ui/CompressedImage';
 
 const CATEGORIES = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci', 'acqua', 'vino', 'birra', 'cocktail', 'caffe_amari', 'bevande'];
 const CATEGORY_LABELS = { antipasti: 'Antipasti', primi: 'Primi', romanissimi: 'Romanissimi', secondi: 'Secondi', contorni: 'Contorni', dolci: 'Dolci', acqua: 'Acqua', vino: 'Vino', birra: 'Birra', cocktail: 'Cocktail', caffe_amari: 'Caffè & Amari', bevande: 'Bevande' };
@@ -286,7 +287,7 @@ export default function AdminMenu() {
             <div key={item.id} className={`bg-[#161618] border rounded-sm px-4 py-3 flex flex-wrap gap-3 items-center justify-between transition-all ${item.active ? 'border-[#C69C6D]/10' : 'border-[#E5E5E5]/5 opacity-50'}`}>
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 {(item.imageUrl || item.image_url) ? (
-                  <img src={item.imageUrl || item.image_url} alt="" className="w-12 h-12 object-cover rounded-sm shrink-0 border border-[#C69C6D]/10" />
+                  <CompressedImage src={item.imageUrl || item.image_url} alt="" maxDim={200} className="w-12 h-12 object-cover rounded-sm shrink-0 border border-[#C69C6D]/10" />
                 ) : (
                   <div className="w-12 h-12 bg-[#0A0A0B] rounded-sm shrink-0 flex items-center justify-center text-xl border border-[#E5E5E5]/5">🍽</div>
                 )}

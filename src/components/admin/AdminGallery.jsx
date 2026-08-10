@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Trash2, Upload, Loader2, Eye, EyeOff, Image, Film, Star } from 'lucide-react';
 import { compressImage } from '@/utils/imageCompress';
+import CompressedImage from '@/components/ui/CompressedImage';
 
 const FOCAL_OPTIONS = [
   { value: 'top', label: 'Alto' },
@@ -126,9 +127,10 @@ export default function AdminGallery() {
                   <video src={item.url} className="absolute inset-0 w-full h-full object-cover opacity-40" muted />
                 </div>
               ) : (
-                <img
+                <CompressedImage
                   src={item.url}
                   alt={item.caption || ''}
+                  maxDim={400}
                   className={`w-full h-36 object-cover cursor-zoom-in ${focalClass[item.focalPoint || 'center']}`}
                   onClick={() => setLightbox(item)}
                 />
