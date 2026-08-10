@@ -1,7 +1,7 @@
 import { X, Download } from 'lucide-react';
 
 export default function QRCodeModal({ onClose }) {
-  const base = window.location.origin + '/menu';
+  const base = 'https://ossidianarestaurant.com/menu';
   const qrPranzo = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=${encodeURIComponent(base + '?turno=pranzo')}`;
   const qrCena = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=${encodeURIComponent(base + '?turno=cena')}`;
 
