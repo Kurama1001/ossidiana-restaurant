@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import MenuItemCard from '@/components/menu/MenuItemCard';
 import WineSection from '@/components/menu/WineSection';
 
-const CATEGORY_ORDER = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci'];
+const CATEGORY_ORDER = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci', 'acqua', 'bevande', 'birra', 'cocktail', 'caffe_amari'];
 const CATEGORY_LABELS = {
   antipasti: 'Antipasti',
   primi: 'Primi Piatti',
@@ -11,6 +11,11 @@ const CATEGORY_LABELS = {
   secondi: 'Secondi',
   contorni: 'Contorni',
   dolci: 'Dolci',
+  acqua: 'Acqua',
+  bevande: 'Bevande',
+  birra: 'Birre',
+  cocktail: 'Cocktail',
+  caffe_amari: 'Caffè & Amari',
 };
 
 export default function Menu() {

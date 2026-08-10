@@ -1,13 +1,15 @@
 const PICTOGRAM_URL = 'https://media.base44.com/images/public/6a047f3742becec83398e6f/3ddb12f47_generated_image.png';
 
-const CATEGORY_ORDER = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci'];
+const CATEGORY_ORDER = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci', 'acqua', 'bevande', 'birra', 'cocktail', 'caffe_amari'];
 const CATEGORY_LABELS_IT = {
   antipasti: 'Antipasti', primi: 'Primi Piatti', romanissimi: 'I Romanissimi',
   secondi: 'Secondi', contorni: 'Contorni', dolci: 'Dolci',
+  acqua: 'Acqua', bevande: 'Bevande', birra: 'Birre', cocktail: 'Cocktail', caffe_amari: 'Caffè & Amari',
 };
 const CATEGORY_LABELS_EN = {
   antipasti: 'Starters', primi: 'First Courses', romanissimi: 'The Roman Classics',
   secondi: 'Main Courses', contorni: 'Side Dishes', dolci: 'Desserts',
+  acqua: 'Water', bevande: 'Soft Drinks', birra: 'Beers', cocktail: 'Cocktails', caffe_amari: 'Coffee & Bitters',
 };
 
 export function filterItemsByTurno(items, turno) {
