@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Phone, Clock, Instagram, Facebook } from 'lucide-react';
+import { MapPin, Phone, Clock, Instagram, Facebook, MessageCircle } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -13,8 +13,9 @@ export default function Footer() {
             Un'esperienza gastronomica autentica, dove la tradizione incontra l'innovazione in un'atmosfera intima e raffinata.
           </p>
           <div className="flex gap-4 mt-5">
-            <a href="#" className="text-[#C69C6D] hover:text-white transition-colors" aria-label="Instagram"><Instagram size={20} /></a>
-            <a href="#" className="text-[#C69C6D] hover:text-white transition-colors" aria-label="Facebook"><Facebook size={20} /></a>
+            <a href="https://www.instagram.com/ossidiana.ristorante/" target="_blank" rel="noopener noreferrer" className="text-[#C69C6D] hover:text-white transition-colors" aria-label="Instagram"><Instagram size={20} /></a>
+            <a href="https://www.facebook.com/profile.php?id=61564406886866" target="_blank" rel="noopener noreferrer" className="text-[#C69C6D] hover:text-white transition-colors" aria-label="Facebook"><Facebook size={20} /></a>
+            <a href="https://wa.me/393519612605" target="_blank" rel="noopener noreferrer" className="text-[#C69C6D] hover:text-white transition-colors" aria-label="WhatsApp"><MessageCircle size={20} /></a>
           </div>
         </div>
 
@@ -30,7 +31,8 @@ export default function Footer() {
           <h3 className="font-display text-lg text-[#C69C6D] tracking-widest mb-5">Contatti</h3>
           <div className="space-y-3 text-sm font-body text-[#E5E5E5]/70">
             <div className="flex items-start gap-2"><MapPin size={14} className="text-[#C69C6D] mt-1 shrink-0" /><span>Viale Aldo Moro 132, 00010 Gallicano nel Lazio RM</span></div>
-            <div className="flex items-center gap-2"><Phone size={14} className="text-[#C69C6D]" /><span>+39 06 1234 5678</span></div>
+            <a href="tel:+390669340014" className="flex items-center gap-2 hover:text-[#C69C6D] transition-colors"><Phone size={14} className="text-[#C69C6D]" /><span>+39 0669340014</span></a>
+            <a href="https://wa.me/393519612605" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-[#C69C6D] transition-colors"><MessageCircle size={14} className="text-[#C69C6D]" /><span>WhatsApp: +39 351 961 2605</span></a>
           </div>
           <div className="flex flex-col gap-2 mt-5">
             <Link to="/prenotazioni" className="text-sm text-[#C69C6D] hover:text-white transition-colors tracking-widest uppercase">Prenota un tavolo →</Link>
