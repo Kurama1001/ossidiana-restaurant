@@ -158,30 +158,36 @@ export function generateWineListWordDocument(wines) {
     }
 
     const regionHtml = regioni.map(regione => {
-      const dishesHtml = regioniMap[regione].map(w => {
+      const rowsHtml = regioniMap[regione].map(w => {
         const name = escapeHtml(w.name);
         const cantina = escapeHtml(w.cantina);
         const desc = escapeHtml(w.description);
         const calice = w.prezzo_calice != null ? `€ ${Number(w.prezzo_calice).toFixed(0)}` : '—';
         const bottiglia = w.prezzo_bottiglia != null ? `€ ${Number(w.prezzo_bottiglia).toFixed(0)}` : '—';
+        const subLine = cantina || w.regione
+          ? `<br><span class="wine-sub">${cantina ? cantina : ''}${cantina && w.regione ? ' · ' : ''}${w.regione ? escapeHtml(w.regione) : ''}</span>`
+          : '';
         return `
-        <div class="dish">
-          <table class="dish-table wine-dish-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed; width:100%;">
-            <tr>
-              <td class="dish-name" width="55%" valign="bottom">${name}</td>
-              <td class="dish-price-sub" width="22%" align="right" valign="bottom">calice ${calice}</td>
-              <td class="dish-price" width="23%" align="right" valign="bottom">bottiglia ${bottiglia}</td>
-            </tr>
-          </table>
-          ${cantina ? `<p class="dish-desc-it">${cantina}${w.regione ? ` · ${escapeHtml(w.regione)}` : ''}</p>` : ''}
-          ${desc ? `<p class="dish-desc-en">${desc}</p>` : ''}
-        </div>`;
+          <tr class="wine-row">
+            <td class="dish-name" width="55%" valign="bottom">
+              <span class="wine-name">${name}</span>${subLine}${desc ? `<br><span class="wine-desc-en">${desc}</span>` : ''}
+            </td>
+            <td class="dish-price-sub" width="22%" align="right" valign="bottom">calice ${calice}</td>
+            <td class="dish-price" width="23%" align="right" valign="bottom">bottiglia ${bottiglia}</td>
+          </tr>`;
       }).join('');
       return `
         <div class="wine-region">
           <p class="region-title">${escapeHtml(regione)}</p>
           <div class="region-line"></div>
-          ${dishesHtml}
+          <table class="wine-region-table" width="100%" cellpadding="0" cellspacing="0">
+            <colgroup>
+              <col style="width:55%" />
+              <col style="width:22%" />
+              <col style="width:23%" />
+            </colgroup>
+            ${rowsHtml}
+          </table>
         </div>`;
     }).join('');
 
@@ -228,12 +234,14 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-heig
 .region-title { font-size: 9pt; letter-spacing: 2pt; color: #888; text-transform: uppercase; margin: 8px 0 2px 0; }
 .region-line { border-bottom: 0.5pt solid #ddd; margin-bottom: 6px; }
 .region-title, .region-line { page-break-after: avoid; }
-.dish { page-break-inside: avoid; }
-.dish-table { margin-bottom: 2px; }
-.wine-dish-table { table-layout: fixed; width: 100%; }
-.dish-name { font-size: 11.5pt; font-weight: bold; color: #1a1a1a; padding: 0; }
-.dish-price-sub { font-size: 9pt; color: #888; white-space: nowrap; padding: 0 0 0 14px; }
-.dish-price { font-size: 11pt; font-weight: bold; color: #C69C6D; white-space: nowrap; padding: 0 0 0 14px; }
+.wine-region-table { table-layout: fixed; width: 100%; border-collapse: collapse; }
+.wine-region-table tr.wine-row { page-break-inside: avoid; }
+.dish-name { font-size: 11.5pt; font-weight: bold; color: #1a1a1a; padding: 2px 0 6px 0; }
+.wine-name { font-weight: bold; color: #1a1a1a; }
+.wine-sub { font-size: 9.5pt; font-style: italic; color: #555; font-weight: normal; }
+.wine-desc-en { font-size: 9pt; font-style: italic; color: #999; font-weight: normal; }
+.dish-price-sub { font-size: 9pt; color: #888; white-space: nowrap; padding: 2px 0 6px 14px; }
+.dish-price { font-size: 11pt; font-weight: bold; color: #C69C6D; white-space: nowrap; padding: 2px 0 6px 14px; }
 .dish-desc-it { font-size: 9.5pt; font-style: italic; color: #555; margin: 1px 0 0 0; }
 .dish-desc-en { font-size: 9pt; font-style: italic; color: #999; margin: 1px 0 8px 0; }
 .footer { text-align: center; margin-top: 36px; padding-top: 14px; border-top: 0.75pt solid #C69C6D; }
