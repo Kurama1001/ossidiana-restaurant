@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { X, ChevronLeft, ChevronRight, Film } from 'lucide-react';
+import CompressedImage from '@/components/ui/CompressedImage';
 
 const focalClass = { top: 'object-top', center: 'object-center', bottom: 'object-bottom' };
 
@@ -17,7 +18,7 @@ function GalleryMedia({ item, className, onClick }) {
     );
   }
   return (
-    <img src={item.url} alt={item.caption || ''} loading="lazy"
+    <CompressedImage src={item.url} alt={item.caption || ''} maxDim={1280}
       className={`w-full h-full object-cover ${focal} ${className}`}
       onClick={onClick}
     />

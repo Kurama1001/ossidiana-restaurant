@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { ChevronRight } from 'lucide-react';
 import { BronzeButton } from '@/components/ui/BronzeButton';
+import CompressedImage from '@/components/ui/CompressedImage';
 import PhotoGallery from '@/components/home/PhotoGallery';
 import ChiSiamo from '@/components/home/ChiSiamo';
 
@@ -66,7 +67,7 @@ export default function Home() {
             <div key={item.id} className="group relative overflow-hidden rounded-sm bg-[#161618] border border-[#C69C6D]/10 hover:border-[#C69C6D]/30 transition-all duration-500">
               {(item.imageUrl || item.image_url) && (
                 <div className="h-52 overflow-hidden">
-                  <img src={item.imageUrl || item.image_url} alt={item.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <CompressedImage src={item.imageUrl || item.image_url} alt={item.name} maxDim={800} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 </div>
               )}
               <div className="p-6">

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import CompressedImage from '@/components/ui/CompressedImage';
 
 const DIETARY_CONFIG = {
   vegetariano: { label: '🌿 Vegetariano', color: 'text-green-400 border-green-400/30 bg-green-400/5' },
@@ -25,10 +26,10 @@ export default function MenuItemCard({ item, onAddToCart }) {
       <div className="shrink-0 w-24 h-24 md:w-28 md:h-28 rounded-sm overflow-hidden bg-[#161618] border border-[#C69C6D]/10">
         {imageUrl ? (
           <button onClick={() => setLightbox(true)} className="w-full h-full block cursor-zoom-in">
-            <img
+            <CompressedImage
               src={imageUrl}
               alt={item.name}
-              loading="lazy"
+              maxDim={500}
               className="w-full h-full object-cover"
             />
           </button>
