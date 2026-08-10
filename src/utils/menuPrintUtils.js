@@ -1,5 +1,5 @@
-const LOGO_URL = 'https://media.base44.com/images/public/6a047f3742becec83398e6f/cec5b5e9a_Ossidiana_01_Positivo1.png';
-const PITTOGRAMMA_URL = 'https://media.base44.com/images/public/6a047f3742becec83398e6f/edb6906a7_PittogrammaOssidiana.png';
+// Titolo testuale elegante (corsivo)
+const HEADER_FONT = "Georgia, 'Playfair Display', 'Times New Roman', serif";
 
 const CATEGORY_ORDER = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci', 'acqua', 'bevande', 'birra', 'cocktail', 'caffe_amari'];
 const CATEGORY_LABELS_IT = {
@@ -84,8 +84,8 @@ export function generateMenuWordDocument(items, turno) {
 body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-height: 1.5; position: relative; }
 .watermark-img { position: fixed; top: 50%; left: 50%; margin-left: -175px; margin-top: -175px; width: 350px; height: 350px; opacity: 0.03; z-index: -99; }
 .header { text-align: center; margin-bottom: 8px; }
-.header-logo { font-size: 36pt; font-weight: bold; letter-spacing: 8pt; color: #1a1a1a; }
-.header-sub { font-size: 9pt; letter-spacing: 4pt; color: #888; text-transform: uppercase; margin-top: 2px; }
+.header-logo { font-family: ${HEADER_FONT}; font-size: 40pt; font-style: italic; font-weight: normal; letter-spacing: 3pt; color: #1a1a1a; }
+.header-sub { font-size: 10pt; font-style: italic; letter-spacing: 5pt; color: #C69C6D; text-transform: uppercase; margin-top: 6px; }
 .header-line { border-bottom: 1.5pt solid #C69C6D; margin: 12px 0 20px 0; }
 .menu-title { text-align: center; font-size: 16pt; font-style: italic; color: #C69C6D; margin: 10px 0 2px 0; }
 .menu-title-en { text-align: center; font-size: 9pt; letter-spacing: 3pt; color: #aaa; text-transform: uppercase; margin-bottom: 24px; }
@@ -103,9 +103,9 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-heig
 </style>
 </head>
 <body>
-<img class="watermark-img" src="${PITTOGRAMMA_URL}" />
 <div class="header">
-  <img src="${LOGO_URL}" style="max-width: 260px; width: 100%; height: auto;" />
+  <div class="header-logo">Ossidiana</div>
+  <div class="header-sub">Cucina Contemporanea</div>
 </div>
 <div class="header-line"></div>
 <div class="menu-title">${turnoLabel}</div>
@@ -203,8 +203,8 @@ export function generateWineListWordDocument(wines) {
 body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-height: 1.5; position: relative; }
 .watermark-img { position: fixed; top: 50%; left: 50%; margin-left: -175px; margin-top: -175px; width: 350px; height: 350px; opacity: 0.03; z-index: -99; }
 .header { text-align: center; margin-bottom: 8px; }
-.header-logo { font-size: 36pt; font-weight: bold; letter-spacing: 8pt; color: #1a1a1a; }
-.header-sub { font-size: 9pt; letter-spacing: 4pt; color: #888; text-transform: uppercase; margin-top: 2px; }
+.header-logo { font-family: ${HEADER_FONT}; font-size: 40pt; font-style: italic; font-weight: normal; letter-spacing: 3pt; color: #1a1a1a; }
+.header-sub { font-size: 10pt; font-style: italic; letter-spacing: 5pt; color: #C69C6D; text-transform: uppercase; margin-top: 6px; }
 .header-line { border-bottom: 1.5pt solid #C69C6D; margin: 12px 0 20px 0; }
 .menu-title { text-align: center; font-size: 16pt; font-style: italic; color: #C69C6D; margin: 10px 0 2px 0; }
 .menu-title-en { text-align: center; font-size: 9pt; letter-spacing: 3pt; color: #aaa; text-transform: uppercase; margin-bottom: 24px; }
@@ -229,9 +229,9 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-heig
 </style>
 </head>
 <body>
-<img class="watermark-img" src="${PITTOGRAMMA_URL}" />
 <div class="header">
-  <img src="${LOGO_URL}" style="max-width: 260px; width: 100%; height: auto;" />
+  <div class="header-logo">Ossidiana</div>
+  <div class="header-sub">Cucina Contemporanea</div>
 </div>
 <div class="header-line"></div>
 <div class="menu-title">Carta dei Vini</div>
