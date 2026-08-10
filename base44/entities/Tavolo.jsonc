@@ -52,8 +52,54 @@
         "role": "admin"
       }
     },
-    "read": {},
-    "update": {},
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cameriere"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cucina"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "bar"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cameriere"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cucina"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "bar"
+          }
+        }
+      ]
+    },
     "delete": {
       "user_condition": {
         "role": "admin"

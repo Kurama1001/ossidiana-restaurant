@@ -101,9 +101,101 @@
     "quantita"
   ],
   "rls": {
-    "create": {},
-    "read": {},
-    "update": {},
-    "delete": {}
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cameriere"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cucina"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "bar"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cameriere"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cucina"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "bar"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cameriere"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cucina"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "bar"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cameriere"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cucina"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "bar"
+          }
+        }
+      ]
+    }
   }
 }
