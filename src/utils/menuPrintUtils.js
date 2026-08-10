@@ -1,4 +1,5 @@
-const PICTOGRAM_URL = 'https://media.base44.com/images/public/6a047f3742becec83398e6f/3ddb12f47_generated_image.png';
+const LOGO_URL = 'https://media.base44.com/images/public/6a047f3742becec83398e6f/cec5b5e9a_Ossidiana_01_Positivo1.png';
+const PITTOGRAMMA_URL = 'https://media.base44.com/images/public/6a047f3742becec83398e6f/edb6906a7_PittogrammaOssidiana.png';
 
 const CATEGORY_ORDER = ['antipasti', 'primi', 'romanissimi', 'secondi', 'contorni', 'dolci', 'acqua', 'bevande', 'birra', 'cocktail', 'caffe_amari'];
 const CATEGORY_LABELS_IT = {
@@ -102,17 +103,16 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-heig
 </style>
 </head>
 <body>
-<img class="watermark-img" src="${PICTOGRAM_URL}" />
+<img class="watermark-img" src="${PITTOGRAMMA_URL}" />
 <div class="header">
-  <div class="header-logo">OSSIDIANA</div>
-  <div class="header-sub">Cucina Contemporanea</div>
+  <img src="${LOGO_URL}" style="max-width: 260px; width: 100%; height: auto;" />
 </div>
 <div class="header-line"></div>
 <div class="menu-title">${turnoLabel}</div>
 <div class="menu-title-en">${turnoLabelEn}</div>
 ${sectionsHtml}
 <div class="footer">
-  <span class="footer-text">Ossidiana &middot; Cucina Contemporanea &middot; Roma</span>
+  <span class="footer-text">Ossidiana Restaurant &middot; Cucina Contemporanea</span>
 </div>
 </body>
 </html>`;
@@ -229,10 +229,9 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-heig
 </style>
 </head>
 <body>
-<img class="watermark-img" src="${PICTOGRAM_URL}" />
+<img class="watermark-img" src="${PITTOGRAMMA_URL}" />
 <div class="header">
-  <div class="header-logo">OSSIDIANA</div>
-  <div class="header-sub">Cucina Contemporanea</div>
+  <img src="${LOGO_URL}" style="max-width: 260px; width: 100%; height: auto;" />
 </div>
 <div class="header-line"></div>
 <div class="menu-title">Carta dei Vini</div>
@@ -246,7 +245,7 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-heig
 </div>
 ${sectionsHtml}
 <div class="footer">
-  <span class="footer-text">Ossidiana &middot; Cucina Contemporanea &middot; Roma</span>
+  <span class="footer-text">Ossidiana Restaurant &middot; Cucina Contemporanea</span>
 </div>
 </body>
 </html>`;
