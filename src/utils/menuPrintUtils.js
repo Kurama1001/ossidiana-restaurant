@@ -140,7 +140,7 @@ const WINE_LABELS_EN = {
 };
 
 export function generateWineListWordDocument(wines) {
-  const active = wines.filter(w => w.active);
+  const active = (wines || []).filter(w => w.active);
 
   const sectionsHtml = WINE_ORDER.map(wt => {
     const typeItems = active
@@ -158,33 +158,38 @@ export function generateWineListWordDocument(wines) {
     }
 
     const regionHtml = regioni.map(regione => {
-      const rowsHtml = regioniMap[regione].map(w => {
+      const dishesHtml = regioniMap[regione].map(w => {
         const name = escapeHtml(w.name);
         const cantina = escapeHtml(w.cantina);
-        const calice = w.prezzo_calice != null ? `€ ${Number(w.prezzo_calice).toFixed(0)}` : '';
-        const bottiglia = w.prezzo_bottiglia != null ? `€ ${Number(w.prezzo_bottiglia).toFixed(0)}` : '';
+        const desc = escapeHtml(w.description);
+        const calice = w.prezzo_calice != null ? `€ ${Number(w.prezzo_calice).toFixed(0)}` : '—';
+        const bottiglia = w.prezzo_bottiglia != null ? `€ ${Number(w.prezzo_bottiglia).toFixed(0)}` : '—';
         return `
-          <table class="wine-row" width="100%" cellpadding="0" cellspacing="0">
+        <div class="dish">
+          <table class="dish-table" width="100%" cellpadding="0" cellspacing="0">
             <tr>
-              <td class="wine-name">${name}${cantina ? ` <span class="wine-cantina">— ${cantina}</span>` : ''}</td>
-              <td class="wine-calice" align="right">${calice}</td>
-              <td class="wine-bottle" align="right">${bottiglia}</td>
+              <td class="dish-name">${name}</td>
+              <td class="dish-price-sub" align="right" valign="bottom">calice ${calice}</td>
+              <td class="dish-price" align="right" valign="bottom">bottiglia ${bottiglia}</td>
             </tr>
-          </table>`;
+          </table>
+          ${cantina ? `<p class="dish-desc-it">${cantina}${w.regione ? ` · ${escapeHtml(w.regione)}` : ''}</p>` : ''}
+          ${desc ? `<p class="dish-desc-en">${desc}</p>` : ''}
+        </div>`;
       }).join('');
       return `
         <div class="wine-region">
           <p class="region-title">${escapeHtml(regione)}</p>
           <div class="region-line"></div>
-          ${rowsHtml}
+          ${dishesHtml}
         </div>`;
     }).join('');
 
     return `
-      <div class="wine-type">
-        <p class="wt-title">${WINE_LABELS_IT[wt]}</p>
-        <p class="wt-subtitle">${WINE_LABELS_EN[wt]}</p>
-        <div class="wt-line"></div>
+      <div class="category">
+        <p class="cat-title">${WINE_LABELS_IT[wt]}</p>
+        <p class="cat-subtitle">${WINE_LABELS_EN[wt]}</p>
+        <div class="cat-line"></div>
         ${regionHtml}
       </div>`;
   }).join('');
@@ -213,22 +218,23 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-heig
 .header-line { border-bottom: 1.5pt solid #C69C6D; margin: 12px 0 20px 0; }
 .menu-title { text-align: center; font-size: 16pt; font-style: italic; color: #C69C6D; margin: 10px 0 2px 0; }
 .menu-title-en { text-align: center; font-size: 9pt; letter-spacing: 3pt; color: #aaa; text-transform: uppercase; margin-bottom: 24px; }
-.col-headers { margin-bottom: 10px; }
-.col-headers table { width: 100%; }
-.col-calice { font-size: 7.5pt; letter-spacing: 2pt; color: #aaa; text-transform: uppercase; text-align: right; width: 60px; }
-.col-bottle { font-size: 7.5pt; letter-spacing: 2pt; color: #aaa; text-transform: uppercase; text-align: right; width: 70px; }
-.wine-type { margin-bottom: 22px; }
-.wt-title { font-size: 15pt; font-weight: bold; color: #1a1a1a; letter-spacing: 2pt; margin: 0; }
-.wt-subtitle { font-size: 8pt; letter-spacing: 2pt; color: #aaa; text-transform: uppercase; margin: 2px 0 6px 0; }
-.wt-line { border-bottom: 0.75pt solid #C69C6D; margin-bottom: 10px; }
+.category { margin-bottom: 24px; }
+.cat-title { font-size: 15pt; font-weight: bold; color: #1a1a1a; letter-spacing: 2pt; margin: 0; }
+.cat-subtitle { font-size: 8pt; letter-spacing: 2pt; color: #aaa; text-transform: uppercase; margin: 2px 0 6px 0; }
+.cat-line { border-bottom: 0.75pt solid #C69C6D; margin-bottom: 10px; }
+.cat-title, .cat-subtitle, .cat-line { page-break-after: avoid; }
+.category { page-break-inside: auto; }
 .wine-region { margin-bottom: 12px; }
-.region-title { font-size: 9pt; letter-spacing: 2pt; color: #888; text-transform: uppercase; margin: 0 0 2px 0; }
-.region-line { border-bottom: 0.5pt solid #ddd; margin-bottom: 4px; }
-.wine-row { margin-bottom: 2px; }
-.wine-name { font-size: 11pt; color: #1a1a1a; padding: 0; }
-.wine-cantina { font-size: 9pt; font-style: italic; color: #888; }
-.wine-calice { font-size: 10pt; color: #555; white-space: nowrap; padding: 0 0 0 16px; }
-.wine-bottle { font-size: 11pt; font-weight: bold; color: #C69C6D; white-space: nowrap; padding: 0 0 0 16px; }
+.region-title { font-size: 9pt; letter-spacing: 2pt; color: #888; text-transform: uppercase; margin: 8px 0 2px 0; }
+.region-line { border-bottom: 0.5pt solid #ddd; margin-bottom: 6px; }
+.region-title, .region-line { page-break-after: avoid; }
+.dish { page-break-inside: avoid; }
+.dish-table { margin-bottom: 2px; }
+.dish-name { font-size: 11.5pt; font-weight: bold; color: #1a1a1a; padding: 0; }
+.dish-price-sub { font-size: 9pt; color: #888; white-space: nowrap; padding: 0 0 0 14px; }
+.dish-price { font-size: 11pt; font-weight: bold; color: #C69C6D; white-space: nowrap; padding: 0 0 0 14px; }
+.dish-desc-it { font-size: 9.5pt; font-style: italic; color: #555; margin: 1px 0 0 0; }
+.dish-desc-en { font-size: 9pt; font-style: italic; color: #999; margin: 1px 0 8px 0; }
 .footer { text-align: center; margin-top: 36px; padding-top: 14px; border-top: 0.75pt solid #C69C6D; }
 .footer-text { font-size: 7.5pt; color: #aaa; letter-spacing: 2pt; text-transform: uppercase; }
 </style>
@@ -241,13 +247,6 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-heig
 <div class="header-line"></div>
 <div class="menu-title">Carta dei Vini</div>
 <div class="menu-title-en">Wine List</div>
-<div class="col-headers">
-  <table cellpadding="0" cellspacing="0"><tr>
-    <td></td>
-    <td class="col-calice">Calice</td>
-    <td class="col-bottle">Bottiglia</td>
-  </tr></table>
-</div>
 ${sectionsHtml}
 <div class="footer">
   <span class="footer-text">Ossidiana Restaurant &middot; Cucina Contemporanea</span>
