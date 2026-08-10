@@ -166,16 +166,11 @@ export function generateWineListWordDocument(wines) {
         const bottiglia = w.prezzo_bottiglia != null ? `€ ${Number(w.prezzo_bottiglia).toFixed(0)}` : '—';
         return `
         <div class="dish">
-          <table class="dish-table" width="100%" cellpadding="0" cellspacing="0">
-            <colgroup>
-              <col style="width:55%" />
-              <col style="width:22%" />
-              <col style="width:23%" />
-            </colgroup>
+          <table class="dish-table wine-dish-table" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed; width:100%;">
             <tr>
-              <td class="dish-name" valign="bottom">${name}</td>
-              <td class="dish-price-sub" align="right" valign="bottom">calice ${calice}</td>
-              <td class="dish-price" align="right" valign="bottom">bottiglia ${bottiglia}</td>
+              <td class="dish-name" width="55%" valign="bottom">${name}</td>
+              <td class="dish-price-sub" width="22%" align="right" valign="bottom">calice ${calice}</td>
+              <td class="dish-price" width="23%" align="right" valign="bottom">bottiglia ${bottiglia}</td>
             </tr>
           </table>
           ${cantina ? `<p class="dish-desc-it">${cantina}${w.regione ? ` · ${escapeHtml(w.regione)}` : ''}</p>` : ''}
@@ -235,6 +230,7 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-heig
 .region-title, .region-line { page-break-after: avoid; }
 .dish { page-break-inside: avoid; }
 .dish-table { margin-bottom: 2px; }
+.wine-dish-table { table-layout: fixed; width: 100%; }
 .dish-name { font-size: 11.5pt; font-weight: bold; color: #1a1a1a; padding: 0; }
 .dish-price-sub { font-size: 9pt; color: #888; white-space: nowrap; padding: 0 0 0 14px; }
 .dish-price { font-size: 11pt; font-weight: bold; color: #C69C6D; white-space: nowrap; padding: 0 0 0 14px; }
