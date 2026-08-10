@@ -167,8 +167,13 @@ export function generateWineListWordDocument(wines) {
         return `
         <div class="dish">
           <table class="dish-table" width="100%" cellpadding="0" cellspacing="0">
+            <colgroup>
+              <col style="width:55%" />
+              <col style="width:22%" />
+              <col style="width:23%" />
+            </colgroup>
             <tr>
-              <td class="dish-name">${name}</td>
+              <td class="dish-name" valign="bottom">${name}</td>
               <td class="dish-price-sub" align="right" valign="bottom">calice ${calice}</td>
               <td class="dish-price" align="right" valign="bottom">bottiglia ${bottiglia}</td>
             </tr>
