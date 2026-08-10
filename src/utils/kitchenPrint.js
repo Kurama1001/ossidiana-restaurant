@@ -2,10 +2,19 @@
  * Utility condivisa per la stampa comanda cucina su stampante termica 80mm.
  */
 
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function buildPrintHtml(tavolo, coperti, ora, fasiHtml) {
   const oggi = new Date().toLocaleDateString('it-IT');
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Comanda Tavolo ${tavolo}</title>
+<html><head><meta charset="utf-8"><title>Comanda Tavolo ${escapeHtml(tavolo)}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: 'Courier New', monospace; width: 80mm; padding: 6mm 5mm; font-size: 13px; color: #000; }
@@ -36,9 +45,9 @@ export function buildPrintHtml(tavolo, coperti, ora, fasiHtml) {
   </div>
   <div class="header">
     <div class="header-label">◆ Comanda Cucina ◆</div>
-    <div class="tavolo-num">${tavolo}</div>
-    ${coperti ? `<div class="coperti">▲ ${coperti} coperti</div>` : ''}
-    <div class="datetime">${oggi} &nbsp;·&nbsp; ${ora}</div>
+    <div class="tavolo-num">${escapeHtml(tavolo)}</div>
+    ${coperti ? `<div class="coperti">▲ ${escapeHtml(coperti)} coperti</div>` : ''}
+    <div class="datetime">${oggi} &nbsp;·&nbsp; ${escapeHtml(ora)}</div>
   </div>
   ${fasiHtml}
   <div class="footer">OSSIDIANA &nbsp;·&nbsp; CUCINA</div>
@@ -67,9 +76,9 @@ export function stampaComandaCucina(righe, numeroTavolo, coperti, repartoFilter 
     <div class="fase-header">— Fase ${f} —</div>
     ${righePerFase[f].map(r => `
       <div class="item">
-        <span class="item-name ${r.priorita === 'urgente' ? 'urgent' : ''}">${r.quantita}× ${r.nome_item}${r.priorita === 'urgente' ? ' ⚡' : ''}</span>
+        <span class="item-name ${r.priorita === 'urgente' ? 'urgent' : ''}">${escapeHtml(r.quantita)}× ${escapeHtml(r.nome_item)}${r.priorita === 'urgente' ? ' ⚡' : ''}</span>
       </div>
-      ${r.note ? `<div class="item-note">📝 ${r.note}</div>` : ''}
+      ${r.note ? `<div class="item-note">📝 ${escapeHtml(r.note)}</div>` : ''}
     `).join('')}
   `).join('');
 

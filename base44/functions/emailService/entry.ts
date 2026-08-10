@@ -4,10 +4,23 @@ const FROM_EMAIL = 'Ossidiana Restaurant <prenotazioni@ossidianarestaurant.com>'
 const REPLY_TO = 'amministrazione@ossidianarestaurant.com';
 const ADMIN_EMAIL = 'amministrazione@ossidianarestaurant.com';
 
+async function safeMe(base44) {
+  try { return await base44.auth.me(); } catch { return null; }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { action, reservationId, motivo } = await req.json();
+    const { action, reservationId, motivo, internalToken } = await req.json();
+
+    // Auth: require an authenticated admin, or the internal automation token
+    // (used by notifyNewReservation, which runs server-side with no user session).
+    const user = await safeMe(base44);
+    const expectedToken = Deno.env.get('INTERNAL_API_TOKEN');
+    const isInternal = !!expectedToken && internalToken === expectedToken;
+    if (!isInternal && (!user || user.role !== 'admin')) {
+      return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
 
     const apiKey = Deno.env.get('RESEND_API_KEY');
     if (!apiKey) {
