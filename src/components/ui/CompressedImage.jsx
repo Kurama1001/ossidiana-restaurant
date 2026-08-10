@@ -61,7 +61,7 @@ export default function CompressedImage({
             cache.set(key, src);
             setResolved(src);
           }
-        }, 'image/jpeg', quality);
+        }, 'image/webp', quality);
       } catch {
         if (cancelled) return;
         cache.set(key, src);

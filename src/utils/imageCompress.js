@@ -1,7 +1,7 @@
 /**
  * Comprime e ridimensiona un'immagine lato client prima dell'upload.
  * - Resize mantenendo le proporzioni (max dimension configurable).
- * - Conversione in JPEG qualità 0.82 (formato compatibile, file molto più leggeri).
+ * - Conversione in WebP qualità 0.82 (formato moderno, file molto più leggeri di JPEG/PNG).
  * - I video e i file non-immagine passano through invariati.
  *
  * Uso:
@@ -33,7 +33,7 @@ export async function compressImage(file, { maxDim = 1600, quality = 0.82 } = {}
     bitmap.close?.();
 
     const blob = await new Promise((resolve) => {
-      canvas.toBlob(resolve, 'image/jpeg', quality);
+      canvas.toBlob(resolve, 'image/webp', quality);
     });
 
     if (!blob) return file;
@@ -41,8 +41,8 @@ export async function compressImage(file, { maxDim = 1600, quality = 0.82 } = {}
     // Salta se il compresso è più grande dell'originale
     if (blob.size >= file.size) return file;
 
-    const name = file.name.replace(/\.(png|webp|jpg|jpeg|tif|tiff|bmp|heic|heif)$/i, '') + '.jpg';
-    return new File([blob], name, { type: 'image/jpeg' });
+    const name = file.name.replace(/\.(png|webp|jpg|jpeg|tif|tiff|bmp|heic|heif)$/i, '') + '.webp';
+    return new File([blob], name, { type: 'image/webp' });
   } catch (e) {
     // Fallback: usa il file originale
     return file;
