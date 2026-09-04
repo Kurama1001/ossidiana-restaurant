@@ -131,12 +131,12 @@ ${sectionsHtml}
   URL.revokeObjectURL(url);
 }
 
-const WINE_ORDER = ['bollicine', 'bianchi', 'rossi', 'dolci'];
+const WINE_ORDER = ['bollicine', 'bianchi', 'rosati', 'rossi', 'dolci'];
 const WINE_LABELS_IT = {
-  bollicine: 'Bollicine', bianchi: 'Vini Bianchi', rossi: 'Vini Rossi', dolci: 'Vini Dolci',
+  bollicine: 'Bollicine', bianchi: 'Vini Bianchi', rosati: 'Vini Rosati', rossi: 'Vini Rossi', dolci: 'Vini Dolci',
 };
 const WINE_LABELS_EN = {
-  bollicine: 'Sparkling Wines', bianchi: 'White Wines', rossi: 'Red Wines', dolci: 'Dessert Wines',
+  bollicine: 'Sparkling Wines', bianchi: 'White Wines', rosati: 'Rosé Wines', rossi: 'Red Wines', dolci: 'Dessert Wines',
 };
 
 export function generateWineListWordDocument(wines) {

@@ -89,6 +89,7 @@
       "enum": [
         "bollicine",
         "bianchi",
+        "rosati",
         "rossi",
         "dolci"
       ],

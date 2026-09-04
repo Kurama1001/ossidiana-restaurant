@@ -25,13 +25,17 @@ const emptyForm = {
 const WINE_TYPES = [
   { value: 'bollicine', label: 'Bollicine' },
   { value: 'bianchi', label: 'Bianchi' },
+  { value: 'rosati', label: 'Rosati' },
   { value: 'rossi', label: 'Rossi' },
   { value: 'dolci', label: 'Dolci' },
 ];
 
 const WINE_REGIONS = [
-  'Abruzzo', 'Francia', 'Friuli', 'Lazio', 'Lombardia', 'Piemonte',
-  'Sardegna', 'Sicilia', 'Toscana', 'Trentino', 'Umbria', 'Veneto',
+  'Abruzzo', 'Borgogna - Chablis (Francia)', 'Campania', 'Catalogna - Alella (Spagna)',
+  'Champagne - Côte des Bar (Francia)', 'Champagne - Côte des Blancs (Francia)',
+  'Francia', 'Friuli', 'Friuli-Venezia Giulia', 'Lazio', 'Lombardia',
+  'Mosella (Germania)', 'Piemonte', 'Puglia', 'Sardegna', 'Sicilia', 'Toscana',
+  'Trentino', 'Trentino-Alto Adige', 'Umbria', 'Valle della Loira - Vouvray (Francia)', 'Veneto',
 ];
 
 export default function AdminMenu() {

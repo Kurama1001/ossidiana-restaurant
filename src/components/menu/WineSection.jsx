@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 
-const WINE_ORDER = ['bollicine', 'bianchi', 'rossi', 'dolci'];
+const WINE_ORDER = ['bollicine', 'bianchi', 'rosati', 'rossi', 'dolci'];
 const WINE_LABELS = {
   bollicine: 'Bollicine',
   bianchi: 'Vini Bianchi',
+  rosati: 'Vini Rosati',
   rossi: 'Vini Rossi',
   dolci: 'Vini Dolci',
 };

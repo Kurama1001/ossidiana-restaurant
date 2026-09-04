@@ -4,17 +4,21 @@ import { Plus, Trash2, Check, Loader2, Wine, Eye, EyeOff, Search, X, FileText } 
 import { BronzeButton } from '@/components/ui/BronzeButton';
 import { generateWineListWordDocument } from '@/utils/menuPrintUtils';
 
-const WINE_ORDER = ['bollicine', 'bianchi', 'rossi', 'dolci'];
+const WINE_ORDER = ['bollicine', 'bianchi', 'rosati', 'rossi', 'dolci'];
 const WINE_LABELS = {
   bollicine: 'Bollicine',
   bianchi: 'Vini Bianchi',
+  rosati: 'Vini Rosati',
   rossi: 'Vini Rossi',
   dolci: 'Vini Dolci',
 };
 
 const REGIONS = [
-  'Abruzzo', 'Francia', 'Friuli', 'Lazio', 'Lombardia', 'Piemonte',
-  'Sardegna', 'Sicilia', 'Toscana', 'Trentino', 'Umbria', 'Veneto',
+  'Abruzzo', 'Borgogna - Chablis (Francia)', 'Campania', 'Catalogna - Alella (Spagna)',
+  'Champagne - Côte des Bar (Francia)', 'Champagne - Côte des Blancs (Francia)',
+  'Francia', 'Friuli', 'Friuli-Venezia Giulia', 'Lazio', 'Lombardia',
+  'Mosella (Germania)', 'Piemonte', 'Puglia', 'Sardegna', 'Sicilia', 'Toscana',
+  'Trentino', 'Trentino-Alto Adige', 'Umbria', 'Valle della Loira - Vouvray (Francia)', 'Veneto',
 ];
 
 const emptyWine = {
