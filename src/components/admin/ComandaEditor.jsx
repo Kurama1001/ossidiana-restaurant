@@ -53,6 +53,16 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
     init();
   }, []);
 
+  // Aggiorna giacenza vini in tempo reale (magazzino / comande)
+  useEffect(() => {
+    const unsub = base44.entities.MenuItem.subscribe((event) => {
+      if (event.type === 'update' && event.data) {
+        setMenuItems(prev => prev.map(i => i.id === event.data.id ? { ...i, ...event.data } : i));
+      }
+    });
+    return unsub;
+  }, []);
+
   const aggiungiItem = (item) => {
     const fase = faseAttiva;
     setRighe(prev => {
@@ -469,6 +479,22 @@ function MenuCard({ item, color, onAdd, righe, faseAttiva }) {
       <p className="font-body text-white text-sm font-medium pr-6 leading-snug">{item.name}</p>
       {item.description && <p className="font-body text-[#E5E5E5]/35 text-xs mt-0.5 line-clamp-1">{item.description}</p>}
       <span className={`font-body font-semibold text-sm mt-2 block ${priceClass}`}>€{Number(item.price).toFixed(2)}</span>
+      {item.category === 'vino' && (
+        <StockBadge quantita={item.quantita} />
+      )}
     </button>
   );
+}
+
+function StockBadge({ quantita }) {
+  if (quantita == null) {
+    return <span className="font-body text-[10px] text-[#E5E5E5]/30 mt-1 block">Magazzino: n/d</span>;
+  }
+  if (quantita <= 0) {
+    return <span className="font-body text-[10px] font-bold text-red-400 mt-1 block">✕ ESAURITO</span>;
+  }
+  if (quantita <= 3) {
+    return <span className="font-body text-[10px] font-semibold text-amber-400 mt-1 block">⚠ Solo {quantita} bott. in magazzino</span>;
+  }
+  return <span className="font-body text-[10px] text-green-400/70 mt-1 block">✓ {quantita} bott. disponibili</span>;
 }

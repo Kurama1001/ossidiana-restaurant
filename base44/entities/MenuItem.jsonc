@@ -79,6 +79,11 @@
       "type": "number",
       "description": "Quantit\u00e0 in cantina (numero di bottiglie)"
     },
+    "da_ordinare": {
+      "type": "boolean",
+      "default": false,
+      "description": "Vino da riordinare (flag magazzino)"
+    },
     "wine_type": {
       "type": "string",
       "enum": [
