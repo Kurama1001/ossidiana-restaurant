@@ -6,6 +6,14 @@ const NAVY = '#0c141d';
 const CREAM = '#f2efe9';
 
 export const OSSIDIANA_LOGO_URL = 'https://media.base44.com/images/public/6a047f37242becec83398e6f/8db4c84db_Ossidiana_02_Positivo1.png';
+export const OSSIDIANA_PITTOGRAM_URL = 'https://media.base44.com/images/public/6a047f37242becec83398e6f/894346aba_PittogrammaOssidiana.png';
+
+// Icone social ufficiali (bianche) da Simple Icons CDN
+const SOCIAL_ICON_URLS = {
+  instagram: 'https://cdn.simpleicons.org/instagram/ffffff',
+  facebook: 'https://cdn.simpleicons.org/facebook/ffffff',
+  tiktok: 'https://cdn.simpleicons.org/tiktok/ffffff',
+};
 
 export async function urlToDataUrl(url) {
   const blob = await (await fetch(url)).blob();
@@ -26,7 +34,16 @@ function getMeta(dataUrl) {
   });
 }
 
-export function buildQrCardSvg(turno, qrDataUrl, logoDataUrl, logoMeta) {
+function iconImg(x, dataUrl) {
+  if (!dataUrl) return '';
+  return `\n  <image x="${x}" y="587" width="26" height="26" href="${dataUrl}" xlink:href="${dataUrl}"/>`;
+}
+
+/**
+ * assets: { qr, logo, logoMeta, pictogram, social: {instagram, facebook, tiktok} }
+ */
+export function buildQrCardSvg(turno, assets) {
+  const { qr, logo, logoMeta, pictogram, social } = assets || {};
   const isLunch = turno === 'pranzo';
   const title = isLunch ? 'MENÙ PRANZO' : 'MENÙ CENA';
   const descLines = isLunch
@@ -35,13 +52,13 @@ export function buildQrCardSvg(turno, qrDataUrl, logoDataUrl, logoMeta) {
 
   // Header — pannello crema col logo reale (larghezza proporzionata)
   let header = '';
-  if (logoDataUrl && logoMeta) {
+  if (logo && logoMeta) {
     const h = 62;
     const w = Math.min(500, Math.round(h * (logoMeta.w / logoMeta.h)));
     const panelW = w + 56;
     header = `
   <rect x="44" y="44" width="${panelW}" height="94" rx="12" fill="${CREAM}"/>
-  <image x="72" y="60" width="${w}" height="${h}" href="${logoDataUrl}" xlink:href="${logoDataUrl}"/>`;
+  <image x="72" y="60" width="${w}" height="${h}" href="${logo}" xlink:href="${logo}"/>`;
   } else {
     header = `
   <rect x="44" y="44" width="380" height="94" rx="12" fill="${CREAM}"/>
@@ -49,9 +66,23 @@ export function buildQrCardSvg(turno, qrDataUrl, logoDataUrl, logoMeta) {
   <text x="72" y="112" font-family="Arial, sans-serif" font-size="11" letter-spacing="4" fill="${BRONZE}">CUCINA CONTEMPORANEA</text>`;
   }
 
-  const qrBlock = qrDataUrl
-    ? `<image x="718" y="201" width="256" height="256" href="${qrDataUrl}" xlink:href="${qrDataUrl}"/>`
-    : `<rect x="718" y="201" width="256" height="256" fill="#eeeeee"/>`;
+  // QR centrato nel riquadro bianco (card 631..961 → centro x=796, QR 256px → x=668)
+  const qrBlock = qr
+    ? `<image x="668" y="201" width="256" height="256" href="${qr}" xlink:href="${qr}"/>`
+    : `<rect x="668" y="201" width="256" height="256" fill="#eeeeee"/>`;
+
+  // Footer sinistro: pittogramma + icone social + profilo
+  const pictBlock = pictogram
+    ? `<rect x="60" y="578" width="44" height="44" rx="6" fill="none" stroke="${BRONZE}" stroke-width="1"/>
+  <image x="64" y="582" width="36" height="36" href="${pictogram}" xlink:href="${pictogram}"/>`
+    : `<rect x="60" y="578" width="44" height="44" fill="none" stroke="${BRONZE}" stroke-width="1"/>`;
+
+  const socialBlock = iconImg(120, social?.instagram)
+    + iconImg(154, social?.facebook)
+    + iconImg(188, social?.tiktok);
+  const handleText = socialBlock
+    ? `<text x="228" y="605" font-family="Arial, sans-serif" font-size="13" letter-spacing="1" fill="#ffffff" fill-opacity="0.6">ossidiana.ristorante</text>`
+    : `<text x="120" y="605" font-family="Arial, sans-serif" font-size="13" letter-spacing="1" fill="#ffffff" fill-opacity="0.6">Instagram · Facebook · TikTok: ossidiana.ristorante</text>`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1063" height="709" viewBox="0 0 1063 709">
   <defs>
@@ -71,8 +102,8 @@ export function buildQrCardSvg(turno, qrDataUrl, logoDataUrl, logoMeta) {
   <text x="60" y="302" font-family="Arial, sans-serif" font-size="17" font-weight="bold" letter-spacing="5" fill="#ffffff">INQUADRA • SCEGLI • GUSTA</text>
   <text x="60" y="336" font-family="Arial, sans-serif" font-size="16" fill="#ffffff" fill-opacity="0.75">${descLines[0]}</text>
   <text x="60" y="360" font-family="Arial, sans-serif" font-size="16" fill="#ffffff" fill-opacity="0.75">${descLines[1]}</text>
-  <rect x="60" y="583" width="42" height="42" fill="none" stroke="${BRONZE}" stroke-width="1"/>
-  <rect x="73" y="596" width="16" height="16" fill="${BRONZE}" transform="rotate(45 81 604)"/>
+  ${pictBlock}${socialBlock}
+  ${handleText}
   <text x="60" y="652" font-family="Arial, sans-serif" font-size="14" letter-spacing="3" fill="#ffffff" fill-opacity="0.5">ossidianarestaurant.com</text>
   <rect x="631" y="130" width="330" height="450" rx="16" fill="#ffffff"/>${qrBlock}
   <text x="796" y="494" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="bold" letter-spacing="3" fill="#1a1a1a">SCANSIONA IL MENÙ</text>
@@ -80,14 +111,21 @@ export function buildQrCardSvg(turno, qrDataUrl, logoDataUrl, logoMeta) {
 </svg>`;
 }
 
-/** Scarica QR + logo come data URL e costruisce l'SVG della tessera. */
+/** Scarica QR, logo, pittogramma e icone social come data URL e costruisce l'SVG della tessera. */
 export async function buildQrCard(turno, qrUrl) {
-  const [qrDataUrl, logoDataUrl] = await Promise.all([
+  const [qr, logo, pictogram, instagram, facebook, tiktok] = await Promise.all([
     urlToDataUrl(qrUrl).catch(() => null),
     urlToDataUrl(OSSIDIANA_LOGO_URL).catch(() => null),
+    urlToDataUrl(OSSIDIANA_PITTOGRAM_URL).catch(() => null),
+    urlToDataUrl(SOCIAL_ICON_URLS.instagram).catch(() => null),
+    urlToDataUrl(SOCIAL_ICON_URLS.facebook).catch(() => null),
+    urlToDataUrl(SOCIAL_ICON_URLS.tiktok).catch(() => null),
   ]);
-  const logoMeta = logoDataUrl ? await getMeta(logoDataUrl) : null;
-  return buildQrCardSvg(turno, qrDataUrl, logoDataUrl, logoMeta);
+  const logoMeta = logo ? await getMeta(logo) : null;
+  return buildQrCardSvg(turno, {
+    qr, logo, logoMeta, pictogram,
+    social: { instagram, facebook, tiktok },
+  });
 }
 
 /** Rasterizza l'SVG in PNG (default 1063x709 = 9x6 cm @ 300 DPI). */
