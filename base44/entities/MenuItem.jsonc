@@ -71,6 +71,14 @@
       "type": "number",
       "description": "Prezzo calice in euro (solo vini)"
     },
+    "annata": {
+      "type": "number",
+      "description": "Annata della bottiglia (es. 2020)"
+    },
+    "quantita": {
+      "type": "number",
+      "description": "Quantit\u00e0 in cantina (numero di bottiglie)"
+    },
     "wine_type": {
       "type": "string",
       "enum": [

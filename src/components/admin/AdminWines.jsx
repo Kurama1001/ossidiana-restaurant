@@ -20,6 +20,7 @@ const REGIONS = [
 const emptyWine = {
   name: '', wine_type: 'bianchi', regione: '', cantina: '',
   prezzo_bottiglia: '', prezzo_calice: '', description: '',
+  annata: '', quantita: '',
   reparto: 'bar', active: true, sortOrder: '',
 };
 
@@ -58,6 +59,8 @@ export default function AdminWines() {
       ...w,
       prezzo_bottiglia: w.prezzo_bottiglia?.toString() || '',
       prezzo_calice: w.prezzo_calice?.toString() || '',
+      annata: w.annata?.toString() || '',
+      quantita: w.quantita?.toString() || '',
       sortOrder: w.sortOrder?.toString() || '',
     });
     setShowForm(true);
@@ -79,6 +82,8 @@ export default function AdminWines() {
       prezzo_bottiglia: parseFloat(form.prezzo_bottiglia) || undefined,
       prezzo_calice: parseFloat(form.prezzo_calice) || undefined,
       description: form.description || '',
+      annata: form.annata ? parseInt(form.annata) : undefined,
+      quantita: form.quantita ? parseInt(form.quantita) : undefined,
       active: form.active,
       sortOrder: form.sortOrder ? parseInt(form.sortOrder) : undefined,
     };
@@ -413,6 +418,21 @@ export default function AdminWines() {
                   <input type="number" min="0" step="0.50" placeholder="28" value={form.prezzo_bottiglia}
                     onChange={e => set('prezzo_bottiglia', e.target.value)}
                     className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Annata</label>
+                  <input type="number" min="1900" max="2100" step="1" placeholder="Es. 2021" value={form.annata}
+                    onChange={e => set('annata', e.target.value)}
+                    className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20" />
+                </div>
+                <div>
+                  <label className="block text-xs text-[#E5E5E5]/50 font-body uppercase tracking-widest mb-1">Quantità (bottiglie)</label>
+                  <input type="number" min="0" step="1" placeholder="Es. 24" value={form.quantita}
+                    onChange={e => set('quantita', e.target.value)}
+                    className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/20 text-[#E5E5E5] px-4 py-2.5 rounded-sm focus:border-[#C69C6D] outline-none font-body text-sm placeholder:text-[#E5E5E5]/20" />
                 </div>
               </div>
 
