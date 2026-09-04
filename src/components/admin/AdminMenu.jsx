@@ -159,7 +159,8 @@ export default function AdminMenu() {
     if (!form.imagePrompt) { alert('Inserisci un imagePrompt prima di generare'); return; }
     setGeneratingImage(true);
     try {
-      const { url } = await base44.integrations.Core.GenerateImage({ prompt: form.imagePrompt });
+      const res = await base44.functions.invoke('menuAiAssistant', { action: 'generate_image', prompt: form.imagePrompt });
+      const { url } = res.data;
       set('imageUrl', url);
     } catch (e) {
       alert('Errore generazione immagine: ' + e.message);
@@ -170,11 +171,8 @@ export default function AdminMenu() {
   const generateDescription = async () => {
     if (!form.name) { alert('Inserisci prima il nome del piatto'); return; }
     setGeneratingDescription(true);
-    const { description } = await base44.integrations.Core.InvokeLLM({
-      prompt: `Scrivi una descrizione breve e appetitosa (max 2 righe, tono elegante, italiano) per un piatto di ristorante chiamato "${form.name}"${form.category ? ` nella categoria "${form.category}"` : ''}. Rispondi solo con la descrizione, senza virgolette.`,
-      response_json_schema: { type: 'object', properties: { description: { type: 'string' } } },
-    });
-    set('description', description);
+    const res = await base44.functions.invoke('menuAiAssistant', { action: 'generate_description', name: form.name, category: form.category });
+    set('description', res.data.description);
     setGeneratingDescription(false);
   };
 
