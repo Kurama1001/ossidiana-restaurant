@@ -10,6 +10,46 @@ const WINE_LABELS = {
   dolci: 'Vini Dolci',
 };
 
+function WineRow({ wine }) {
+  const cantina = wine.cantina || '—';
+  const regione = wine.regione || '—';
+  const calice = wine.prezzo_calice != null ? `€${Number(wine.prezzo_calice).toFixed(0)}` : '—';
+  const bottiglia = wine.prezzo_bottiglia != null ? `€${Number(wine.prezzo_bottiglia).toFixed(0)}` : '—';
+
+  return (
+    <div className="py-3 border-b border-[#E5E5E5]/5 last:border-0">
+      {/* Mobile: scheda impilata */}
+      <div className="md:hidden">
+        <span className="font-body text-white text-sm leading-snug block">{wine.name}</span>
+        {wine.description && (
+          <span className="font-body text-[#E5E5E5]/35 text-xs block mt-0.5">{wine.description}</span>
+        )}
+        <span className="font-body text-[#E5E5E5]/40 text-xs block mt-1">
+          {cantina}{cantina !== '—' && regione !== '—' ? ' · ' : ''}{regione}
+        </span>
+        <div className="flex justify-end gap-5 mt-1.5">
+          <span className="font-body text-xs text-[#E5E5E5]/50">Calice <span className="text-[#E5E5E5]">{calice}</span></span>
+          <span className="font-body text-xs text-[#E5E5E5]/50">Bottiglia <span className="text-[#C69C6D] font-semibold">{bottiglia}</span></span>
+        </div>
+      </div>
+
+      {/* Desktop: riga tabellare */}
+      <div className="hidden md:flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <span className="font-body text-white text-base leading-snug block">{wine.name}</span>
+          {wine.description && (
+            <span className="font-body text-[#E5E5E5]/35 text-xs block">{wine.description}</span>
+          )}
+        </div>
+        <span className="font-body text-[#E5E5E5]/40 text-xs w-28 text-right shrink-0 truncate">{cantina}</span>
+        <span className="font-body text-[#E5E5E5]/40 text-xs w-28 text-right shrink-0">{regione}</span>
+        <span className="font-body text-[#E5E5E5]/60 text-sm w-16 text-right shrink-0">{calice}</span>
+        <span className="font-body text-[#C69C6D] font-semibold text-sm w-20 text-right shrink-0">{bottiglia}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function WineSection() {
   const [wines, setWines] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,8 +94,8 @@ export default function WineSection() {
         <div className="flex-1 h-px bg-[#C69C6D]/15" />
       </div>
 
-      {/* Intestazione prezzi */}
-      <div className="flex justify-end gap-4 mb-1 px-1">
+      {/* Intestazione prezzi (solo desktop) */}
+      <div className="hidden md:flex justify-end gap-4 mb-1 px-1">
         <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-28 text-right">Cantina</span>
         <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-28 text-right">Regione</span>
         <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-16 text-right">Calice</span>
@@ -101,26 +141,7 @@ export default function WineSection() {
                 </div>
                 <div>
                   {regioniMap[regione].map(wine => (
-                    <div key={wine.id} className="flex items-center gap-3 py-3 border-b border-[#E5E5E5]/5 last:border-0">
-                      <div className="flex-1 min-w-0">
-                        <span className="font-body text-white text-sm md:text-base leading-snug block">{wine.name}</span>
-                        {wine.description && (
-                          <span className="font-body text-[#E5E5E5]/35 text-xs block">{wine.description}</span>
-                        )}
-                      </div>
-                      <span className="font-body text-[#E5E5E5]/40 text-xs w-28 text-right shrink-0 truncate">
-                        {wine.cantina || '—'}
-                      </span>
-                      <span className="font-body text-[#E5E5E5]/40 text-xs w-28 text-right shrink-0">
-                        {wine.regione || '—'}
-                      </span>
-                      <span className="font-body text-[#E5E5E5]/60 text-sm w-16 text-right shrink-0">
-                        {wine.prezzo_calice != null ? `€${Number(wine.prezzo_calice).toFixed(0)}` : '—'}
-                      </span>
-                      <span className="font-body text-[#C69C6D] font-semibold text-sm w-20 text-right shrink-0">
-                        {wine.prezzo_bottiglia != null ? `€${Number(wine.prezzo_bottiglia).toFixed(0)}` : '—'}
-                      </span>
-                    </div>
+                    <WineRow key={wine.id} wine={wine} />
                   ))}
                 </div>
               </div>
