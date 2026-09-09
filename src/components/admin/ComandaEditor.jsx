@@ -63,11 +63,14 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
     return unsub;
   }, []);
 
-  const aggiungiItem = (item) => {
+  // variante: 'bottiglia' (default) | 'calice' (solo vini con prezzo calice)
+  const aggiungiItem = (item, variante = 'bottiglia') => {
     const fase = faseAttiva;
+    const prezzo = variante === 'calice' ? item.prezzo_calice : item.price;
+    const nome = variante === 'calice' ? `${item.name} (Calice)` : item.name;
     setRighe(prev => {
-      // Raggruppa per item + fase (senza nota extra)
-      const existing = prev.find(r => r.menu_item_id === item.id && r.fase === fase && !noteRiga[r._tmp]);
+      // Raggruppa per item + variante + fase (senza nota extra)
+      const existing = prev.find(r => r.menu_item_id === item.id && (r.variante || 'bottiglia') === variante && r.fase === fase && !noteRiga[r._tmp]);
       if (existing) return prev.map(r =>
         r._tmp === existing._tmp
           ? { ...r, quantita: r.quantita + 1, prezzo_totale: (r.quantita + 1) * r.prezzo_unitario }
@@ -78,14 +81,15 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
       return [...prev, {
         _tmp: key,
         menu_item_id: item.id,
-        nome_item: item.name,
+        nome_item: nome,
         categoria: item.category,
         reparto: item.reparto || (CAT_CUCINA.includes(item.category) ? 'cucina' : 'bar'),
         quantita: 1,
-        prezzo_unitario: item.price,
-        prezzo_totale: item.price,
+        prezzo_unitario: prezzo,
+        prezzo_totale: prezzo,
         priorita: 'normale',
         fase,
+        variante,
       }];
     });
   };
@@ -467,15 +471,45 @@ function MenuCard({ item, color, onAdd, righe, faseAttiva }) {
     ? 'border-blue-900/30 hover:border-blue-400/50 bg-[#0e0e1a]'
     : 'border-[#E5E5E5]/10 hover:border-[#C69C6D]/50 bg-[#161618]';
   const priceClass = color === 'blue' ? 'text-blue-400' : 'text-[#C69C6D]';
-  return (
-    <button onClick={() => onAdd(item)}
-      className={`relative border ${borderClass} rounded-sm p-3 text-left transition-all active:scale-95 w-full`}>
+  const byGlass = item.category === 'vino' && item.prezzo_calice != null;
+
+  const badges = (
+    <>
       {qtyTot > 0 && (
         <span className={`absolute top-2 right-2 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center ${color === 'blue' ? 'bg-blue-500 text-white' : 'bg-[#C69C6D] text-[#0A0A0B]'}`}>{qtyTot}</span>
       )}
       {qtyFase > 0 && qtyFase !== qtyTot && (
         <span className="absolute top-2 right-8 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center bg-white/20 text-white">{qtyFase}</span>
       )}
+    </>
+  );
+
+  // Vino disponibile anche al calice: doppio pulsante Bottiglia / Calice
+  if (byGlass) {
+    return (
+      <div className={`relative border ${borderClass} rounded-sm p-3 transition-all w-full`}>
+        {badges}
+        <p className="font-body text-white text-sm font-medium pr-6 leading-snug">{item.name}</p>
+        {item.description && <p className="font-body text-[#E5E5E5]/35 text-xs mt-0.5 line-clamp-1">{item.description}</p>}
+        <div className="flex gap-1.5 mt-2">
+          <button onClick={() => onAdd(item, 'bottiglia')}
+            className={`flex-1 px-2 py-1.5 rounded-sm font-body text-xs font-semibold border transition-all active:scale-95 ${color === 'blue' ? 'border-blue-400/40 text-blue-400 hover:bg-blue-400/10' : 'border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10'}`}>
+            Bottiglia €{Number(item.price).toFixed(0)}
+          </button>
+          <button onClick={() => onAdd(item, 'calice')}
+            className={`flex-1 px-2 py-1.5 rounded-sm font-body text-xs font-semibold border transition-all active:scale-95 ${color === 'blue' ? 'border-blue-400/40 text-blue-400 hover:bg-blue-400/10' : 'border-[#C69C6D]/40 text-[#C69C6D] hover:bg-[#C69C6D]/10'}`}>
+            Calice €{Number(item.prezzo_calice).toFixed(0)}
+          </button>
+        </div>
+        <StockBadge quantita={item.quantita} />
+      </div>
+    );
+  }
+
+  return (
+    <button onClick={() => onAdd(item)}
+      className={`relative border ${borderClass} rounded-sm p-3 text-left transition-all active:scale-95 w-full`}>
+      {badges}
       <p className="font-body text-white text-sm font-medium pr-6 leading-snug">{item.name}</p>
       {item.description && <p className="font-body text-[#E5E5E5]/35 text-xs mt-0.5 line-clamp-1">{item.description}</p>}
       <span className={`font-body font-semibold text-sm mt-2 block ${priceClass}`}>€{Number(item.price).toFixed(2)}</span>
