@@ -127,6 +127,14 @@ export default function AdminWines() {
     if (!inlineEdit) return;
     const { id, field } = inlineEdit;
     let val = inlineValue;
+    if (field === 'annata') {
+      const n = parseInt(inlineValue);
+      if (isNaN(n)) { cancelInline(); return; }
+      await base44.entities.MenuItem.update(id, { annata: n });
+      setWines(prev => prev.map(w => w.id === id ? { ...w, annata: n } : w));
+      cancelInline();
+      return;
+    }
     if (field === 'prezzo_bottiglia' || field === 'prezzo_calice') {
       val = parseFloat(inlineValue) || 0;
       if (field === 'prezzo_bottiglia') {
@@ -201,6 +209,7 @@ export default function AdminWines() {
           <div className="flex justify-end gap-4 mb-1 px-1">
             <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-28 text-right">Cantina</span>
             <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-28 text-right">Regione</span>
+            <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-14 text-right">Annata</span>
             <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-16 text-right">Calice</span>
             <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-20 text-right">Bottiglia</span>
             <span className="font-body text-xs text-[#C69C6D]/60 uppercase tracking-widest w-[72px] text-center">Azioni</span>
@@ -302,6 +311,19 @@ export default function AdminWines() {
                               <button onClick={() => { setInlineEdit({ id: wine.id, field: 'regione' }); setInlineValue(wine.regione || ''); }} className="w-full text-right">
                                 <span className={`font-body text-xs hover:text-[#C69C6D] transition-colors ${wine.regione ? 'text-[#706A66]' : 'text-[#E5E5E5]/20 italic'}`}>
                                   {wine.regione || '—'}
+                                </span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Annata */}
+                          <div className="w-14 shrink-0 text-right">
+                            {isEditing(wine.id, 'annata') ? (
+                              <InlineInput value={inlineValue} onChange={setInlineValue} onCommit={commitInline} onCancel={cancelInline} type="number" autoFocus align="right" />
+                            ) : (
+                              <button onClick={() => startInline(wine.id, 'annata', wine.annata)} className="w-full text-right">
+                                <span className={`font-body text-xs hover:text-[#C69C6D] transition-colors ${wine.annata ? 'text-[#706A66]' : 'text-[#E5E5E5]/20 italic'}`}>
+                                  {wine.annata || '—'}
                                 </span>
                               </button>
                             )}

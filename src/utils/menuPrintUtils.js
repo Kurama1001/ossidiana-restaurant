@@ -164,16 +164,18 @@ export function generateWineListWordDocument(wines) {
         const desc = escapeHtml(w.description);
         const calice = w.prezzo_calice != null ? `€ ${Number(w.prezzo_calice).toFixed(0)}` : '—';
         const bottiglia = w.prezzo_bottiglia != null ? `€ ${Number(w.prezzo_bottiglia).toFixed(0)}` : '—';
+        const annata = w.annata ? String(w.annata) : '—';
         const subLine = cantina || w.regione
           ? `<br><span class="wine-sub">${cantina ? cantina : ''}${cantina && w.regione ? ' · ' : ''}${w.regione ? escapeHtml(w.regione) : ''}</span>`
           : '';
         return `
           <tr class="wine-row">
-            <td class="dish-name" width="55%" valign="bottom">
+            <td class="dish-name" width="50%" valign="bottom">
               <span class="wine-name">${name}</span>${subLine}${desc ? `<br><span class="wine-desc-en">${desc}</span>` : ''}
             </td>
-            <td class="dish-price-sub" width="22%" align="right" valign="bottom">calice ${calice}</td>
-            <td class="dish-price" width="23%" align="right" valign="bottom">bottiglia ${bottiglia}</td>
+            <td class="wine-annata" width="12%" align="right" valign="bottom">${annata}</td>
+            <td class="dish-price-sub" width="18%" align="right" valign="bottom">calice ${calice}</td>
+            <td class="dish-price" width="20%" align="right" valign="bottom">bottiglia ${bottiglia}</td>
           </tr>`;
       }).join('');
       return `
@@ -182,9 +184,10 @@ export function generateWineListWordDocument(wines) {
           <div class="region-line"></div>
           <table class="wine-region-table" width="100%" cellpadding="0" cellspacing="0">
             <colgroup>
-              <col style="width:55%" />
-              <col style="width:22%" />
-              <col style="width:23%" />
+              <col style="width:50%" />
+              <col style="width:12%" />
+              <col style="width:18%" />
+              <col style="width:20%" />
             </colgroup>
             ${rowsHtml}
           </table>
@@ -240,6 +243,7 @@ body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-heig
 .wine-name { font-weight: bold; color: #1a1a1a; }
 .wine-sub { font-size: 9.5pt; font-style: italic; color: #555; font-weight: normal; }
 .wine-desc-en { font-size: 9pt; font-style: italic; color: #999; font-weight: normal; }
+.wine-annata { font-size: 9pt; color: #888; white-space: nowrap; padding: 2px 0 6px 14px; }
 .dish-price-sub { font-size: 9pt; color: #888; white-space: nowrap; padding: 2px 0 6px 14px; }
 .dish-price { font-size: 11pt; font-weight: bold; color: #C69C6D; white-space: nowrap; padding: 2px 0 6px 14px; }
 .dish-desc-it { font-size: 9.5pt; font-style: italic; color: #555; margin: 1px 0 0 0; }
