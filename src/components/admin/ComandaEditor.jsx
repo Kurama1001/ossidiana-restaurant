@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Minus, Trash2, Search, AlertCircle, Users, Receipt, StickyNote, CheckCircle2, Layers, Printer } from 'lucide-react';
+import { Plus, Minus, Trash2, Search, AlertCircle, Users, Receipt, StickyNote, CheckCircle2, Layers, Printer, Wheat, CircleDollarSign } from 'lucide-react';
 import { buildPrintPayload, createKitchenPrintJob } from '@/utils/printJobHelper';
 
 const CAT_LABELS = {
@@ -35,6 +35,9 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
   const [success, setSuccess] = useState(false);
   const [printError, setPrintError] = useState(false);
   const [user, setUser] = useState(null);
+  const [forfaitNome, setForfaitNome] = useState('');
+  const [forfaitPrezzo, setForfaitPrezzo] = useState('');
+  const [forfaitErr, setForfaitErr] = useState('');
 
   useEffect(() => {
     const init = async () => {
@@ -92,6 +95,33 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
         variante,
       }];
     });
+  };
+
+  // ── Forfait (fuori menù) ──
+  const aggiungiPani = () => aggiungiItem({
+    id: 'forfait_pani',
+    name: 'I Nostri Pani (Coperto)',
+    category: 'forfait',
+    reparto: 'cucina',
+    price: 2,
+  });
+
+  const aggiungiForfaitLibero = () => {
+    const prezzo = parseFloat(String(forfaitPrezzo).replace(',', '.'));
+    if (!forfaitNome.trim() || !prezzo || prezzo <= 0) {
+      setForfaitErr('Inserisci un nome e un prezzo validi');
+      return;
+    }
+    aggiungiItem({
+      id: `forfait_libero_${Date.now()}`,
+      name: forfaitNome.trim(),
+      category: 'forfait',
+      reparto: 'cucina',
+      price: prezzo,
+    });
+    setForfaitNome('');
+    setForfaitPrezzo('');
+    setForfaitErr('');
   };
 
   const cambiaQty = (key, delta) => setRighe(prev => prev.map(r => r._tmp === key
@@ -336,6 +366,46 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
                 {CAT_LABELS[c] || c}
               </button>
             ))}
+          </div>
+
+          {/* Sezione Forfait: sempre visibile */}
+          <div className="mb-4">
+            <h3 className="font-body text-xs text-[#C69C6D]/80 tracking-widest uppercase mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-[#C69C6D] rounded-full" /> Forfait — fuori menù
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+              <button onClick={aggiungiPani}
+                className="border border-[#C69C6D]/25 hover:border-[#C69C6D]/60 bg-[#C69C6D]/5 rounded-sm p-3 text-left transition-all active:scale-95 w-full">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <Wheat size={14} className="text-[#C69C6D]" />
+                  <p className="font-body text-white text-sm font-medium leading-snug">I Nostri Pani</p>
+                </div>
+                <p className="font-body text-[#E5E5E5]/35 text-xs">Coperto — pane e grissini</p>
+                <span className="font-body font-semibold text-sm mt-2 block text-[#C69C6D]">€2.00</span>
+              </button>
+
+              <div className="border border-[#C69C6D]/25 bg-[#C69C6D]/5 rounded-sm p-3 w-full">
+                <div className="flex items-center gap-2 mb-2">
+                  <CircleDollarSign size={14} className="text-[#C69C6D]" />
+                  <p className="font-body text-white text-sm font-medium">Prodotto fuori menù</p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <input value={forfaitNome} onChange={e => { setForfaitNome(e.target.value); setForfaitErr(''); }}
+                    placeholder="Nome (es. Pasta al pomodoro)"
+                    className="w-full bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-1.5 rounded-sm font-body text-xs outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20" />
+                  <div className="flex gap-2">
+                    <input value={forfaitPrezzo} onChange={e => { setForfaitPrezzo(e.target.value); setForfaitErr(''); }}
+                      inputMode="decimal" placeholder="Prezzo €"
+                      className="w-24 bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-1.5 rounded-sm font-body text-xs outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20" />
+                    <button onClick={aggiungiForfaitLibero}
+                      className="flex-1 px-2 py-1.5 rounded-sm font-body text-xs font-semibold border border-[#C69C6D]/50 text-[#C69C6D] hover:bg-[#C69C6D]/15 transition-all active:scale-95 flex items-center justify-center gap-1">
+                      <Plus size={12} /> Aggiungi
+                    </button>
+                  </div>
+                  {forfaitErr && <p className="font-body text-[10px] text-red-400">{forfaitErr}</p>}
+                </div>
+              </div>
+            </div>
           </div>
 
           {cucinaItems.length > 0 && (
