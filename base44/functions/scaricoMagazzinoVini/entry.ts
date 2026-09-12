@@ -69,11 +69,15 @@ export default async function (req) {
       return Response.json({ success: true, skipped: 'giacenza_non_disponibile' });
     }
 
-    // Bottiglia intera, oppure calice (1 bottiglia = 4 calici)
+    // Bottiglia intera, oppure calice: 1 bottiglia = 5 calici → 1 calice = 0.2 esatti.
+    // Aritmetica in decimi di bottiglia (numeri interi): nessun errore di virgola mobile,
+    // anche dopo molti scarichi consecutivi durante il servizio.
     const isCalice = (riga.nome_item || '').includes('(Calice)');
     const qta = Number(riga.quantita) || 1;
-    const daScaricare = isCalice ? qta / CALICI_PER_BOTTIGLIA : qta;
-    const nuovaGiacenza = Math.max(0, Number((giacenza - daScaricare).toFixed(2)));
+    const giacenzaDecimi = Math.round(giacenza * 10);
+    const scaricoDecimi = isCalice ? qta * (10 / CALICI_PER_BOTTIGLIA) : qta * 10;
+    const daScaricare = scaricoDecimi / 10;
+    const nuovaGiacenza = Math.max(0, (giacenzaDecimi - scaricoDecimi) / 10);
 
     await base44.asServiceRole.entities.MenuItem.update(item.id, {
       quantita: nuovaGiacenza,
