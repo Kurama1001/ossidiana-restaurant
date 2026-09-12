@@ -13,7 +13,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  */
 
 const RUOLI_AUTORIZZATI = ['admin', 'cameriere', 'cucina', 'bar'];
-const CALICI_PER_BOTTIGLIA = 4;
+const CALICI_PER_BOTTIGLIA = 5;
 
 async function safeMe(base44) {
   try { return await base44.auth.me(); } catch { return null; }

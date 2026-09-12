@@ -12,6 +12,7 @@ export default function TurniDayPanel({ data, turni, utenti, onChanged }) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const staffTurni = utenti.filter(u => ['cameriere', 'cucina'].includes(u.role));
   const pranzo = turni.filter(t => t.turno === 'pranzo');
   const cena = turni.filter(t => t.turno === 'cena');
 
@@ -105,7 +106,7 @@ export default function TurniDayPanel({ data, turni, utenti, onChanged }) {
         <select value={userId} onChange={e => setUserId(e.target.value)}
           className="bg-[#161618] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm font-body text-sm outline-none focus:border-[#C69C6D] flex-1 min-w-[160px]">
           <option value="">Seleziona staff…</option>
-          {utenti.map(u => (
+          {staffTurni.map(u => (
             <option key={u.id} value={u.id}>
               {u.full_name || u.email}{u.role && u.role !== 'user' ? ` (${RUOLI_LABELS[u.role] || u.role})` : ''}
             </option>
@@ -129,8 +130,8 @@ export default function TurniDayPanel({ data, turni, utenti, onChanged }) {
         </button>
       </div>
 
-      {utenti.length === 0 && (
-        <p className="font-body text-xs text-[#E5E5E5]/40 mb-4">Nessun utente trovato: invita lo staff dalla sezione "Utenti".</p>
+      {staffTurni.length === 0 && (
+        <p className="font-body text-xs text-[#E5E5E5]/40 mb-4">Nessun cameriere o cucina trovato: invita lo staff dalla sezione "Utenti".</p>
       )}
 
       {/* Liste pranzo / cena */}
