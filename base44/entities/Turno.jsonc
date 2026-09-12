@@ -1,0 +1,93 @@
+{
+  "name": "Turno",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "string",
+      "format": "date",
+      "description": "Data del turno (YYYY-MM-DD)"
+    },
+    "turno": {
+      "type": "string",
+      "enum": [
+        "pranzo",
+        "cena"
+      ],
+      "description": "Turno di servizio"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID dell'utente assegnato"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Nome dell'utente assegnato"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email dell'utente"
+    },
+    "ruolo": {
+      "type": "string",
+      "description": "Ruolo dell'utente (admin, cameriere, cucina, bar)"
+    },
+    "ora_inizio": {
+      "type": "string",
+      "description": "Ora inizio turno (HH:mm)"
+    },
+    "ora_fine": {
+      "type": "string",
+      "description": "Fine turno (HH:mm)"
+    },
+    "note": {
+      "type": "string",
+      "description": "Note sul turno"
+    }
+  },
+  "required": [
+    "data",
+    "turno",
+    "user_id"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cameriere"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "cucina"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "bar"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

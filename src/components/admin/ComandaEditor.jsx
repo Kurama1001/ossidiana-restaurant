@@ -252,14 +252,14 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
           <div>
             <p className="font-body text-xs text-[#E5E5E5]/40 uppercase tracking-widest mb-2">N° Tavolo</p>
             <input
-              type="number" min="1" value={numeroTavoloInput}
+              type="text" value={numeroTavoloInput}
               onChange={e => {
-                setNumeroTavoloInput(e.target.value);
-                const n = parseInt(e.target.value);
-                if (n > 0) setTavoloSelezionato({ id: `tavolo_${n}`, numero: n });
+                const v = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
+                setNumeroTavoloInput(v);
+                if (v) setTavoloSelezionato({ id: `tavolo_${v}`, numero: v });
                 else setTavoloSelezionato(null);
               }}
-              placeholder="es. 5"
+              placeholder="es. 5 o 12A"
               className="w-24 h-9 bg-[#161618] border border-[#E5E5E5]/20 text-white text-center font-display text-lg px-3 rounded-sm outline-none focus:border-[#C69C6D] placeholder:text-[#E5E5E5]/20"
             />
           </div>

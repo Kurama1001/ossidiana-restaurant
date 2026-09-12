@@ -157,7 +157,8 @@ export default function Sala() {
         ) : (
           <div className="space-y-2">
             {ordini
-              .sort((a, b) => a.numero_tavolo - b.numero_tavolo)
+              .slice()
+              .sort((a, b) => String(a.numero_tavolo).localeCompare(String(b.numero_tavolo), undefined, { numeric: true }))
               .map(ordine => {
                 const cfg = STATO_CONFIG[ordine.stato] || STATO_CONFIG.aperto;
                 const min = minutiDa(ordine.created_date);

@@ -7,8 +7,8 @@
       "description": "ID del tavolo"
     },
     "numero_tavolo": {
-      "type": "number",
-      "description": "Numero tavolo"
+      "type": "string",
+      "description": "Numero tavolo (alfanumerico, es. 5 o 12A)"
     },
     "cameriere_id": {
       "type": "string",

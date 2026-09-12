@@ -103,7 +103,7 @@ export default function Comanda() {
     const nuove = await Promise.all(righe.map(r => base44.entities.RigaOrdine.create({
       ordine_id: ordine.id,
       tavolo_id: ordine.tavolo_id,
-      numero_tavolo: ordine.numero_tavolo,
+      numero_tavolo: String(ordine.numero_tavolo),
       menu_item_id: r.menu_item_id,
       nome_item: r.nome_item,
       categoria: r.categoria,

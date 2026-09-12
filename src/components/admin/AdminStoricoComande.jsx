@@ -18,6 +18,11 @@ function isSameDay(dateStr, ref) {
   return d.getDate() === ref.getDate() && d.getMonth() === ref.getMonth() && d.getFullYear() === ref.getFullYear();
 }
 
+function turnoDi(dateStr) {
+  if (!dateStr) return null;
+  return new Date(dateStr).getHours() >= 17 ? 'cena' : 'pranzo';
+}
+
 export default function AdminStoricoComande() {
   const [ordini, setOrdini] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +31,8 @@ export default function AdminStoricoComande() {
   const [periodo, setPeriodo] = useState('oggi');
   const [dataDa, setDataDa] = useState('');
   const [dataA, setDataA] = useState('');
+  const [filtroTurno, setFiltroTurno] = useState('tutti');
+  const [filtroOra, setFiltroOra] = useState('tutte');
   const [expanded, setExpanded] = useState(null);
   const [righeMap, setRigheMap] = useState({});
   const [loadingRighe, setLoadingRighe] = useState(false);
@@ -80,6 +87,8 @@ export default function AdminStoricoComande() {
 
   const filtered = filteredByPeriod.filter(o => {
     if (filtroStato !== 'tutti' && o.stato !== filtroStato) return false;
+    if (filtroTurno !== 'tutti' && turnoDi(o.created_date) !== filtroTurno) return false;
+    if (filtroOra !== 'tutte' && new Date(o.created_date).getHours() !== Number(filtroOra)) return false;
     if (search) {
       const q = search.toLowerCase();
       if (!String(o.numero_tavolo).includes(q) && !(o.cameriere_nome || '').toLowerCase().includes(q)) return false;
@@ -243,6 +252,21 @@ export default function AdminStoricoComande() {
               {lab}
             </button>
           ))}
+          <div className="w-px h-6 bg-[#E5E5E5]/10 mx-1" />
+          {[['tutti','Tutti turni'],['pranzo','Pranzo'],['cena','Cena']].map(([val, lab]) => (
+            <button key={val} onClick={() => setFiltroTurno(val)}
+              className={`px-3 py-1.5 rounded-sm text-xs font-body border transition-all ${filtroTurno === val ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+              {lab}
+            </button>
+          ))}
+          <select value={filtroOra} onChange={e => setFiltroOra(e.target.value)}
+            className="bg-[#161618] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-1.5 rounded-sm font-body text-xs outline-none focus:border-[#C69C6D]">
+            <option value="tutte">Tutte le ore</option>
+            {Array.from({ length: 24 }, (_, h) => (
+              <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+            ))}
+          </select>
+          <span className="font-body text-xs text-[#E5E5E5]/30 ml-auto">Le comande dopo le 17:00 sono considerate cena</span>
           {periodo === 'custom' && (
             <div className="flex items-center gap-2 ml-2">
               <input type="date" value={dataDa} onChange={e => setDataDa(e.target.value)}

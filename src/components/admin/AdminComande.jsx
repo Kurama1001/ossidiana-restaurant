@@ -19,6 +19,18 @@ function minutiDa(ts) {
   return Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
 }
 
+function turnoDi(dateStr) {
+  if (!dateStr) return null;
+  return new Date(dateStr).getHours() >= 17 ? 'cena' : 'pranzo';
+}
+
+function isSameDay(dateStr, isoDay) {
+  if (!dateStr || !isoDay) return false;
+  const d = new Date(dateStr);
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}` === isoDay;
+}
+
 export default function AdminComande() {
   const [view, setView] = useState('lista'); // 'lista' | 'nuova' | 'modifica'
   const [ordineSelezionato, setOrdineSelezionato] = useState(null);
@@ -28,15 +40,20 @@ export default function AdminComande() {
   const [righeModal, setRigheModal] = useState([]);
   const [loadingModal, setLoadingModal] = useState(false);
   const [deleting, setDeleting] = useState(null);
+  const [filtroData, setFiltroData] = useState(() => {
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  });
+  const [filtroTurno, setFiltroTurno] = useState('tutti');
+  const [filtroOra, setFiltroOra] = useState('tutte');
 
   const load = async () => {
     try {
-      const oggi = new Date();
-      oggi.setHours(0, 0, 0, 0);
       const data = await base44.entities.Ordine.filter({}, '-created_date', 200);
       const attivi = data.filter(o =>
         !['chiuso', 'annullato'].includes(o.stato) &&
-        new Date(o.created_date) >= oggi
+        isSameDay(o.created_date, filtroData)
       );
       setOrdini(attivi);
     } finally {
@@ -48,7 +65,7 @@ export default function AdminComande() {
     load();
     const interval = setInterval(load, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [filtroData]);
 
   const goLista = () => { setView('lista'); setOrdineSelezionato(null); load(); };
 
@@ -106,10 +123,16 @@ export default function AdminComande() {
   }
 
   // Vista lista
+  const ordiniFiltrati = ordini.filter(o => {
+    if (filtroTurno !== 'tutti' && turnoDi(o.created_date) !== filtroTurno) return false;
+    if (filtroOra !== 'tutte' && new Date(o.created_date).getHours() !== Number(filtroOra)) return false;
+    return true;
+  });
+
   const stats = {
-    totali: ordini.length,
-    inPrep: ordini.filter(o => ['inviato', 'in_preparazione', 'parziale_pronto'].includes(o.stato)).length,
-    terminate: ordini.filter(o => ['pronto', 'servito'].includes(o.stato)).length,
+    totali: ordiniFiltrati.length,
+    inPrep: ordiniFiltrati.filter(o => ['inviato', 'in_preparazione', 'parziale_pronto'].includes(o.stato)).length,
+    terminate: ordiniFiltrati.filter(o => ['pronto', 'servito'].includes(o.stato)).length,
   };
 
   return (
@@ -118,7 +141,7 @@ export default function AdminComande() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="font-display text-2xl text-white tracking-widest">Comande</h2>
-          <p className="font-body text-[#E5E5E5]/40 text-sm mt-0.5">oggi · {ordini.length} tavoli</p>
+          <p className="font-body text-[#E5E5E5]/40 text-sm mt-0.5">{filtroData.split('-').reverse().join('/')} · {ordiniFiltrati.length} tavoli</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={load} className="p-2.5 border border-[#E5E5E5]/15 text-[#E5E5E5]/40 hover:border-[#C69C6D]/40 hover:text-[#C69C6D] rounded-sm transition-all">
@@ -145,6 +168,27 @@ export default function AdminComande() {
         ))}
       </div>
 
+      {/* Filtri giorno / turno / ora */}
+      <div className="flex flex-wrap items-center gap-2 mb-5">
+        <input type="date" value={filtroData}
+          onChange={e => setFiltroData(e.target.value)}
+          className="bg-[#161618] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm font-body text-sm outline-none focus:border-[#C69C6D]" />
+        {[['tutti','Tutti'],['pranzo','Pranzo'],['cena','Cena']].map(([val, lab]) => (
+          <button key={val} onClick={() => setFiltroTurno(val)}
+            className={`px-3 py-2 rounded-sm text-xs font-body border transition-all ${filtroTurno === val ? 'bg-[#C69C6D] border-[#C69C6D] text-[#0A0A0B] font-bold' : 'border-[#E5E5E5]/20 text-[#E5E5E5]/50 hover:border-[#C69C6D]/40'}`}>
+            {lab}
+          </button>
+        ))}
+        <select value={filtroOra} onChange={e => setFiltroOra(e.target.value)}
+          className="bg-[#161618] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm font-body text-xs outline-none focus:border-[#C69C6D]">
+          <option value="tutte">Tutte le ore</option>
+          {Array.from({ length: 24 }, (_, h) => (
+            <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+          ))}
+        </select>
+        <span className="font-body text-xs text-[#E5E5E5]/30 ml-auto">Le comande dopo le 17:00 sono considerate cena</span>
+      </div>
+
       {/* Lista */}
       {loading ? (
         <div className="space-y-3">
@@ -158,8 +202,9 @@ export default function AdminComande() {
         </div>
       ) : (
         <div className="space-y-2">
-          {ordini
-            .sort((a, b) => a.numero_tavolo - b.numero_tavolo)
+          {ordiniFiltrati
+            .slice()
+            .sort((a, b) => String(a.numero_tavolo).localeCompare(String(b.numero_tavolo), undefined, { numeric: true }))
             .map(ordine => {
               const cfg = STATO_CONFIG[ordine.stato] || STATO_CONFIG.aperto;
               const min = minutiDa(ordine.created_date);

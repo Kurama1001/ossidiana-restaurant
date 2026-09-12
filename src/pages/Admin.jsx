@@ -14,14 +14,16 @@ import AdminStoricoComande from '@/components/admin/AdminStoricoComande';
 import AdminEmailTest from '@/components/admin/AdminEmailTest';
 import AdminPrinterTest from '@/components/admin/AdminPrinterTest';
 import AdminMagazzinoVini from '@/components/admin/AdminMagazzinoVini';
+import AdminTurni from '@/components/admin/AdminTurni';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info, BarChart2, GripVertical, ClipboardList, ChefHat, Wine, History, Warehouse } from 'lucide-react';
+import { CalendarDays, ShoppingBag, UtensilsCrossed, Users, LogOut, Images, Info, BarChart2, GripVertical, ClipboardList, ChefHat, Wine, History, Warehouse, CalendarClock } from 'lucide-react';
 
 const DEFAULT_TABS = [
   { id: 'comande',      label: 'Comande',       icon: 'ClipboardList' },
   { id: 'storico',      label: 'Storico',         icon: 'History' },
   { id: 'report',       label: 'Report',         icon: 'BarChart2' },
   { id: 'reservations', label: 'Prenotazioni',   icon: 'CalendarDays' },
+  { id: 'turni',        label: 'Turni',           icon: 'CalendarClock' },
   { id: 'orders',       label: 'Asporto',        icon: 'ShoppingBag' },
   { id: 'menu',         label: 'Menu',           icon: 'UtensilsCrossed' },
   { id: 'wines',        label: 'Vini',           icon: 'Wine' },
@@ -31,7 +33,7 @@ const DEFAULT_TABS = [
   { id: 'users',        label: 'Utenti',         icon: 'Users' },
 ];
 
-const ICONS = { CalendarDays, ShoppingBag, UtensilsCrossed, Users, Images, Info, BarChart2, ClipboardList, ChefHat, Wine, History, Warehouse };
+const ICONS = { CalendarDays, ShoppingBag, UtensilsCrossed, Users, Images, Info, BarChart2, ClipboardList, ChefHat, Wine, History, Warehouse, CalendarClock };
 
 const TAB_COMPONENTS = {
   comande:      AdminComande,
@@ -41,6 +43,7 @@ const TAB_COMPONENTS = {
   menu:         AdminMenu,
   wines:      AdminWines,
   magazzino:  AdminMagazzinoVini,
+  turni:      AdminTurni,
   report:       AdminReport,
   gallery:      AdminGallery,
   chi_siamo:    AdminChiSiamo,

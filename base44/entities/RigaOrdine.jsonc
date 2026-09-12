@@ -11,8 +11,8 @@
       "description": "ID tavolo"
     },
     "numero_tavolo": {
-      "type": "number",
-      "description": "Numero tavolo"
+      "type": "string",
+      "description": "Numero tavolo (alfanumerico, es. 5 o 12A)"
     },
     "menu_item_id": {
       "type": "string",
