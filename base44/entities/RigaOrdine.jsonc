@@ -90,6 +90,11 @@
     "delivered_at": {
       "type": "string",
       "description": "Timestamp consegnato"
+    },
+    "magazzino_scaricato": {
+      "type": "boolean",
+      "default": false,
+      "description": "Riga gi\u00e0 scalata dal magazzino vini (flag di idempotenza)"
     }
   },
   "required": [

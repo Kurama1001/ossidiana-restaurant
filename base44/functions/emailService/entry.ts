@@ -8,6 +8,15 @@ async function safeMe(base44) {
   try { return await base44.auth.me(); } catch { return null; }
 }
 
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -144,14 +153,14 @@ async function handleBookingReceivedAdmin(base44, apiKey, reservationId) {
   const html = emailTemplate(`
     <h2 style="margin:0 0 20px;color:#C69C6D;font-size:22px;letter-spacing:2px;">Nuova Prenotazione dal Sito</h2>
     <table style="width:100%;border-collapse:collapse;font-size:14px;">
-      <tr><td style="padding:8px 0;color:rgba(229,229,229,0.5);width:120px;">Nome</td><td style="padding:8px 0;color:#E5E5E5;font-weight:bold;">${r.customer_name || 'N/A'}</td></tr>
-      <tr><td style="padding:8px 0;color:rgba(229,229,229,0.5);">Telefono</td><td style="padding:8px 0;color:#E5E5E5;">${r.phone || 'N/A'}</td></tr>
-      <tr><td style="padding:8px 0;color:rgba(229,229,229,0.5);">Email</td><td style="padding:8px 0;color:#E5E5E5;">${r.email || 'N/A'}</td></tr>
-      <tr><td style="padding:8px 0;color:rgba(229,229,229,0.5);">Data</td><td style="padding:8px 0;color:#E5E5E5;">${r.res_date || 'N/A'}</td></tr>
-      <tr><td style="padding:8px 0;color:rgba(229,229,229,0.5);">Ora</td><td style="padding:8px 0;color:#E5E5E5;">${r.res_time || 'N/A'}</td></tr>
-      <tr><td style="padding:8px 0;color:rgba(229,229,229,0.5);">Coperti</td><td style="padding:8px 0;color:#C69C6D;font-weight:bold;">${r.guests || 'N/A'}</td></tr>
+      <tr><td style="padding:8px 0;color:rgba(229,229,229,0.5);width:120px;">Nome</td><td style="padding:8px 0;color:#E5E5E5;font-weight:bold;">${escapeHtml(r.customer_name || 'N/A')}</td></tr>
+      <tr><td style="padding:8px 0;color:rgba(229,229,229,0.5);">Telefono</td><td style="padding:8px 0;color:#E5E5E5;">${escapeHtml(r.phone || 'N/A')}</td></tr>
+      <tr><td style="padding:8px 0;color:rgba(229,229,229,0.5);">Email</td><td style="padding:8px 0;color:#E5E5E5;">${escapeHtml(r.email || 'N/A')}</td></tr>
+      <tr><td style="padding:8px 0;color:rgba(229,229,229,0.5);">Data</td><td style="padding:8px 0;color:#E5E5E5;">${escapeHtml(r.res_date || 'N/A')}</td></tr>
+      <tr><td style="padding:8px 0;color:rgba(229,229,229,0.5);">Ora</td><td style="padding:8px 0;color:#E5E5E5;">${escapeHtml(r.res_time || 'N/A')}</td></tr>
+      <tr><td style="padding:8px 0;color:rgba(229,229,229,0.5);">Coperti</td><td style="padding:8px 0;color:#C69C6D;font-weight:bold;">${escapeHtml(String(r.guests ?? 'N/A'))}</td></tr>
     </table>
-    ${r.notes ? `<p style="margin:20px 0 0;color:rgba(229,229,229,0.5);font-size:13px;">Note: <span style="color:#E5E5E5;">${r.notes}</span></p>` : ''}
+    ${r.notes ? `<p style="margin:20px 0 0;color:rgba(229,229,229,0.5);font-size:13px;">Note: <span style="color:#E5E5E5;">${escapeHtml(r.notes)}</span></p>` : ''}
   `);
   return sendAndLog(base44, apiKey, {
     to: ADMIN_EMAIL,
@@ -167,10 +176,11 @@ async function handleBookingEmail(base44, apiKey, reservationId, emailType, moti
   if (!r) return { success: false, error: 'Prenotazione non trovata' };
   if (!r.email) return { success: false, skipped: true, reason: 'no_email' };
 
-  const dateStr = r.res_date || '';
-  const timeStr = r.res_time || '';
-  const guests = r.guests || '';
-  const name = r.customer_name || 'Cliente';
+  // Escape di tutti i campi derivati dalla prenotazione (anti HTML injection)
+  const dateStr = escapeHtml(r.res_date || '');
+  const timeStr = escapeHtml(r.res_time || '');
+  const guests = escapeHtml(String(r.guests ?? ''));
+  const name = escapeHtml(r.customer_name || 'Cliente');
 
   let subject, content;
 
@@ -196,7 +206,7 @@ async function handleBookingEmail(base44, apiKey, reservationId, emailType, moti
       <h2 style="margin:0 0 15px;color:#C69C6D;font-size:22px;letter-spacing:2px;">Prenotazione Non Confermabile</h2>
       <p style="color:#E5E5E5;font-size:15px;line-height:1.8;">Ciao ${name},</p>
       <p style="color:#E5E5E5;font-size:15px;line-height:1.8;">Ci dispiace ma non riusciamo a confermare la tua prenotazione per il giorno <strong>${dateStr}</strong> alle ore <strong>${timeStr}</strong>.</p>
-      ${motivo ? `<p style="color:rgba(229,229,229,0.7);font-size:14px;line-height:1.8;padding:15px;background:rgba(198,156,109,0.08);border-left:3px solid #C69C6D;">Motivo: ${motivo}</p>` : ''}
+      ${motivo ? `<p style="color:rgba(229,229,229,0.7);font-size:14px;line-height:1.8;padding:15px;background:rgba(198,156,109,0.08);border-left:3px solid #C69C6D;">Motivo: ${escapeHtml(motivo)}</p>` : ''}
       <div style="text-align:center;margin:30px 0;">
         <a href="mailto:amministrazione@ossidianarestaurant.com" style="display:inline-block;background:#C69C6D;color:#0A0A0B;padding:12px 30px;text-decoration:none;font-size:14px;letter-spacing:2px;text-transform:uppercase;font-weight:bold;">Contattaci per un altro orario</a>
       </div>

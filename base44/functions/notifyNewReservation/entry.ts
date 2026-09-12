@@ -4,10 +4,6 @@ const FROM_EMAIL = 'Ossidiana Restaurant <prenotazioni@ossidianarestaurant.com>'
 const REPLY_TO = 'amministrazione@ossidianarestaurant.com';
 const ADMIN_EMAIL = 'amministrazione@ossidianarestaurant.com';
 
-async function safeMe(base44) {
-  try { return await base44.auth.me(); } catch { return null; }
-}
-
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -131,53 +127,48 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    // Auth: this function is triggered by the Reservation "create" entity automation,
-    // which runs server-side with no user session. Restrict invocation to that
-    // automation payload contract, or to an authenticated admin.
-    const user = await safeMe(base44);
-    const isAutomation = body?.event?.type === 'create' && body?.event?.entity_name === 'Reservation';
-    if (!isAutomation && (!user || user.role !== 'admin')) {
+    // Il payload fornisce solo l'id della prenotazione: ogni altro dato (fonte,
+    // dettagli, stato di notifica) viene riletto dal database e verificato lato
+    // server, così un payload contraffatto non può né innescare email arbitrarie
+    // né sopprimere notifiche legittime.
+    const id = typeof body?.id === 'string' ? body.id : (typeof body?.data?.id === 'string' ? body.data.id : null);
+    if (!id) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const data = body.data || body;
-
-    // Only for site reservations
-    if (data.fonte_prenotazione && data.fonte_prenotazione !== 'sito') {
+    let reservation;
+    try {
+      reservation = await base44.asServiceRole.entities.Reservation.get(id);
+    } catch {
+      reservation = null;
+    }
+    // Risposta opaca: non rivela se l'id esiste o meno
+    if (!reservation) {
+      return Response.json({ success: true, skipped: true });
+    }
+    if (reservation.notificata_admin) {
+      return Response.json({ success: true, skipped: true, reason: 'already_notified' });
+    }
+    // Solo prenotazioni dal sito (dato letto dal database, non dal body)
+    if (reservation.fonte_prenotazione && reservation.fonte_prenotazione !== 'sito') {
       return Response.json({ success: true, skipped: true });
     }
 
-    if (data.id) {
-      // Validate the reservation exists and hasn't already been notified (idempotency)
-      let reservation;
+    // Send admin notification email directly (no user session available here)
+    const apiKey = Deno.env.get('RESEND_API_KEY');
+    if (apiKey) {
       try {
-        reservation = await base44.asServiceRole.entities.Reservation.get(data.id);
-      } catch {
-        reservation = null;
+        await sendAdminNotification(base44, apiKey, id, reservation);
+      } catch (e) {
+        console.error('Errore invio email admin:', e.message);
       }
-      if (!reservation) {
-        return Response.json({ success: false, error: 'Reservation not found' }, { status: 404 });
-      }
-      if (reservation.notificata_admin) {
-        return Response.json({ success: true, skipped: true, reason: 'already_notified' });
-      }
+    }
 
-      // Send admin notification email directly (no user session available here)
-      const apiKey = Deno.env.get('RESEND_API_KEY');
-      if (apiKey) {
-        try {
-          await sendAdminNotification(base44, apiKey, data.id, reservation);
-        } catch (e) {
-          console.error('Errore invio email admin:', e.message);
-        }
-      }
-
-      // Mark as notified
-      try {
-        await base44.asServiceRole.entities.Reservation.update(data.id, { notificata_admin: true });
-      } catch (_e) {
-        // Non-critical
-      }
+    // Mark as notified
+    try {
+      await base44.asServiceRole.entities.Reservation.update(id, { notificata_admin: true });
+    } catch (_e) {
+      // Non-critical
     }
 
     return Response.json({ success: true });
