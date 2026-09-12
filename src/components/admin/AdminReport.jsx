@@ -7,6 +7,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid, Legend,
+  BarChart, Bar,
   PieChart, Pie, Cell
 } from 'recharts';
 
@@ -17,7 +18,7 @@ const PIE_COLORS_GOLD = ['#C69C6D','#e85d04','#f48c06','#6a994e','#8338ec','#ef4
 const PIE_COLORS_BLUE = ['#60a5fa','#f72585','#4cc9f0','#f77f00','#06d6a0','#9b5de5'];
 
 // Blocchi disponibili — l'utente può riordinarli
-const BLOCKS_DEFAULT = ['kpi', 'vendite_grafico', 'prenotazioni', 'piatti', 'bevande'];
+const BLOCKS_DEFAULT = ['kpi', 'vendite_grafico', 'incassi_turno', 'report_prenotazioni', 'prenotazioni', 'piatti', 'bevande'];
 
 export default function AdminReport() {
   const [ordini, setOrdini] = useState([]);
@@ -31,7 +32,10 @@ export default function AdminReport() {
   const [blocchi, setBlocchi] = useState(() => {
     try {
       const saved = localStorage.getItem('report_blocchi');
-      return saved ? JSON.parse(saved) : BLOCKS_DEFAULT;
+      const ids = saved ? JSON.parse(saved) : BLOCKS_DEFAULT;
+      // Aggiunge i nuovi blocchi a chi aveva già un ordine salvato
+      const missing = BLOCKS_DEFAULT.filter(b => !ids.includes(b));
+      return [...ids, ...missing];
     } catch { return BLOCKS_DEFAULT; }
   });
 
@@ -41,7 +45,7 @@ export default function AdminReport() {
     const [ords, rigs, res, ordersAsporto] = await Promise.all([
       base44.entities.Ordine.list('-created_date', 500),
       base44.entities.RigaOrdine.list('-created_date', 1000),
-      base44.entities.Reservation.filter({ res_date: today }, '-created_date', 50).catch(() => []),
+      base44.entities.Reservation.list('-res_date', 500).catch(() => []),
       base44.entities.Order.list('-created_date', 500).catch(() => []),
     ]);
     setOrdini(ords);
@@ -75,6 +79,44 @@ export default function AdminReport() {
   const ordFiltrati = filterByPeriodo(ordini).filter(o => !['aperto', 'annullato'].includes(o.stato));
   const asportoFiltrati = filterByPeriodo(ordiniAsporto).filter(o => o.status !== 'annullato');
   const righeFiltrate = filterByPeriodo(righe).filter(r => !['annullato', 'bozza'].includes(r.stato));
+
+  // Prenotazioni valide del periodo + quelle di oggi (per KPI e blocco lista)
+  const resValide = filterByPeriodo(reservations, 'res_date')
+    .filter(r => !['cancellata', 'cancelled', 'rifiutata'].includes(r.status));
+  const todayStr = new Date().toISOString().split('T')[0];
+  const resOggi = reservations.filter(r => r.res_date === todayStr);
+
+  // ── Aggregazione per giorno e turno (pranzo < 17:00, cena ≥ 17:00) ──
+  const giorniTurno = (() => {
+    const map = {};
+    const ensure = (day) => {
+      if (!map[day]) map[day] = { day, pranzo: { incasso: 0, coperti: 0, prenotazioni: 0, ospiti: 0 }, cena: { incasso: 0, coperti: 0, prenotazioni: 0, ospiti: 0 } };
+      return map[day];
+    };
+    ordFiltrati.forEach(o => {
+      if (!o.created_date) return;
+      const row = ensure(format(new Date(o.created_date), 'yyyy-MM-dd'));
+      const turno = new Date(o.created_date).getHours() >= 17 ? 'cena' : 'pranzo';
+      row[turno].incasso += o.totale || 0;
+      row[turno].coperti += o.coperti || 0;
+    });
+    resValide.forEach(r => {
+      if (!r.res_date) return;
+      const row = ensure(r.res_date);
+      const ora = Number((r.res_time || '0').split(':')[0]) || 0;
+      const turno = ora >= 17 ? 'cena' : 'pranzo';
+      row[turno].prenotazioni += 1;
+      row[turno].ospiti += r.guests || 0;
+    });
+    return Object.values(map).sort((a, b) => a.day.localeCompare(b.day));
+  })();
+
+  const totIncassoPranzo = giorniTurno.reduce((s, g) => s + g.pranzo.incasso, 0);
+  const totIncassoCena = giorniTurno.reduce((s, g) => s + g.cena.incasso, 0);
+  const totCopertiPranzo = giorniTurno.reduce((s, g) => s + g.pranzo.coperti, 0);
+  const totCopertiCena = giorniTurno.reduce((s, g) => s + g.cena.coperti, 0);
+  const totPrenotPranzo = giorniTurno.reduce((s, g) => s + g.pranzo.prenotazioni, 0);
+  const totPrenotCena = giorniTurno.reduce((s, g) => s + g.cena.prenotazioni, 0);
 
   const totaleLocale = ordFiltrati.reduce((s, o) => s + (o.totale || 0), 0);
   const totaleAsporto = asportoFiltrati.reduce((s, o) => s + (o.total_amount || 0), 0);
@@ -149,7 +191,7 @@ export default function AdminReport() {
             <KpiCard icon={ShoppingBag} label="Ordini" value={numOrdiniLocale + numOrdiniAsporto} color="text-green-400"
               sub={`${numOrdiniLocale} locale · ${numOrdiniAsporto} asporto`} />
             <KpiCard icon={Clock} label="Tavoli attivi" value={ordiniAttivi.length} color="text-yellow-400" />
-            <KpiCard icon={CalendarDays} label="Prenotazioni oggi" value={reservations.length} color="text-blue-400" />
+            <KpiCard icon={CalendarDays} label="Prenotazioni oggi" value={resOggi.length} color="text-blue-400" />
           </div>
         );
 
@@ -172,6 +214,105 @@ export default function AdminReport() {
                   <Line type="monotone" dataKey="asporto" stroke="#60a5fa" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
+            )}
+          </BlockShell>
+        );
+
+      case 'incassi_turno':
+        return (
+          <BlockShell title="💶 Incassi per giorno e turno">
+            {giorniTurno.length === 0 ? <Empty /> : (
+              <>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={giorniTurno.map(g => ({ day: g.day, pranzo: g.pranzo.incasso, cena: g.cena.incasso }))} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="day" tick={{ fill: TEXT_DIM, fontSize: 11 }} tickFormatter={d => format(new Date(d + 'T12:00'), 'd MMM', { locale: it })} />
+                    <YAxis tick={{ fill: TEXT_DIM, fontSize: 11 }} tickFormatter={v => `€${v}`} />
+                    <Tooltip
+                      contentStyle={{ background: '#1a1a1c', border: `1px solid ${GOLD}30`, borderRadius: 4 }}
+                      labelStyle={{ color: '#E5E5E5', fontSize: 12 }}
+                      labelFormatter={d => format(new Date(d + 'T12:00'), 'EEEE d MMMM', { locale: it })}
+                      formatter={(v, name) => [`€${v.toFixed(2)}`, name === 'pranzo' ? 'Pranzo' : 'Cena']}
+                    />
+                    <Legend formatter={v => v === 'pranzo' ? 'Pranzo' : 'Cena'} wrapperStyle={{ fontSize: 12, color: TEXT_DIM }} />
+                    <Bar dataKey="pranzo" stackId="t" name="Pranzo" fill={GOLD} />
+                    <Bar dataKey="cena" stackId="t" name="Cena" fill="#60a5fa" />
+                  </BarChart>
+                </ResponsiveContainer>
+                <div className="overflow-x-auto -mx-1 px-1 mt-4">
+                  <table className="w-full text-sm font-body min-w-[560px]">
+                    <thead>
+                      <tr className="text-left text-[#E5E5E5]/30 text-xs">
+                        <th className="pb-2 font-medium">Giorno</th>
+                        <th className="pb-2 font-medium text-right">Pranzo</th>
+                        <th className="pb-2 font-medium text-right">Cena</th>
+                        <th className="pb-2 font-medium text-right">Totale giorno</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {giorniTurno.map(g => (
+                        <tr key={g.day} className="border-t border-[#C69C6D]/5">
+                          <td className="py-2 text-[#E5E5E5]/70">{format(new Date(g.day + 'T12:00'), 'EEEE d MMM', { locale: it })}</td>
+                          <td className="py-2 text-right text-[#C69C6D]">€{g.pranzo.incasso.toFixed(2)}</td>
+                          <td className="py-2 text-right text-blue-400">€{g.cena.incasso.toFixed(2)}</td>
+                          <td className="py-2 text-right text-white font-semibold">€{(g.pranzo.incasso + g.cena.incasso).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                      <tr className="border-t-2 border-[#C69C6D]/20">
+                        <td className="py-2 text-[#E5E5E5]/50 font-semibold">Totale periodo</td>
+                        <td className="py-2 text-right text-[#C69C6D] font-semibold">€{totIncassoPranzo.toFixed(2)}</td>
+                        <td className="py-2 text-right text-blue-400 font-semibold">€{totIncassoCena.toFixed(2)}</td>
+                        <td className="py-2 text-right text-white font-bold">€{(totIncassoPranzo + totIncassoCena).toFixed(2)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </BlockShell>
+        );
+
+      case 'report_prenotazioni':
+        return (
+          <BlockShell title="📅 Prenotazioni e coperti per giorno e turno">
+            {giorniTurno.length === 0 ? <Empty /> : (
+              <div className="overflow-x-auto -mx-1 px-1">
+                <table className="w-full text-sm font-body min-w-[640px]">
+                  <thead>
+                    <tr className="text-left text-[#E5E5E5]/30 text-xs">
+                      <th className="pb-2 font-medium">Giorno</th>
+                      <th className="pb-2 font-medium text-right">Pren. pranzo</th>
+                      <th className="pb-2 font-medium text-right">Pren. cena</th>
+                      <th className="pb-2 font-medium text-right">Coperti pranzo</th>
+                      <th className="pb-2 font-medium text-right">Coperti cena</th>
+                      <th className="pb-2 font-medium text-right">Coperti tot.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {giorniTurno.map(g => (
+                      <tr key={g.day} className="border-t border-[#C69C6D]/5">
+                        <td className="py-2 text-[#E5E5E5]/70">{format(new Date(g.day + 'T12:00'), 'EEEE d MMM', { locale: it })}</td>
+                        <td className="py-2 text-right text-[#C69C6D]">{g.pranzo.prenotazioni} <span className="text-[#E5E5E5]/30">({g.pranzo.ospiti} pers.)</span></td>
+                        <td className="py-2 text-right text-blue-400">{g.cena.prenotazioni} <span className="text-[#E5E5E5]/30">({g.cena.ospiti} pers.)</span></td>
+                        <td className="py-2 text-right text-[#E5E5E5]/60">{g.pranzo.coperti}</td>
+                        <td className="py-2 text-right text-[#E5E5E5]/60">{g.cena.coperti}</td>
+                        <td className="py-2 text-right text-white font-semibold">{g.pranzo.coperti + g.cena.coperti}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-[#C69C6D]/20">
+                      <td className="py-2 text-[#E5E5E5]/50 font-semibold">Totale periodo</td>
+                      <td className="py-2 text-right text-[#C69C6D] font-semibold">{totPrenotPranzo}</td>
+                      <td className="py-2 text-right text-blue-400 font-semibold">{totPrenotCena}</td>
+                      <td className="py-2 text-right text-[#E5E5E5]/60 font-semibold">{totCopertiPranzo}</td>
+                      <td className="py-2 text-right text-[#E5E5E5]/60 font-semibold">{totCopertiCena}</td>
+                      <td className="py-2 text-right text-white font-bold">{totCopertiPranzo + totCopertiCena}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p className="font-body text-[10px] text-[#E5E5E5]/25 mt-3">
+                  I coperti derivano dalle comande servite; le prenotazioni escludono quelle annullate o rifiutate.
+                </p>
+              </div>
             )}
           </BlockShell>
         );
@@ -205,10 +346,10 @@ export default function AdminReport() {
         );
 
       case 'prenotazioni':
-        return reservations.length === 0 ? null : (
+        return resOggi.length === 0 ? null : (
           <BlockShell title="📅 Prenotazioni di oggi">
             <div className="space-y-2">
-              {reservations.map(r => (
+              {resOggi.map(r => (
                 <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-2 border-b border-[#C69C6D]/5 last:border-0">
                   <div>
                     <p className="font-body text-sm text-white">{r.customer_name}</p>
