@@ -54,6 +54,10 @@ Amministrazione: amministrazione@ossidianarestaurant.com
 </html>`;
 }
 
+async function safeMe(base44) {
+  try { return await base44.auth.me(); } catch { return null; }
+}
+
 async function logEmail(base44, params) {
   try {
     await base44.asServiceRole.entities.EmailLog.create({
@@ -120,6 +124,14 @@ async function sendAdminNotification(base44, apiKey, reservationId, r) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+
+    // ── Auth: la funzione è interna (la invoca il workflow di notifica,
+    // che gira con sessione admin). Nessun chiamante anonimo è ammesso. ──
+    const user = await safeMe(base44);
+    if (!user || user.role !== 'admin') {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     let body;
     try {
       body = await req.json();
