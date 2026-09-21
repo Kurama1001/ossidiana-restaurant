@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Phone, Clock, Instagram, Facebook, MessageCircle } from 'lucide-react';
+import { MapPin, Phone, Instagram, Facebook, MessageCircle } from 'lucide-react';
+import OrariList from '@/components/layout/OrariList';
 
 export default function Footer() {
   return (
@@ -21,10 +22,7 @@ export default function Footer() {
 
         <div>
           <h3 className="font-display text-lg text-[#C69C6D] tracking-widest mb-5">Orari</h3>
-          <div className="space-y-2 text-sm font-body text-[#E5E5E5]/70">
-            <div className="flex items-center gap-2"><Clock size={14} className="text-[#C69C6D]" /><span>Lun, Gio – Dom: 12:30 – 15:00 / 19:00 – 23:00</span></div>
-            <div className="flex items-center gap-2"><Clock size={14} className="text-[#C69C6D]" /><span>Mar – Mer: chiuso</span></div>
-          </div>
+          <OrariList />
         </div>
 
         <div>
