@@ -8,6 +8,7 @@ const ORARI_SETTIMANA = [
   { giorno: 'Venerdì',   fasce: ['12:30 – 15:30', '17:30 – 22:30'] },
   { giorno: 'Sabato',    fasce: ['12:30 – 15:30', '17:30 – 22:30'] },
   { giorno: 'Domenica',  fasce: ['12:30 – 16:00'] },
+  { giorno: 'Domenica sera', fasce: [], chiusi: true },
 ];
 
 /**
@@ -19,11 +20,11 @@ export default function OrariList({ className = '' }) {
     <div className={`flex gap-3 ${className}`}>
       <Clock size={14} className="text-[#C69C6D] shrink-0 mt-1" />
       <ul className="flex-1 font-body text-sm space-y-3">
-        {ORARI_SETTIMANA.map(({ giorno, fasce }) => (
+        {ORARI_SETTIMANA.map(({ giorno, fasce, chiusi }) => (
           <li key={giorno} className="flex items-start justify-between gap-4">
-            <span className="text-[#E5E5E5]/70">{giorno}</span>
+            <span className={giorno === 'Domenica sera' ? 'text-[#E5E5E5]/50 pl-3' : 'text-[#E5E5E5]/70'}>{giorno}</span>
             {fasce.length === 0 ? (
-              <span className="text-[#E5E5E5]/40">Chiuso</span>
+              <span className="text-[#E5E5E5]/40">{chiusi ? 'Chiusi' : 'Chiuso'}</span>
             ) : (
               <span className="flex flex-col items-end text-[#E5E5E5]/70 text-right">
                 {fasce.map(f => <span key={f} className="whitespace-nowrap">{f}</span>)}
