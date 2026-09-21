@@ -1,10 +1,10 @@
 import { Clock } from 'lucide-react';
 
 const ORARI_SETTIMANA = [
-  { giorno: 'Lunedì',    fasce: ['12:30 – 15:30', '19:00 – 22:30'] },
+  { giorno: 'Lunedì',    fasce: ['12:30 – 15:30', '17:30 – 22:30'] },
   { giorno: 'Martedì',   fasce: [] },
   { giorno: 'Mercoledì', fasce: [] },
-  { giorno: 'Giovedì',   fasce: ['12:30 – 15:30', '19:00 – 22:30'] },
+  { giorno: 'Giovedì',   fasce: ['12:30 – 15:30', '17:30 – 22:30'] },
   { giorno: 'Venerdì',   fasce: ['12:30 – 15:30', '17:30 – 22:30'] },
   { giorno: 'Sabato',    fasce: ['12:30 – 15:30', '17:30 – 22:30'] },
   { giorno: 'Domenica',  fasce: ['12:30 – 16:00'] },
