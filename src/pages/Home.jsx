@@ -6,6 +6,7 @@ import { BronzeButton } from '@/components/ui/BronzeButton';
 import CompressedImage from '@/components/ui/CompressedImage';
 import PhotoGallery from '@/components/home/PhotoGallery';
 import ChiSiamo from '@/components/home/ChiSiamo';
+import OrariList from '@/components/layout/OrariList';
 
 export default function Home() {
   const [menuHighlights, setMenuHighlights] = useState([]);
@@ -93,11 +94,15 @@ export default function Home() {
           {[
             { title: 'Prenotazioni', desc: 'Riserva il tuo tavolo online in pochi click', action: '/prenotazioni', label: 'Prenota ora' },
             { title: 'Asporto', desc: 'Ordina i tuoi piatti preferiti da portare a casa', action: '/ordini', label: 'Ordina ora' },
-            { title: 'Orari', desc: 'Lun, Gio: 12:30–15:30 / 19:00–22:30 · Ven–Sab: 12:30–15:30 / 17:30–22:30 · Dom: 12:30–16:00 · Mar–Mer: chiuso', action: null, label: null },
+            { title: 'Orari', desc: null, action: null, label: null },
           ].map(b => (
             <div key={b.title}>
               <h3 className="font-display text-2xl text-[#C69C6D] tracking-widest mb-3">{b.title}</h3>
-              <p className="font-body text-[#E5E5E5]/50 text-sm mb-4">{b.desc}</p>
+              {b.title === 'Orari' ? (
+                <div className="text-left inline-block"><OrariList /></div>
+              ) : (
+                <p className="font-body text-[#E5E5E5]/50 text-sm mb-4">{b.desc}</p>
+              )}
               {b.action && <BronzeButton to={b.action} variant="ghost">{b.label} →</BronzeButton>}
             </div>
           ))}
