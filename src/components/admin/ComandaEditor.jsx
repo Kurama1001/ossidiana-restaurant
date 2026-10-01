@@ -195,14 +195,20 @@ export default function ComandaEditor({ onSuccess, ordineEsistente }) {
       }).then(created => ({ ...r, id: created.id, note: notaRiga, stato: 'inviato' }));
     }));
 
+    // Ricalcola sempre il totale dall'elenco delle righe attive (esclude le annullate)
+    const tutteRighe = await base44.entities.RigaOrdine.filter({ ordine_id: ordineId }, '-created_date', 500);
+    const totaleCorretto = tutteRighe
+      .filter(r => r.stato !== 'annullato')
+      .reduce((s, r) => s + (r.prezzo_totale || 0), 0);
     if (ordineEsistente) {
-      const prevTotale = ordineEsistente.totale || 0;
       await base44.entities.Ordine.update(ordineId, {
         stato: 'inviato',
         note_generali: noteGenerali,
         coperti,
-        totale: prevTotale + totale,
+        totale: totaleCorretto,
       });
+    } else {
+      await base44.entities.Ordine.update(ordineId, { totale: totaleCorretto });
     }
 
     // Crea PrintJob per la stampante cucina (sostituisce window.print())

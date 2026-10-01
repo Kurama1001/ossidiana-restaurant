@@ -46,7 +46,11 @@ export default function DettaglioComanda({ ordine, onBack, onRefreshOrdine }) {
   const annullaRiga = async (rigaId) => {
     setAnnullando(rigaId);
     await base44.entities.RigaOrdine.update(rigaId, { stato: 'annullato' });
-    setRighe(prev => prev.filter(r => r.id !== rigaId));
+    const nuoveRighe = righe.filter(r => r.id !== rigaId);
+    setRighe(nuoveRighe);
+    // Aggiorna il totale salvato sull'ordine (somma delle righe attive)
+    const nuovoTotale = nuoveRighe.reduce((s, r) => s + (r.prezzo_totale || 0), 0);
+    await base44.entities.Ordine.update(ordine.id, { totale: nuovoTotale }).catch(() => {});
     setAnnullando(null);
     onRefreshOrdine?.();
   };

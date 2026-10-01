@@ -81,6 +81,12 @@ export default function AdminComande() {
     setDeleting(rigaId);
     await base44.entities.RigaOrdine.update(rigaId, { stato: 'annullato' });
     setRigheModal(prev => prev.filter(r => r.id !== rigaId));
+    // Ricalcola il totale dell'ordine sommando le righe ancora attive
+    const tutte = await base44.entities.RigaOrdine.filter({ ordine_id: modalAnnulla.id }, '-created_date', 500);
+    const nuovoTotale = tutte
+      .filter(r => r.stato !== 'annullato')
+      .reduce((s, r) => s + (r.prezzo_totale || 0), 0);
+    await base44.entities.Ordine.update(modalAnnulla.id, { totale: nuovoTotale }).catch(() => {});
     setDeleting(null);
   };
 
