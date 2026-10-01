@@ -94,6 +94,17 @@ export default function AdminReport() {
   const todayStr = new Date().toISOString().split('T')[0];
   const resOggi = reservations.filter(r => r.res_date === todayStr);
 
+  // ── Totale per ordine: sempre la somma delle righe attive, coerente con il dettaglio comanda ──
+  const totalePerOrdine = (() => {
+    const map = {};
+    righe.forEach(r => {
+      if (r.stato === 'annullato' || !r.ordine_id) return;
+      map[r.ordine_id] = (map[r.ordine_id] || 0) + (r.prezzo_totale || 0);
+    });
+    return map;
+  })();
+  const incassoOrdine = (o) => (totalePerOrdine[o.id] != null ? totalePerOrdine[o.id] : (o.totale || 0));
+
   // ── Aggregazione per giorno e turno (pranzo < 17:00, cena ≥ 17:00) ──
   const giorniTurno = (() => {
     const map = {};
@@ -101,12 +112,19 @@ export default function AdminReport() {
       if (!map[day]) map[day] = { day, pranzo: { incasso: 0, coperti: 0, prenotazioni: 0, ospiti: 0 }, cena: { incasso: 0, coperti: 0, prenotazioni: 0, ospiti: 0 } };
       return map[day];
     };
+    // Coperti: un tavolo nello stesso giorno/turno conta una sola volta (il massimo delle sue comande)
+    const copertiPerTavolo = {};
     ordFiltrati.forEach(o => {
       if (!o.created_date) return;
-      const row = ensure(format(new Date(o.created_date), 'yyyy-MM-dd'));
+      const day = format(new Date(o.created_date), 'yyyy-MM-dd');
       const turno = new Date(o.created_date).getHours() >= 17 ? 'cena' : 'pranzo';
-      row[turno].incasso += o.totale || 0;
-      row[turno].coperti += o.coperti || 0;
+      ensure(day)[turno].incasso += incassoOrdine(o);
+      const key = `${day}|${turno}|${o.numero_tavolo ?? o.tavolo_id}`;
+      copertiPerTavolo[key] = Math.max(copertiPerTavolo[key] || 0, Number(o.coperti) || 0);
+    });
+    Object.entries(copertiPerTavolo).forEach(([key, c]) => {
+      const [day, turno] = key.split('|');
+      ensure(day)[turno].coperti += c;
     });
     resValide.forEach(r => {
       if (!r.res_date) return;
@@ -126,7 +144,7 @@ export default function AdminReport() {
   const totPrenotPranzo = giorniTurno.reduce((s, g) => s + g.pranzo.prenotazioni, 0);
   const totPrenotCena = giorniTurno.reduce((s, g) => s + g.cena.prenotazioni, 0);
 
-  const totaleLocale = ordFiltrati.reduce((s, o) => s + (o.totale || 0), 0);
+  const totaleLocale = ordFiltrati.reduce((s, o) => s + incassoOrdine(o), 0);
   const totaleAsporto = asportoFiltrati.reduce((s, o) => s + (o.total_amount || 0), 0);
   const totaleVendite = totaleLocale + totaleAsporto;
   const numOrdiniLocale = ordFiltrati.length;
