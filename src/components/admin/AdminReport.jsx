@@ -39,8 +39,8 @@ export default function AdminReport() {
     } catch { return BLOCKS_DEFAULT; }
   });
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
     const today = new Date().toISOString().split('T')[0];
     const [ords, rigs, res, ordersAsporto] = await Promise.all([
       base44.entities.Ordine.list('-created_date', 500),
@@ -57,12 +57,20 @@ export default function AdminReport() {
 
   useEffect(() => { load(); }, []);
 
+  // Aggiornamento automatico ogni 30 secondi (senza flicker del loader)
+  useEffect(() => {
+    const interval = setInterval(() => load(true), 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const filterByPeriodo = (items, dateField = 'created_date') => {
     const now = new Date();
     let from, to;
     if (periodo === 'custom') {
-      from = dateFrom ? new Date(dateFrom) : new Date(0);
+      from = dateFrom ? new Date(dateFrom) : subDays(now, 30);
       to = dateTo ? new Date(dateTo + 'T23:59:59') : now;
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) return [];
+      if (from > to) { const t = from; from = to; to = t; }
     } else {
       to = now;
       from = periodo === 'oggi' ? startOfDay(now)
@@ -158,6 +166,9 @@ export default function AdminReport() {
                : periodo === 'custom' && dateFrom ? new Date(dateFrom)
                : subDays(now, 29);
     const to = periodo === 'custom' && dateTo ? new Date(dateTo) : now;
+    // Protezione anti-blocco: intervallo valido, massimo 90 giorni nel grafico
+    if (isNaN(from.getTime()) || isNaN(to.getTime()) || from > to) return [];
+    if ((to.getTime() - from.getTime()) / 86400000 > 90) from = subDays(to, 89);
     days = eachDayOfInterval({ start: from, end: to });
     return days.map(d => {
       const label = format(d, 'd MMM', { locale: it });
@@ -395,7 +406,7 @@ export default function AdminReport() {
                 className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm font-body text-sm outline-none focus:border-[#C69C6D]" />
             </>
           )}
-          <button onClick={load} className="p-2 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all">
+          <button onClick={() => load()} className="p-2 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all">
             <RefreshCw size={16} />
           </button>
         </div>
