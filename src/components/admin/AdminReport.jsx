@@ -26,6 +26,7 @@ export default function AdminReport() {
   const [righe, setRighe] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [periodo, setPeriodo] = useState('oggi');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -424,8 +425,10 @@ export default function AdminReport() {
                 className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm font-body text-sm outline-none focus:border-[#C69C6D]" />
             </>
           )}
-          <button onClick={() => load()} className="p-2 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all">
-            <RefreshCw size={16} />
+          <button onClick={async () => { setRefreshing(true); await load(true); setRefreshing(false); }}
+            className="flex items-center gap-2 px-3 py-2 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm font-body text-sm transition-all">
+            <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
+            {refreshing ? 'Aggiornamento...' : 'Aggiorna'}
           </button>
         </div>
       </div>
