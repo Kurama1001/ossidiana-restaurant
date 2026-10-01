@@ -161,10 +161,10 @@ export default function AdminReport() {
       });
       return ore.filter(o => o.locale > 0 || o.asporto > 0);
     }
-    const from = periodo === '7giorni' ? subDays(now, 6)
-               : periodo === '30giorni' ? subDays(now, 29)
-               : periodo === 'custom' && dateFrom ? new Date(dateFrom)
-               : subDays(now, 29);
+    let from = periodo === '7giorni' ? subDays(now, 6)
+             : periodo === '30giorni' ? subDays(now, 29)
+             : periodo === 'custom' && dateFrom ? new Date(dateFrom)
+             : subDays(now, 29);
     const to = periodo === 'custom' && dateTo ? new Date(dateTo) : now;
     // Protezione anti-blocco: intervallo valido, massimo 90 giorni nel grafico
     if (isNaN(from.getTime()) || isNaN(to.getTime()) || from > to) return [];
