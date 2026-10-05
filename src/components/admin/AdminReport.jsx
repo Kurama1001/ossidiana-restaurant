@@ -430,6 +430,7 @@ export default function AdminReport() {
               giorniTurno,
               totIncassoPranzo, totIncassoCena,
               totCopertiPranzo, totCopertiCena,
+              righe: righeFiltrate,
               periodoLabel: periodo === 'custom' && dateFrom && dateTo
                 ? `${dateFrom.split('-').reverse().join('/')} → ${dateTo.split('-').reverse().join('/')}`
                 : periodo === 'oggi' ? 'Oggi'
