@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { TrendingUp, ShoppingBag, Clock, RefreshCw, CalendarDays, GripVertical } from 'lucide-react';
+import { TrendingUp, ShoppingBag, Clock, RefreshCw, CalendarDays, GripVertical, FileSpreadsheet } from 'lucide-react';
 import { startOfDay, subDays, format, eachDayOfInterval } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { exportIncassiCopertiExcel } from '@/utils/reportExcelExport';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -425,6 +426,22 @@ export default function AdminReport() {
                 className="bg-[#0A0A0B] border border-[#E5E5E5]/15 text-[#E5E5E5] px-3 py-2 rounded-sm font-body text-sm outline-none focus:border-[#C69C6D]" />
             </>
           )}
+          <button onClick={() => exportIncassiCopertiExcel({
+              giorniTurno,
+              totIncassoPranzo, totIncassoCena,
+              totCopertiPranzo, totCopertiCena,
+              periodoLabel: periodo === 'custom' && dateFrom && dateTo
+                ? `${dateFrom.split('-').reverse().join('/')} → ${dateTo.split('-').reverse().join('/')}`
+                : periodo === 'oggi' ? 'Oggi'
+                : periodo === '7giorni' ? 'Ultimi 7 giorni'
+                : periodo === '30giorni' ? 'Ultimi 30 giorni'
+                : 'Tutto il periodo',
+            })}
+            disabled={giorniTurno.length === 0}
+            className="flex items-center gap-2 px-3 py-2 border border-green-500/40 text-green-400 hover:bg-green-500/10 rounded-sm font-body text-sm transition-all disabled:opacity-30">
+            <FileSpreadsheet size={15} />
+            Excel
+          </button>
           <button onClick={async () => { setRefreshing(true); await load(true); setRefreshing(false); }}
             className="flex items-center gap-2 px-3 py-2 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm font-body text-sm transition-all">
             <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
