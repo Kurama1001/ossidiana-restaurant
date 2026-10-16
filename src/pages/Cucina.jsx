@@ -123,11 +123,11 @@ export default function Cucina() {
 
   const load = async () => {
     const [data, ordiniData] = await Promise.all([
-      base44.entities.RigaOrdine.filter({ reparto: 'cucina' }, 'created_date', 300),
-      base44.entities.Ordine.filter({}, '-created_date', 200),
+      base44.entities.RigaOrdine.filter({ reparto: 'cucina', stato: { $in: ['inviato', 'ricevuto', 'in_preparazione', 'pronto'] } }, 'created_date', 300),
+      base44.entities.Ordine.filter({ stato: { $nin: ['chiuso', 'annullato'] } }, '-created_date', 200),
     ]);
     const copertiMap = ordiniData.reduce((acc, o) => { acc[o.id] = o.coperti; return acc; }, {});
-    const attive = data.filter(r => ['inviato', 'ricevuto', 'in_preparazione', 'pronto'].includes(r.stato));
+    const attive = data;
 
     const grouped = attive.reduce((acc, r) => {
       if (!acc[r.ordine_id]) acc[r.ordine_id] = { ordineId: r.ordine_id, numero: r.numero_tavolo, coperti: copertiMap[r.ordine_id], righe: [] };
@@ -153,7 +153,7 @@ export default function Cucina() {
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 8000);
+    const interval = setInterval(load, 15000);
 
     // Buffer per raccogliere le righe arrivate in breve tempo (stesso invio)
     let buffer = [];

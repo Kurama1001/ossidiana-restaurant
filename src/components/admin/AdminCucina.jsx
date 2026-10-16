@@ -23,8 +23,7 @@ export default function AdminCucina() {
   const prevCount = useRef(0);
 
   const load = async () => {
-    const data = await base44.entities.RigaOrdine.filter({ reparto: 'cucina' }, 'created_date', 200);
-    const attive = data.filter(r => ['inviato', 'ricevuto', 'in_preparazione', 'pronto'].includes(r.stato));
+    const attive = await base44.entities.RigaOrdine.filter({ reparto: 'cucina', stato: { $in: ['inviato', 'ricevuto', 'in_preparazione', 'pronto'] } }, 'created_date', 200);
     prevCount.current = attive.length;
     setRighe(attive);
     setLoading(false);
@@ -32,7 +31,7 @@ export default function AdminCucina() {
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 8000);
+    const interval = setInterval(load, 15000);
     return () => clearInterval(interval);
   }, []);
 

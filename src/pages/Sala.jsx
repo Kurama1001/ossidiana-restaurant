@@ -34,12 +34,11 @@ export default function Sala() {
     try {
       const oggi = new Date();
       oggi.setHours(0, 0, 0, 0);
-      const data = await base44.entities.Ordine.list('-created_date', 200);
-      const attivi = data.filter(o =>
-        !['chiuso', 'annullato'].includes(o.stato) &&
-        new Date(o.created_date) >= oggi
+      const data = await base44.entities.Ordine.filter(
+        { stato: { $nin: ['chiuso', 'annullato'] }, created_date: { $gte: oggi.toISOString() } },
+        '-created_date', 200
       );
-      setOrdini(attivi);
+      setOrdini(data);
     } finally {
       setLoading(false);
     }

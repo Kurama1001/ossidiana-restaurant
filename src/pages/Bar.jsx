@@ -24,8 +24,7 @@ export default function Bar() {
   const audioRef = useRef(null);
 
   const load = async () => {
-    const data = await base44.entities.RigaOrdine.filter({ reparto: 'bar' }, 'created_date', 200);
-    const attive = data.filter(r => ['inviato','ricevuto','in_preparazione','pronto'].includes(r.stato));
+    const attive = await base44.entities.RigaOrdine.filter({ reparto: 'bar', stato: { $in: ['inviato', 'ricevuto', 'in_preparazione', 'pronto'] } }, 'created_date', 200);
     if (attive.length > prevCount.current && prevCount.current > 0) {
       audioRef.current?.play().catch(() => {});
     }
@@ -36,7 +35,7 @@ export default function Bar() {
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 8000);
+    const interval = setInterval(load, 15000);
     return () => clearInterval(interval);
   }, []);
 
