@@ -1,6 +1,13 @@
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 
+// Giorno di calendario locale (YYYY-MM-DD): non passa per UTC, così il cambio
+// dell'ora legale (ottobre/marzo) non salta né duplica giorni.
+export function toIsoDay(date) {
+  const p = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
+}
+
 export function formatDateIt(dateStr) {
   if (!dateStr) return '';
   try {

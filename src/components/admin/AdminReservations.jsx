@@ -10,13 +10,13 @@ import ReservationStats from '@/components/admin/reservations/ReservationStats';
 import AgendaDayStrip from '@/components/admin/reservations/AgendaDayStrip';
 import ShiftCapacityBar from '@/components/admin/reservations/ShiftCapacityBar';
 import FloorPlanView from '@/components/admin/reservations/FloorPlanView';
-import { buildConfirmMessage, buildRejectMessage, buildUpdateMessage, buildCancelMessage, FONTE_LABELS, isPendingStatus, isConfirmedStatus, isCancelledStatus, getTurno, formatDateLong } from '@/components/admin/reservations/utils';
+import { buildConfirmMessage, buildRejectMessage, buildUpdateMessage, buildCancelMessage, FONTE_LABELS, isPendingStatus, isConfirmedStatus, isCancelledStatus, getTurno, formatDateLong, toIsoDay } from '@/components/admin/reservations/utils';
 
 export default function AdminReservations() {
   const { user } = useAuth();
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(() => toIsoDay(new Date()));
   const [turnoFilter, setTurnoFilter] = useState('all');
   const [orarioFilter, setOrarioFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -29,7 +29,7 @@ export default function AdminReservations() {
   const [tavoli, setTavoli] = useState([]);
   const [viewMode, setViewMode] = useState('agenda');
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = toIsoDay(new Date());
 
   const load = async () => {
     setLoading(true);
@@ -199,9 +199,8 @@ export default function AdminReservations() {
   const cenaPend = dayCena.filter(r => isPendingStatus(r.status)).reduce((s, r) => s + (r.guests || 0), 0);
 
   const shiftDate = (delta) => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + delta);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    setSelectedDate(toIsoDay(new Date(y, m - 1, d + delta)));
   };
 
   const renderTurnoSection = (label, Icon, list) => {

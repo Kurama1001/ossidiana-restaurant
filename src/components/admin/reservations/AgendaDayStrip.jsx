@@ -1,18 +1,15 @@
 import { useRef, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { formatDayName, formatDayNumber, formatMonthShort, isPendingStatus, isCancelledStatus, getTurno } from './utils';
+import { formatDayName, formatDayNumber, formatMonthShort, isPendingStatus, isCancelledStatus, getTurno, toIsoDay } from './utils';
 
 export default function AgendaDayStrip({ reservations, selectedDate, onSelectDate, today }) {
   const scrollRef = useRef(null);
 
   const days = useMemo(() => {
-    const start = new Date(today);
-    start.setDate(start.getDate() - 7);
-    return Array.from({ length: 45 }, (_, i) => {
-      const d = new Date(start);
-      d.setDate(d.getDate() + i);
-      return d.toISOString().split('T')[0];
-    });
+    // Aritmetica su date locali: con toISOString il cambio dell'ora legale
+    // faceva saltare il 25 ottobre (e duplicare il giorno precedente).
+    const [y, m, d] = today.split('-').map(Number);
+    return Array.from({ length: 45 }, (_, i) => toIsoDay(new Date(y, m - 1, d - 7 + i)));
   }, [today]);
 
   const dayStats = useMemo(() => {
