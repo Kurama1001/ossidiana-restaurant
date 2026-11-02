@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { Plus, RefreshCw, Search, CalendarDays, Users, Sun, Moon, ChevronLeft, ChevronRight, LayoutGrid, Map } from 'lucide-react';
+import { Plus, RefreshCw, Search, CalendarDays, Users, Sun, Moon, ChevronLeft, ChevronRight, LayoutGrid, Map, FileSpreadsheet } from 'lucide-react';
+import { exportClientiExcel } from '@/utils/clientiExcelExport';
 import { BronzeButton } from '@/components/ui/BronzeButton';
 import ReservationCard from '@/components/admin/reservations/ReservationCard';
 import ReservationFormModal from '@/components/admin/reservations/ReservationFormModal';
@@ -258,6 +259,12 @@ export default function AdminReservations() {
           </div>
           <button onClick={load} className="p-2 border border-[#C69C6D]/30 text-[#C69C6D] hover:bg-[#C69C6D]/10 rounded-sm transition-all">
             <RefreshCw size={16} />
+          </button>
+          <button onClick={() => exportClientiExcel(reservations)}
+            disabled={reservations.length === 0}
+            title="Esporta nominativi e telefoni in Excel"
+            className="flex items-center gap-2 px-3 py-2 border border-green-500/40 text-green-400 hover:bg-green-500/10 rounded-sm font-body text-xs transition-all disabled:opacity-30">
+            <FileSpreadsheet size={15} /> Clienti
           </button>
           <BronzeButton onClick={openCreate} variant="solid">
             <Plus size={14} /> Aggiungi Prenotazione
